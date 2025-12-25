@@ -36,22 +36,17 @@ jobs:
           npm ci
           npm run build
 
-      # 4️⃣ Extract username and host from LIGHTSAIL_HOST
-      - name: Extract SSH credentials
+      # 4️⃣ Set SSH credentials
+      - name: Set SSH credentials
         id: ssh-creds
         run: |
-          LIGHTSAIL_HOST="${{ secrets.LIGHTSAIL_HOST_F }}"
-          if [[ "$LIGHTSAIL_HOST" == *"@"* ]]; then
-            SSH_USERNAME=$(echo "$LIGHTSAIL_HOST" | cut -d'@' -f1)
-            SSH_HOST=$(echo "$LIGHTSAIL_HOST" | cut -d'@' -f2)
-          else
-            SSH_USERNAME="ubuntu"
-            SSH_HOST="$LIGHTSAIL_HOST"
-          fi
+          # LIGHTSAIL_HOST_F contains only the IP address
+          SSH_HOST="${{ secrets.LIGHTSAIL_HOST_F }}"
+          SSH_USERNAME="ubuntu"
           echo "username=$SSH_USERNAME" >> $GITHUB_OUTPUT
           echo "host=$SSH_HOST" >> $GITHUB_OUTPUT
-          echo "Extracted username: $SSH_USERNAME"
-          echo "Extracted host: $SSH_HOST"
+          echo "✅ Using username: $SSH_USERNAME"
+          echo "✅ Using host: $SSH_HOST"
 
       # 5️⃣ Prepare temp directory on Lightsail
       - name: Prepare Lightsail temp directory
@@ -60,10 +55,14 @@ jobs:
           host: ${{ steps.ssh-creds.outputs.host }}
           username: ${{ steps.ssh-creds.outputs.username }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          port: 22
+          timeout: 30s
+          command_timeout: 30s
           script: |
             rm -rf ~/deploy-temp
             mkdir -p ~/deploy-temp
             chmod 775 ~/deploy-temp
+            echo "✅ Temp directory prepared"
 
       # 6️⃣ Upload build using rsync
       - name: Upload build to Lightsail
@@ -83,6 +82,9 @@ jobs:
           host: ${{ steps.ssh-creds.outputs.host }}
           username: ${{ steps.ssh-creds.outputs.username }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          port: 22
+          timeout: 30s
+          command_timeout: 30s
           script: |
             sudo rm -rf /var/www/html/*
             sudo mkdir -p /var/www/html
