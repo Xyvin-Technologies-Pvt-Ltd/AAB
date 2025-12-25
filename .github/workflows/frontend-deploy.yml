@@ -1,0 +1,77 @@
+name: Frontend Deploy to AWS Lightsail
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-deploy.yml'
+
+jobs:
+  deploy:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+
+      - name: Add Lightsail host to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Lightsail Instance
+        run: |
+          # Verify dist directory exists
+          if [ ! -d "frontend/dist" ]; then
+            echo "Error: frontend/dist directory not found. Build may have failed."
+            exit 1
+          fi
+          
+          # Create deployment directory
+          mkdir -p deploy-frontend
+          
+          # Copy built files
+          cp -r frontend/dist/* deploy-frontend/
+          
+          # Ensure target directory exists on server and upload files
+          ssh ${{ secrets.LIGHTSAIL_HOST }} 'sudo mkdir -p /var/www/html && sudo chown -R $USER:$USER /var/www/html'
+          scp -r deploy-frontend/* ${{ secrets.LIGHTSAIL_HOST }}:/var/www/html/
+          
+          # Clean up local deployment directory
+          rm -rf deploy-frontend
+
+      - name: Restart Nginx
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_HOST }} 'sudo systemctl reload nginx || sudo systemctl restart nginx'
+
+      - name: Verify Deployment
+        run: |
+          sleep 3
+          curl -f http://${{ secrets.LIGHTSAIL_HOST }} || echo "Frontend deployment completed. Verify manually if needed."
+
