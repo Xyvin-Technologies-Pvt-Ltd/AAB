@@ -40,7 +40,7 @@ jobs:
       - name: Extract SSH credentials
         id: ssh-creds
         run: |
-          LIGHTSAIL_HOST="${{ secrets.LIGHTSAIL_HOST }}"
+          LIGHTSAIL_HOST="${{ secrets.LIGHTSAIL_HOST_F }}"
           if [[ "$LIGHTSAIL_HOST" == *"@"* ]]; then
             SSH_USERNAME=$(echo "$LIGHTSAIL_HOST" | cut -d'@' -f1)
             SSH_HOST=$(echo "$LIGHTSAIL_HOST" | cut -d'@' -f2)

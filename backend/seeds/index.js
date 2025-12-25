@@ -25,6 +25,19 @@ const seedData = async () => {
     await Task.deleteMany({});
     await TimeEntry.deleteMany({});
 
+    // Drop and recreate email index as sparse
+    logger.info('Recreating email index as sparse...');
+    try {
+      await Employee.collection.dropIndex('email_1');
+    } catch (error) {
+      // Index might not exist, which is fine
+      if (error.code !== 27) {
+        logger.warn('Could not drop email index:', error.message);
+      }
+    }
+    // Ensure the sparse index is created
+    await Employee.collection.createIndex({ email: 1 }, { unique: true, sparse: true });
+
     // Create Employees
     logger.info('Creating employees...');
     const employees = await Employee.insertMany([
@@ -387,7 +400,7 @@ const seedData = async () => {
       const taskCount = Math.floor(Math.random() * 3) + 2; // 2-4 tasks per package
 
       for (let j = 0; j < taskCount; j++) {
-        const statuses = ['OPEN', 'IN_PROGRESS', 'COMPLETED'];
+        const statuses = ['TODO', 'IN_PROGRESS', 'DONE'];
         tasks.push(
           await Task.create({
             clientId: pkg.clientId,
