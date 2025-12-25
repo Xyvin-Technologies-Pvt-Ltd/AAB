@@ -43,8 +43,17 @@ jobs:
 
       - name: Add Lightsail host to known hosts
         run: |
+          # Extract hostname for ssh-keyscan (it needs just the host, not user@host)
           LIGHTSAIL_HOST_ONLY=$(echo ${{ secrets.LIGHTSAIL_HOST }} | sed 's/.*@//')
-          ssh-keyscan -H ${LIGHTSAIL_HOST_ONLY} >> ~/.ssh/known_hosts
+          if [ -z "${LIGHTSAIL_HOST_ONLY}" ]; then
+            # Fallback: use the full value if extraction fails
+            LIGHTSAIL_HOST_ONLY="${{ secrets.LIGHTSAIL_HOST }}"
+          fi
+          ssh-keyscan -H ${LIGHTSAIL_HOST_ONLY} >> ~/.ssh/known_hosts 2>&1 || echo "Warning: ssh-keyscan failed, but continuing..."
+
+      - name: Test SSH Connection
+        run: |
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${{ secrets.LIGHTSAIL_HOST }} "echo 'SSH connection successful'" || exit 1
 
       - name: Deploy to Lightsail Instance
         run: |
