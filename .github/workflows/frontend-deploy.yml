@@ -43,7 +43,8 @@ jobs:
 
       - name: Add Lightsail host to known hosts
         run: |
-          ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts
+          LIGHTSAIL_HOST_ONLY=$(echo ${{ secrets.LIGHTSAIL_HOST }} | sed 's/.*@//')
+          ssh-keyscan -H ${LIGHTSAIL_HOST_ONLY} >> ~/.ssh/known_hosts
 
       - name: Deploy to Lightsail Instance
         run: |
@@ -60,18 +61,19 @@ jobs:
           cp -r frontend/dist/* deploy-frontend/
           
           # Ensure target directory exists on server and upload files
-          ssh ${{ secrets.LIGHTSAIL_HOST }} 'sudo mkdir -p /var/www/html && sudo chown -R $USER:$USER /var/www/html'
-          scp -r deploy-frontend/* ${{ secrets.LIGHTSAIL_HOST }}:/var/www/html/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_HOST }} 'sudo mkdir -p /var/www/html && sudo chown -R $USER:$USER /var/www/html'
+          scp -o StrictHostKeyChecking=no -r deploy-frontend/* ${{ secrets.LIGHTSAIL_HOST }}:/var/www/html/
           
           # Clean up local deployment directory
           rm -rf deploy-frontend
 
       - name: Restart Nginx
         run: |
-          ssh ${{ secrets.LIGHTSAIL_HOST }} 'sudo systemctl reload nginx || sudo systemctl restart nginx'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_HOST }} 'sudo systemctl reload nginx || sudo systemctl restart nginx'
 
       - name: Verify Deployment
         run: |
           sleep 3
-          curl -f http://${{ secrets.LIGHTSAIL_HOST }} || echo "Frontend deployment completed. Verify manually if needed."
+          LIGHTSAIL_HOST_ONLY=$(echo ${{ secrets.LIGHTSAIL_HOST }} | sed 's/.*@//')
+          curl -f --max-time 10 http://${LIGHTSAIL_HOST_ONLY} || echo "Frontend deployment completed. Verify manually if needed."
 
