@@ -45,7 +45,7 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API routes
+// API routesi
 import authRoutes from './modules/auth/auth.route.js';
 import clientRoutes from './modules/client/client.route.js';
 import employeeRoutes from './modules/employee/employee.route.js';
