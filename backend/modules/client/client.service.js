@@ -529,20 +529,20 @@ export const updateEmaraTaxCredentials = async (clientId, credentials) => {
   // Handle password update:
   // - undefined: don't update password (keep existing)
   // - null or empty string: clear password
-  // - string: update password (will be hashed by pre-save hook)
+  // - string: update password (will be encrypted by pre-save hook)
   if (credentials.password !== undefined) {
     if (credentials.password === null || credentials.password === '') {
       // Clear password
       client.emaraTaxAccount.password = null;
     } else {
-      // Update password (will be hashed by pre-save hook)
+      // Update password (will be encrypted by pre-save hook)
       client.emaraTaxAccount.password = credentials.password;
     }
   }
 
   await client.save();
 
-  // Return client with password selected (for hasPassword check)
+  // Return client with password selected (for decryption)
   const updatedClient = await Client.findById(clientId).select('+emaraTaxAccount.password');
   return updatedClient;
 };

@@ -30,19 +30,27 @@ export const getClients = async (req, res, next) => {
 export const getClientById = async (req, res, next) => {
   try {
     const client = await clientService.getClientById(req.params.id);
-    // Always return unmasked EmaraTax credentials
-    // Note: Password is hashed with bcrypt and cannot be decrypted
-    // We only return whether a password exists, not the actual password
+    // Always return unmasked EmaraTax credentials (decrypted)
     if (client.emaraTaxAccount) {
       const hasPassword = !!client.emaraTaxAccount.password;
 
-      // Return actual username and password status (not the actual password)
+      let password = null;
+      if (hasPassword) {
+        try {
+          // Decrypt password for display
+          password = client.getDecryptedPassword();
+        } catch (error) {
+          // If decryption fails, return null
+          password = null;
+        }
+      }
+
+      // Return actual username and decrypted password
       const username = client.emaraTaxAccount.username || null;
 
       client.emaraTaxAccount = {
         username: username,
-        hasPassword: hasPassword, // Indicate if password is set (but don't return the hash)
-        password: null, // Never return the password hash
+        password: password,
       };
     }
 
@@ -613,15 +621,24 @@ export const updateEmaraTaxCredentials = async (req, res, next) => {
   try {
     const client = await clientService.updateEmaraTaxCredentials(req.params.id, req.body);
 
-    // Return unmasked credentials in response
-    // Note: Password is hashed with bcrypt and cannot be decrypted
-    // We only return whether a password exists, not the actual password
+    // Return unmasked credentials in response (decrypted)
     if (client.emaraTaxAccount) {
       const hasPassword = !!client.emaraTaxAccount.password;
+
+      let password = null;
+      if (hasPassword) {
+        try {
+          // Decrypt password for display
+          password = client.getDecryptedPassword();
+        } catch (error) {
+          // If decryption fails, return null
+          password = null;
+        }
+      }
+
       client.emaraTaxAccount = {
         username: client.emaraTaxAccount.username || null,
-        hasPassword: hasPassword, // Indicate if password is set (but don't return the hash)
-        password: null, // Never return the password hash
+        password: password,
       };
     }
 

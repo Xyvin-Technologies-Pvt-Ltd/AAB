@@ -94,10 +94,9 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
     if (isLoadingCredentials) {
       return 'Loading...';
     }
-    // Password is hashed with bcrypt and cannot be displayed
-    // Show placeholder if password is set, otherwise show '-'
-    if (credentialsData?.hasPassword) {
-      return '••••••••'; // Show dots to indicate password is set
+    // Show decrypted password if it exists, otherwise show '-'
+    if (credentialsData?.password !== undefined && credentialsData?.password !== null) {
+      return credentialsData.password;
     }
     return '-';
   };
@@ -162,11 +161,11 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
             <p className="text-xs text-gray-500 mb-1">Password</p>
             {isEditing ? (
               <input
-                type="password"
+                type="text"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono"
-                placeholder={credentialsData?.hasPassword ? "Enter new password (leave blank to keep current)" : "Enter password"}
+                placeholder="Enter password"
               />
             ) : (
               <p className="text-sm font-medium text-gray-900 font-mono break-all">

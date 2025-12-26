@@ -1,8 +1,19 @@
 # Multi-stage build for Node.js backend
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /app
+
+# Install build dependencies for native modules (canvas, etc.)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev
 
 # Copy package files
 COPY package.json package-lock.json ./
@@ -11,7 +22,15 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Production stage
-FROM node:18-alpine
+FROM node:20-alpine
+
+# Install runtime dependencies for canvas
+RUN apk add --no-cache \
+    cairo \
+    jpeg \
+    pango \
+    giflib \
+    pixman
 
 # Create app directory and non-root user
 WORKDIR /app
