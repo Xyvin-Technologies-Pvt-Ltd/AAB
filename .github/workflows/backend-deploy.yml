@@ -72,6 +72,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           # Create deployment script
           cat > deploy-backend.sh << 'DEPLOY_SCRIPT'
@@ -151,7 +152,7 @@ jobs:
             '${{ secrets.AWS_SECRET_ACCESS_KEY }}' \
             '${{ secrets.AWS_S3_BUCKET_NAME }}' \
             '${{ secrets.FRONTEND_URL }}' \
-            '${{ secrets.OPENAI_API_KEY_TEST }}'"
+            '${{ secrets.OPENAI_API_KEY }}'"
           rm deploy-backend.sh
 
       - name: Verify Deployment
