@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   LogOut,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { useUIStore } from '@/store/uiStore';
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils';
 const menuItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/clients', label: 'Clients', icon: Users },
+  { path: '/alerts', label: 'Alerts', icon: Bell },
   { path: '/tasks', label: 'Tasks', icon: CheckSquare },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/employees', label: 'Employees', icon: UserCog },

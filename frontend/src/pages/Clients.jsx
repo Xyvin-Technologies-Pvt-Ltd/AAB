@@ -15,7 +15,6 @@ import { Card } from '@/ui/card';
 import { Plus, Search, Edit, Trash2, Eye, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { useNavigate } from 'react-router-dom';
-import { FileUpload } from '@/components/FileUpload';
 
 export const Clients = () => {
   const [search, setSearch] = useState('');
@@ -80,35 +79,6 @@ export const Clients = () => {
     },
   });
 
-  const uploadDocumentMutation = useMutation({
-    mutationFn: ({ clientId, file }) => clientsApi.uploadDocument(clientId, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast({ title: 'Success', description: 'Document uploaded successfully', type: 'success' });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to upload document',
-        type: 'destructive',
-      });
-    },
-  });
-
-  const deleteDocumentMutation = useMutation({
-    mutationFn: ({ clientId, documentId }) => clientsApi.deleteDocument(clientId, documentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast({ title: 'Success', description: 'Document deleted successfully', type: 'success' });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to delete document',
-        type: 'destructive',
-      });
-    },
-  });
 
   const resetForm = () => {
     setEditingClient(null);
@@ -141,19 +111,6 @@ export const Clients = () => {
     } else {
       createMutation.mutate(data);
     }
-  };
-
-  const handleUploadDocument = async (file) => {
-    if (!editingClient?._id) return;
-    await uploadDocumentMutation.mutateAsync({ clientId: editingClient._id, file });
-  };
-
-  const handleDeleteDocument = async (documentId) => {
-    if (!editingClient?._id) return;
-    await deleteDocumentMutation.mutateAsync({
-      clientId: editingClient._id,
-      documentId,
-    });
   };
 
   const clients = data?.data?.clients || [];
@@ -390,18 +347,6 @@ export const Clients = () => {
                   <option value="INACTIVE">Inactive</option>
                 </select>
               </div>
-
-              {/* Documents Section */}
-              {editingClient && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Documents</h3>
-                  <FileUpload
-                    onUpload={handleUploadDocument}
-                    onDelete={handleDeleteDocument}
-                    existingFiles={editingClient.documents || []}
-                  />
-                </div>
-              )}
 
               <DialogFooter>
                 <Button

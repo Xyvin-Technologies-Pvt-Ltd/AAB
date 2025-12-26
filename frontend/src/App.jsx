@@ -13,6 +13,7 @@ import { EmployeeDetails } from './pages/EmployeeDetails';
 import { TimeEntries } from './pages/TimeEntries';
 import { Analytics } from './pages/Analytics';
 import { Calendar } from './pages/Calendar';
+import { Alerts } from './pages/Alerts';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -107,6 +108,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Calendar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/alerts"
+              element={
+                <ProtectedRoute>
+                  <Alerts />
                 </ProtectedRoute>
               }
             />

@@ -38,3 +38,94 @@ export const updateClientSchema = Joi.object({
   status: Joi.string().valid('ACTIVE', 'INACTIVE'),
 });
 
+export const uploadDocumentSchema = Joi.object({
+  category: Joi.string()
+    .valid(
+      'TRADE_LICENSE',
+      'VAT_CERTIFICATE',
+      'CORPORATE_TAX_CERTIFICATE',
+      'EMIRATES_ID_PARTNER',
+      'PASSPORT_PARTNER',
+      'EMIRATES_ID_MANAGER',
+      'PASSPORT_MANAGER'
+    )
+    .required()
+    .messages({
+      'any.required': 'Document category is required',
+      'any.only': 'Invalid document category',
+    }),
+});
+
+export const verifyDocumentSchema = Joi.object({
+  verifiedFields: Joi.array().items(Joi.string()).optional(),
+});
+
+export const businessInfoSchema = Joi.object({
+  name: Joi.string().trim().allow('', null),
+  nameArabic: Joi.string().trim().allow('', null),
+  address: Joi.string().trim().allow('', null),
+  emirate: Joi.string().trim().allow('', null),
+  trn: Joi.string().trim().allow('', null),
+  ctrn: Joi.string().trim().allow('', null),
+  vatReturnCycle: Joi.string().valid('MONTHLY', 'QUARTERLY', null).allow(null),
+  corporateTaxDueDate: Joi.date().allow(null),
+  licenseNumber: Joi.string().trim().allow('', null),
+  licenseStartDate: Joi.date().allow(null),
+  licenseExpiryDate: Joi.date().allow(null),
+  turnover: Joi.array()
+    .items(
+      Joi.object({
+        year: Joi.number().integer().min(2000).max(2100).required(),
+        amount: Joi.number().min(0).required(),
+        currency: Joi.string().default('AED'),
+      })
+    )
+    .optional(),
+  remarks: Joi.string().trim().allow('', null),
+  verifiedFields: Joi.array().items(Joi.string()).optional(),
+});
+
+export const personSchema = Joi.object({
+  name: Joi.string().trim().required().messages({
+    'any.required': 'Name is required',
+  }),
+  role: Joi.string().valid('PARTNER', 'MANAGER').required().messages({
+    'any.required': 'Role is required',
+    'any.only': 'Role must be either PARTNER or MANAGER',
+  }),
+  emiratesId: Joi.object({
+    number: Joi.string().trim().allow('', null),
+    issueDate: Joi.date().allow(null),
+    expiryDate: Joi.date().allow(null),
+    verified: Joi.boolean().default(false),
+  }).optional(),
+  passport: Joi.object({
+    number: Joi.string().trim().allow('', null),
+    issueDate: Joi.date().allow(null),
+    expiryDate: Joi.date().allow(null),
+    verified: Joi.boolean().default(false),
+  }).optional(),
+});
+
+export const updatePersonSchema = Joi.object({
+  name: Joi.string().trim(),
+  role: Joi.string().valid('PARTNER', 'MANAGER'),
+  emiratesId: Joi.object({
+    number: Joi.string().trim().allow('', null),
+    issueDate: Joi.date().allow(null),
+    expiryDate: Joi.date().allow(null),
+    verified: Joi.boolean(),
+  }).optional(),
+  passport: Joi.object({
+    number: Joi.string().trim().allow('', null),
+    issueDate: Joi.date().allow(null),
+    expiryDate: Joi.date().allow(null),
+    verified: Joi.boolean(),
+  }).optional(),
+});
+
+export const emaraTaxCredentialsSchema = Joi.object({
+  username: Joi.string().trim().allow('', null),
+  password: Joi.string().allow('', null),
+});
+
