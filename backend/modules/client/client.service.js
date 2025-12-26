@@ -447,3 +447,168 @@ export const updateEmaraTaxCredentials = async (clientId, credentials) => {
   return clientWithoutPassword;
 };
 
+/**
+ * Sync extracted data from documents to managers/partners
+ * This function copies Emirates ID and Passport data from processed documents to matching person records
+ * @param {string} clientId - Client ID
+ * @returns {Object} Client with synced data
+ */
+export const syncDocumentDataToPersons = async (clientId) => {
+  const client = await Client.findById(clientId);
+  if (!client) {
+    throw new Error('Client not found');
+  }
+
+  // Helper function to normalize names for comparison
+  const normalizeName = (name) => {
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .filter(word => word.length > 0);
+  };
+
+  // Check if two words are similar
+  const wordsMatch = (word1, word2) => {
+    const w1 = word1.toLowerCase();
+    const w2 = word2.toLowerCase();
+    
+    if (w1 === w2) return true;
+    
+    if (w1.includes(w2) || w2.includes(w1)) {
+      const minLength = Math.min(w1.length, w2.length);
+      if (minLength >= 4) return true;
+    }
+    
+    if (w1.length >= 5 && w2.length >= 5) {
+      let matches = 0;
+      const maxLen = Math.max(w1.length, w2.length);
+      for (let i = 0; i < Math.min(w1.length, w2.length); i++) {
+        if (w1[i] === w2[i]) matches++;
+      }
+      if (matches / maxLen >= 0.8) return true;
+    }
+    
+    return false;
+  };
+
+  // Check if two names match
+  const checkNameMatch = (name1, name2) => {
+    if (!name1 || !name2) return false;
+    
+    if (name1.trim().toLowerCase() === name2.trim().toLowerCase()) {
+      return true;
+    }
+
+    const words1 = normalizeName(name1);
+    const words2 = normalizeName(name2);
+
+    const sortedWords1 = [...words1].sort();
+    const sortedWords2 = [...words2].sort();
+    
+    if (sortedWords1.length === sortedWords2.length) {
+      const sortedMatch = sortedWords1.every((word, idx) => 
+        wordsMatch(word, sortedWords2[idx])
+      );
+      if (sortedMatch) return true;
+    }
+
+    const shorterWords = words1.length <= words2.length ? words1 : words2;
+    const longerWords = words1.length > words2.length ? words1 : words2;
+
+    const allWordsMatch = shorterWords.every(shortWord => 
+      longerWords.some(longWord => wordsMatch(shortWord, longWord))
+    );
+
+    if (allWordsMatch) return true;
+
+    const getKeyWords = (words) => {
+      if (words.length === 0) return [];
+      if (words.length === 1) return words;
+      return [words[0], words[words.length - 1]];
+    };
+
+    const keyWords1 = getKeyWords(words1);
+    const keyWords2 = getKeyWords(words2);
+    
+    const keyWordsMatch = keyWords1.length > 0 && keyWords2.length > 0 &&
+      keyWords1.some(kw1 => keyWords2.some(kw2 => wordsMatch(kw1, kw2)));
+
+    return keyWordsMatch;
+  };
+
+  let syncedCount = 0;
+
+  // Process all person documents (Emirates ID and Passport)
+  for (const document of client.documents) {
+    if (
+      (document.category.includes('EMIRATES_ID') || document.category.includes('PASSPORT')) &&
+      document.extractedData &&
+      document.extractedData.name?.value
+    ) {
+      const extractedData = document.extractedData;
+      const extractedName = extractedData.name.value;
+
+      // Determine role from document category
+      const isManager = document.category.includes('MANAGER');
+      const isPartner = document.category.includes('PARTNER');
+      const personArray = isManager ? client.managers : isPartner ? client.partners : null;
+
+      if (personArray) {
+        // Find matching person
+        const matchingPerson = personArray.find(
+          (person) => person.name && checkNameMatch(extractedName, person.name)
+        );
+
+        if (matchingPerson) {
+          let updated = false;
+
+          // Copy Emirates ID data
+          if (document.category.includes('EMIRATES_ID')) {
+            if (extractedData.idNumber?.value && !matchingPerson.emiratesId.number) {
+              matchingPerson.emiratesId.number = extractedData.idNumber.value;
+              updated = true;
+            }
+            if (extractedData.issueDate?.value && !matchingPerson.emiratesId.issueDate) {
+              matchingPerson.emiratesId.issueDate = new Date(extractedData.issueDate.value);
+              updated = true;
+            }
+            if (extractedData.expiryDate?.value && !matchingPerson.emiratesId.expiryDate) {
+              matchingPerson.emiratesId.expiryDate = new Date(extractedData.expiryDate.value);
+              updated = true;
+            }
+          }
+
+          // Copy Passport data
+          if (document.category.includes('PASSPORT')) {
+            if (extractedData.passportNumber?.value && !matchingPerson.passport.number) {
+              matchingPerson.passport.number = extractedData.passportNumber.value;
+              updated = true;
+            }
+            if (extractedData.issueDate?.value && !matchingPerson.passport.issueDate) {
+              matchingPerson.passport.issueDate = new Date(extractedData.issueDate.value);
+              updated = true;
+            }
+            if (extractedData.expiryDate?.value && !matchingPerson.passport.expiryDate) {
+              matchingPerson.passport.expiryDate = new Date(extractedData.expiryDate.value);
+              updated = true;
+            }
+          }
+
+          if (updated) {
+            matchingPerson.updatedAt = new Date();
+            syncedCount++;
+          }
+        }
+      }
+    }
+  }
+
+  if (syncedCount > 0) {
+    await client.save();
+  }
+
+  return { client, syncedCount };
+};
+

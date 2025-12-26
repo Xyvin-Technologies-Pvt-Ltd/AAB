@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { errorHandler } from './middlewares/errorHandler.js';
 import logger from './helpers/logger.js';
+import morgan from 'morgan';
 
 dotenv.config();
 
@@ -30,6 +31,9 @@ app.use('/api/', limiter);
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Request logging with morgan
+app.use(morgan('dev'));
 
 // Request logging
 app.use((req, res, next) => {

@@ -68,5 +68,8 @@ router.delete('/:id/managers/:personId', clientController.removePerson);
 router.get('/:id/compliance', clientController.getComplianceStatus);
 router.get('/alerts/all', clientController.getAllAlerts);
 
+// Sync document data to persons
+router.post('/:id/sync-documents', clientController.syncDocumentDataToPersons);
+
 export default router;
 
