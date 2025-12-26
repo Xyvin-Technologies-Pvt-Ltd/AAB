@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Loader2, Eye, Trash2, Sparkles } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Loader2, Eye, Trash2, Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { Badge } from '@/ui/badge';
 import {
@@ -219,6 +219,24 @@ export const DocumentChecklist = ({ clientId, documents = [] }) => {
                                 <>
                                   <Sparkles className="h-3 w-3 mr-1" />
                                   Process
+                                </>
+                              )}
+                            </Button>
+                          )}
+                          {document.processingStatus === 'FAILED' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleProcess(document._id)}
+                              disabled={processMutation.isPending}
+                              title="Retry processing document"
+                            >
+                              {processMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-3 w-3 mr-1" />
+                                  Retry
                                 </>
                               )}
                             </Button>

@@ -123,6 +123,12 @@ jobs:
           echo "Waiting for container to be healthy..."
           sleep 10
           
+          # Verify environment variables are set (check existence, not values)
+          echo "Verifying environment variables in container..."
+          docker exec accounting-backend sh -c 'echo "OPENAI_API_KEY set: $(if [ -n \"$OPENAI_API_KEY\" ]; then echo YES \(length: ${#OPENAI_API_KEY}\); else echo NO; fi)"'
+          docker exec accounting-backend sh -c 'echo "AWS_S3_BUCKET_NAME set: $(if [ -n \"$AWS_S3_BUCKET_NAME\" ]; then echo YES; else echo NO; fi)"'
+          docker exec accounting-backend sh -c 'echo "AWS_ACCESS_KEY_ID set: $(if [ -n \"$AWS_ACCESS_KEY_ID\" ]; then echo YES; else echo NO; fi)"'
+          
           # Health check
           for i in {1..30}; do
             if curl -f http://localhost:5001/health > /dev/null 2>&1; then
