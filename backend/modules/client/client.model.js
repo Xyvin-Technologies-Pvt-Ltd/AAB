@@ -299,7 +299,7 @@ const clientSchema = new mongoose.Schema(
 
 // Encrypt EmaraTax password before saving
 const getEncryptionKey = () => {
-  const key = process.env.ENCRYPTION_KEY;
+  const key = process.env.ENCRYPTION_KEY || 'default-encryption-key';
   if (!key) {
     // Generate a key if not set (should be set in production)
     const generatedKey = crypto.randomBytes(32).toString('hex');
