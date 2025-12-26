@@ -90,6 +90,7 @@ jobs:
           AWS_S3_BUCKET_NAME="$9"
           FRONTEND_URL="${10}"
           OPENAI_API_KEY="${11}"
+          ENCRYPTION_KEY="${12}"
           
           # Login to ECR
           aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
@@ -117,6 +118,7 @@ jobs:
             -e AWS_S3_BUCKET_NAME="${AWS_S3_BUCKET_NAME}" \
             -e FRONTEND_URL="${FRONTEND_URL}" \
             -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+            -e ENCRYPTION_KEY="${ENCRYPTION_KEY}" \
             ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
           
           # Wait for container to be healthy
@@ -128,6 +130,7 @@ jobs:
           docker exec accounting-backend sh -c 'echo "OPENAI_API_KEY set: $(if [ -n \"$OPENAI_API_KEY\" ]; then echo YES \(length: ${#OPENAI_API_KEY}\); else echo NO; fi)"'
           docker exec accounting-backend sh -c 'echo "AWS_S3_BUCKET_NAME set: $(if [ -n \"$AWS_S3_BUCKET_NAME\" ]; then echo YES; else echo NO; fi)"'
           docker exec accounting-backend sh -c 'echo "AWS_ACCESS_KEY_ID set: $(if [ -n \"$AWS_ACCESS_KEY_ID\" ]; then echo YES; else echo NO; fi)"'
+          docker exec accounting-backend sh -c 'echo "ENCRYPTION_KEY set: $(if [ -n \"$ENCRYPTION_KEY\" ]; then echo YES \(length: ${#ENCRYPTION_KEY}\); else echo NO; fi)"'
           
           # Health check
           for i in {1..30}; do
@@ -158,7 +161,8 @@ jobs:
             '${{ secrets.AWS_SECRET_ACCESS_KEY }}' \
             '${{ secrets.AWS_S3_BUCKET_NAME }}' \
             '${{ secrets.FRONTEND_URL }}' \
-            '${{ secrets.OPENAI_API_KEY }}'"
+            '${{ secrets.OPENAI_API_KEY }}' \
+            '${{ secrets.ENCRYPTION_KEY }}'"
           rm deploy-backend.sh
 
       - name: Verify Deployment

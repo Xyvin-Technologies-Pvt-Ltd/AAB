@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const documentSchema = new mongoose.Schema(
   {
