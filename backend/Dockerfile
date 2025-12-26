@@ -1,41 +1,36 @@
 # Multi-stage build for Node.js backend
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Install build dependencies for native modules (canvas, etc.)
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    giflib-dev \
-    pixman-dev
+# Install build dependencies for native modules
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy package files
 COPY package.json package-lock.json ./
-
-# Install dependencies
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Production stage
-FROM node:20-alpine
+FROM node:20-slim
 
 # Install runtime dependencies for canvas
-RUN apk add --no-cache \
-    cairo \
-    jpeg \
-    pango \
-    giflib \
-    pixman
+RUN apt-get update && apt-get install -y \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libjpeg62-turbo \
+    libgif7 \
+    librsvg2-2 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create app directory and non-root user
 WORKDIR /app
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs nodejs
 
 # Copy dependencies from builder
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
