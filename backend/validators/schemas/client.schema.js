@@ -67,7 +67,15 @@ export const businessInfoSchema = Joi.object({
   emirate: Joi.string().trim().allow('', null),
   trn: Joi.string().trim().allow('', null),
   ctrn: Joi.string().trim().allow('', null),
-  vatReturnCycle: Joi.string().valid('MONTHLY', 'QUARTERLY', null).allow(null),
+  vatReturnCycle: Joi.string().valid('MONTHLY', 'QUARTERLY', 'OTHER', null).allow(null),
+  vatTaxPeriods: Joi.array()
+    .items(
+      Joi.object({
+        startDate: Joi.date().required(),
+        endDate: Joi.date().required(),
+      })
+    )
+    .optional(),
   corporateTaxDueDate: Joi.date().allow(null),
   licenseNumber: Joi.string().trim().allow('', null),
   licenseStartDate: Joi.date().allow(null),

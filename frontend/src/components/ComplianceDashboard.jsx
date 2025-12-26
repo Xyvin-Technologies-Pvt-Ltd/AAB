@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle2, Clock, AlertTriangle, FileText, Calendar } f
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
 import { Badge } from '@/ui/badge';
 import { useComplianceStatus } from '@/api/queries/clientQueries';
+import { formatDateDDMMYYYY } from '@/utils/dateFormat';
 
 const AlertCard = ({ alert }) => {
   const getIcon = () => {
@@ -40,12 +41,12 @@ const AlertCard = ({ alert }) => {
         </div>
         {alert.expiryDate && (
           <p className="text-sm text-gray-600">
-            Expires: {new Date(alert.expiryDate).toLocaleDateString()}
+            Expires: {formatDateDDMMYYYY(alert.expiryDate)}
           </p>
         )}
         {alert.dueDate && (
           <p className="text-sm text-gray-600">
-            Due: {new Date(alert.dueDate).toLocaleDateString()}
+            Due: {formatDateDDMMYYYY(alert.dueDate)}
           </p>
         )}
         {alert.daysUntilExpiry !== undefined && (
@@ -173,7 +174,7 @@ export const ComplianceDashboard = ({ clientId }) => {
                       {doc.type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                     </p>
                     <p className="text-sm text-gray-600">
-                      Expires: {new Date(doc.expiryDate).toLocaleDateString()}
+                      Expires: {formatDateDDMMYYYY(doc.expiryDate)}
                     </p>
                   </div>
                   <Badge variant={doc.daysUntilExpiry < 0 ? 'error' : 'warning'}>

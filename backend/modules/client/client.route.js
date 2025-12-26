@@ -65,8 +65,9 @@ router.patch(
 router.delete('/:id/managers/:personId', clientController.removePerson);
 
 // Compliance routes
-router.get('/:id/compliance', clientController.getComplianceStatus);
 router.get('/alerts/all', clientController.getAllAlerts);
+router.get('/submission-dates/next', clientController.getNextSubmissionDates);
+router.get('/:id/compliance', clientController.getComplianceStatus);
 
 // Sync document data to persons
 router.post('/:id/sync-documents', clientController.syncDocumentDataToPersons);

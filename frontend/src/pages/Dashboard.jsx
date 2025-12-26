@@ -15,12 +15,16 @@ import {
   DollarSign,
   Calendar,
   AlertCircle,
+  FileText,
+  Receipt,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import { Button } from "@/ui/button";
+import { Badge } from "@/ui/badge";
 import { useAuthStore } from "@/store/authStore";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 
 export const Dashboard = () => {
   const { user } = useAuthStore();
@@ -49,6 +53,11 @@ export const Dashboard = () => {
   const { data: tasksData } = useQuery({
     queryKey: ["tasks", "dashboard"],
     queryFn: () => tasksApi.getAll({ limit: 1000 }),
+  });
+
+  const { data: submissionDatesData } = useQuery({
+    queryKey: ["submission-dates"],
+    queryFn: () => clientsApi.getNextSubmissionDates(),
   });
 
   const totalClients = clientsData?.data?.pagination?.total || 0;
@@ -165,6 +174,69 @@ export const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Tax Submission Dates */}
+        {(submissionDatesData?.data?.nextVATSubmission || submissionDatesData?.data?.nextCorporateTaxSubmission) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2 text-indigo-600" />
+                Next Tax Submissions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {submissionDatesData?.data?.nextVATSubmission && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                      <h3 className="font-semibold text-gray-900">Next VAT Submission</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">
+                      <span className="font-medium">Client:</span> {submissionDatesData.data.nextVATSubmission.clientName}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-1">
+                      <span className="font-medium">Date:</span> {formatDateDDMMYYYY(submissionDatesData.data.nextVATSubmission.submissionDate)}
+                    </p>
+                    {submissionDatesData.data.nextVATSubmission.period && (
+                      <p className="text-xs text-gray-500">
+                        Period: {formatDateDDMMYYYY(submissionDatesData.data.nextVATSubmission.period.startDate)} - {formatDateDDMMYYYY(submissionDatesData.data.nextVATSubmission.period.endDate)}
+                      </p>
+                    )}
+                    <div className="mt-2">
+                      <Badge variant={submissionDatesData.data.nextVATSubmission.daysUntilDue <= 7 ? 'error' : submissionDatesData.data.nextVATSubmission.daysUntilDue <= 14 ? 'warning' : 'info'}>
+                        {submissionDatesData.data.nextVATSubmission.daysUntilDue < 0
+                          ? `Overdue ${Math.abs(submissionDatesData.data.nextVATSubmission.daysUntilDue)} days`
+                          : `${submissionDatesData.data.nextVATSubmission.daysUntilDue} days remaining`}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+                {submissionDatesData?.data?.nextCorporateTaxSubmission && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Receipt className="h-5 w-5 text-green-600" />
+                      <h3 className="font-semibold text-gray-900">Next Corporate Tax Submission</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">
+                      <span className="font-medium">Client:</span> {submissionDatesData.data.nextCorporateTaxSubmission.clientName}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-1">
+                      <span className="font-medium">Date:</span> {formatDateDDMMYYYY(submissionDatesData.data.nextCorporateTaxSubmission.submissionDate)}
+                    </p>
+                    <div className="mt-2">
+                      <Badge variant={submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue <= 7 ? 'error' : submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue <= 14 ? 'warning' : 'info'}>
+                        {submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue < 0
+                          ? `Overdue ${Math.abs(submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue)} days`
+                          : `${submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue} days remaining`}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Deadlines and Overdue */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

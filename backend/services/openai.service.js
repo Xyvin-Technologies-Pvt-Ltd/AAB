@@ -75,23 +75,25 @@ export const extractVATCertificate = async (imageBase64) => {
 Required fields:
 - trn (string): Tax Registration Number (TRN)
 - registrationStatus (string): Registration status (Active, Inactive, etc.)
-- vatReturnCycle (string): Return cycle - either "MONTHLY" or "QUARTERLY"
+- vatReturnCycle (string): Return cycle - either "MONTHLY" or "QUARTERLY" or "OTHER" if different
 - registrationDate (string): Registration date in YYYY-MM-DD format
 - legalNameEnglish (string): Legal name in English (if available)
 - legalNameArabic (string): Legal name in Arabic (if available)
 - address (string): Business address (if available)
 - emirate (string): Emirate name (Dubai, Abu Dhabi, Sharjah, etc.) (if available)
+- taxPeriods (array): Array of tax period objects with start and end dates. Look for text like "Start and end dates of Tax periods" or "Tax periods" or similar. Each period should have startDate and endDate in YYYY-MM-DD format. Example: [{"startDate": "2024-03-01", "endDate": "2024-05-31"}, {"startDate": "2024-06-01", "endDate": "2024-08-31"}]. If not found, return empty array.
 
 Return JSON format:
 {
   "trn": {"value": "...", "confidence": 0.98},
   "registrationStatus": {"value": "...", "confidence": 0.95},
-  "vatReturnCycle": {"value": "MONTHLY or QUARTERLY", "confidence": 0.90},
+  "vatReturnCycle": {"value": "MONTHLY or QUARTERLY or OTHER", "confidence": 0.90},
   "registrationDate": {"value": "YYYY-MM-DD", "confidence": 0.90},
   "legalNameEnglish": {"value": "...", "confidence": 0.90},
   "legalNameArabic": {"value": "...", "confidence": 0.85},
   "address": {"value": "...", "confidence": 0.85},
-  "emirate": {"value": "...", "confidence": 0.90}
+  "emirate": {"value": "...", "confidence": 0.90},
+  "taxPeriods": {"value": [{"startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD"}, ...], "confidence": 0.85}
 }`;
 
         const response = await openaiConfig.client.chat.completions.create({
@@ -110,7 +112,7 @@ Return JSON format:
                     ],
                 },
             ],
-            max_tokens: 1000,
+            max_tokens: 2000,
             response_format: { type: 'json_object' },
         });
 
@@ -401,23 +403,25 @@ ${text}
 Required fields:
 - trn (string): Tax Registration Number (TRN)
 - registrationStatus (string): Registration status (Active, Inactive, etc.)
-- vatReturnCycle (string): Return cycle - either "MONTHLY" or "QUARTERLY"
+- vatReturnCycle (string): Return cycle - either "MONTHLY" or "QUARTERLY" or "OTHER" if different
 - registrationDate (string): Registration date in YYYY-MM-DD format
 - legalNameEnglish (string): Legal name in English (if available)
 - legalNameArabic (string): Legal name in Arabic (if available)
 - address (string): Business address (if available)
 - emirate (string): Emirate name (Dubai, Abu Dhabi, Sharjah, etc.) (if available)
+- taxPeriods (array): Array of tax period objects with start and end dates. Look for text like "Start and end dates of Tax periods" or "Tax periods" or similar patterns. Extract all tax periods mentioned. Each period should have startDate and endDate in YYYY-MM-DD format. Example: [{"startDate": "2024-03-01", "endDate": "2024-05-31"}, {"startDate": "2024-06-01", "endDate": "2024-08-31"}]. If not found, return empty array.
 
 Return JSON format:
 {
   "trn": {"value": "...", "confidence": 0.98},
   "registrationStatus": {"value": "...", "confidence": 0.95},
-  "vatReturnCycle": {"value": "MONTHLY or QUARTERLY", "confidence": 0.90},
+  "vatReturnCycle": {"value": "MONTHLY or QUARTERLY or OTHER", "confidence": 0.90},
   "registrationDate": {"value": "YYYY-MM-DD", "confidence": 0.90},
   "legalNameEnglish": {"value": "...", "confidence": 0.90},
   "legalNameArabic": {"value": "...", "confidence": 0.85},
   "address": {"value": "...", "confidence": 0.85},
-  "emirate": {"value": "...", "confidence": 0.90}
+  "emirate": {"value": "...", "confidence": 0.90},
+  "taxPeriods": {"value": [{"startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD"}, ...], "confidence": 0.85}
 }`;
 
         const response = await openaiConfig.client.chat.completions.create({
@@ -428,7 +432,7 @@ Return JSON format:
                     content: prompt,
                 },
             ],
-            max_tokens: 1000,
+            max_tokens: 2000,
             response_format: { type: 'json_object' },
         });
 

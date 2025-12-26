@@ -1,5 +1,19 @@
 import Client from './client.model.js';
 
+/**
+ * Format date to dd/mm/yyyy format
+ * @param {Date} date - Date object
+ * @returns {string} Formatted date string
+ */
+const formatDateDDMMYYYY = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 export const createClient = async (clientData) => {
   const client = await Client.create(clientData);
   return client;
@@ -200,6 +214,12 @@ export const updateBusinessInfo = async (clientId, businessInfoData) => {
   if (businessInfoData.vatReturnCycle !== undefined) {
     client.businessInfo.vatReturnCycle = businessInfoData.vatReturnCycle;
   }
+  if (businessInfoData.vatTaxPeriods !== undefined) {
+    client.businessInfo.vatTaxPeriods = businessInfoData.vatTaxPeriods.map((period) => ({
+      startDate: period.startDate ? new Date(period.startDate) : null,
+      endDate: period.endDate ? new Date(period.endDate) : null,
+    }));
+  }
   if (businessInfoData.corporateTaxDueDate !== undefined) {
     client.businessInfo.corporateTaxDueDate = businessInfoData.corporateTaxDueDate
       ? new Date(businessInfoData.corporateTaxDueDate)
@@ -308,7 +328,11 @@ export const getComplianceStatus = async (clientId) => {
 export const getAllAlerts = async (filters = {}) => {
   const { type, severity } = filters;
   const clients = await Client.find({ status: 'ACTIVE' });
-  const { calculateComplianceStatus } = await import('../../services/compliance.service.js');
+  const {
+    calculateComplianceStatus,
+    calculateNextVATSubmissionDate,
+    calculateNextCorporateTaxSubmissionDate
+  } = await import('../../services/compliance.service.js');
 
   const allAlerts = [];
   const deadlines = [];
@@ -337,6 +361,73 @@ export const getAllAlerts = async (filters = {}) => {
 
       allAlerts.push(alertWithClient);
     });
+
+    // Add VAT submission alert
+    const vatSubmission = calculateNextVATSubmissionDate(client);
+    if (vatSubmission) {
+      const now = new Date();
+      const daysUntilDue = vatSubmission.daysUntilDue || Math.floor((vatSubmission.submissionDate - now) / (1000 * 60 * 60 * 24));
+
+      // Determine severity based on days until due
+      let alertSeverity = 'LOW';
+      if (daysUntilDue < 0) {
+        alertSeverity = 'CRITICAL';
+      } else if (daysUntilDue <= 7) {
+        alertSeverity = 'HIGH';
+      } else if (daysUntilDue <= 14) {
+        alertSeverity = 'MEDIUM';
+      }
+
+      // Filter by type if specified
+      if (!type || type.toLowerCase().includes('vat')) {
+        // Filter by severity if specified
+        if (!severity || alertSeverity === severity) {
+          allAlerts.push({
+            type: 'VAT_SUBMISSION_DUE',
+            message: `VAT submission due for period ${vatSubmission.period ? `${formatDateDDMMYYYY(vatSubmission.period.startDate)} - ${formatDateDDMMYYYY(vatSubmission.period.endDate)}` : ''}`,
+            severity: alertSeverity,
+            clientId: client._id,
+            clientName: client.name,
+            dueDate: vatSubmission.submissionDate,
+            daysUntilDue: daysUntilDue,
+            category: 'VAT_CERTIFICATE',
+          });
+        }
+      }
+    }
+
+    // Add Corporate Tax submission alert
+    const corporateTaxSubmission = calculateNextCorporateTaxSubmissionDate(client);
+    if (corporateTaxSubmission) {
+      const daysUntilDue = corporateTaxSubmission.daysUntilDue || Math.floor((corporateTaxSubmission.submissionDate - new Date()) / (1000 * 60 * 60 * 24));
+
+      // Determine severity based on days until due
+      let alertSeverity = 'LOW';
+      if (daysUntilDue < 0) {
+        alertSeverity = 'CRITICAL';
+      } else if (daysUntilDue <= 30) {
+        alertSeverity = 'HIGH';
+      } else if (daysUntilDue <= 60) {
+        alertSeverity = 'MEDIUM';
+      }
+
+      // Filter by type if specified
+      if (!type || type.toLowerCase().includes('corporate') || type.toLowerCase().includes('tax')) {
+        // Filter by severity if specified
+        if (!severity || alertSeverity === severity) {
+          allAlerts.push({
+            type: 'CORPORATE_TAX_SUBMISSION_DUE',
+            message: 'Corporate Tax submission due',
+            severity: alertSeverity,
+            clientId: client._id,
+            clientName: client.name,
+            dueDate: corporateTaxSubmission.submissionDate,
+            daysUntilDue: daysUntilDue,
+            category: 'CORPORATE_TAX_CERTIFICATE',
+          });
+        }
+      }
+    }
 
     // Extract deadlines from expiring documents
     if (compliance.expiringDocuments && compliance.expiringDocuments.length > 0) {
@@ -422,7 +513,7 @@ export const getAllAlerts = async (filters = {}) => {
 };
 
 export const updateEmaraTaxCredentials = async (clientId, credentials) => {
-  const client = await Client.findById(clientId);
+  const client = await Client.findById(clientId).select('+emaraTaxAccount.password');
   if (!client) {
     throw new Error('Client not found');
   }
@@ -435,16 +526,25 @@ export const updateEmaraTaxCredentials = async (clientId, credentials) => {
     client.emaraTaxAccount.username = credentials.username;
   }
 
-  if (credentials.password !== undefined && credentials.password !== null && credentials.password !== '') {
-    // Password will be hashed by the pre-save hook
-    client.emaraTaxAccount.password = credentials.password;
+  // Handle password update:
+  // - undefined: don't update password (keep existing)
+  // - null or empty string: clear password
+  // - string: update password (will be hashed by pre-save hook)
+  if (credentials.password !== undefined) {
+    if (credentials.password === null || credentials.password === '') {
+      // Clear password
+      client.emaraTaxAccount.password = null;
+    } else {
+      // Update password (will be hashed by pre-save hook)
+      client.emaraTaxAccount.password = credentials.password;
+    }
   }
 
   await client.save();
-  
-  // Return client without password
-  const clientWithoutPassword = await Client.findById(clientId).select('-emaraTaxAccount.password');
-  return clientWithoutPassword;
+
+  // Return client with password selected (for hasPassword check)
+  const updatedClient = await Client.findById(clientId).select('+emaraTaxAccount.password');
+  return updatedClient;
 };
 
 /**
@@ -453,6 +553,46 @@ export const updateEmaraTaxCredentials = async (clientId, credentials) => {
  * @param {string} clientId - Client ID
  * @returns {Object} Client with synced data
  */
+/**
+ * Get next submission dates for all active clients
+ * @returns {Object} Next VAT and Corporate Tax submission dates
+ */
+export const getNextSubmissionDates = async () => {
+  const clients = await Client.find({ status: 'ACTIVE' }).select('businessInfo name');
+
+  const { calculateNextVATSubmissionDate, calculateNextCorporateTaxSubmissionDate } = await import('../../services/compliance.service.js');
+
+  let nextVATDate = null;
+  let nextCorporateTaxDate = null;
+
+  for (const client of clients) {
+    // Get next VAT submission date
+    const vatSubmission = calculateNextVATSubmissionDate(client);
+    if (vatSubmission && (!nextVATDate || vatSubmission.submissionDate < nextVATDate.submissionDate)) {
+      nextVATDate = {
+        ...vatSubmission,
+        clientName: client.name,
+        clientId: client._id,
+      };
+    }
+
+    // Get next Corporate Tax submission date
+    const corporateTaxSubmission = calculateNextCorporateTaxSubmissionDate(client);
+    if (corporateTaxSubmission && (!nextCorporateTaxDate || corporateTaxSubmission.submissionDate < nextCorporateTaxDate.submissionDate)) {
+      nextCorporateTaxDate = {
+        ...corporateTaxSubmission,
+        clientName: client.name,
+        clientId: client._id,
+      };
+    }
+  }
+
+  return {
+    nextVATSubmission: nextVATDate,
+    nextCorporateTaxSubmission: nextCorporateTaxDate,
+  };
+};
+
 export const syncDocumentDataToPersons = async (clientId) => {
   const client = await Client.findById(clientId);
   if (!client) {
@@ -473,14 +613,14 @@ export const syncDocumentDataToPersons = async (clientId) => {
   const wordsMatch = (word1, word2) => {
     const w1 = word1.toLowerCase();
     const w2 = word2.toLowerCase();
-    
+
     if (w1 === w2) return true;
-    
+
     if (w1.includes(w2) || w2.includes(w1)) {
       const minLength = Math.min(w1.length, w2.length);
       if (minLength >= 4) return true;
     }
-    
+
     if (w1.length >= 5 && w2.length >= 5) {
       let matches = 0;
       const maxLen = Math.max(w1.length, w2.length);
@@ -489,14 +629,14 @@ export const syncDocumentDataToPersons = async (clientId) => {
       }
       if (matches / maxLen >= 0.8) return true;
     }
-    
+
     return false;
   };
 
   // Check if two names match
   const checkNameMatch = (name1, name2) => {
     if (!name1 || !name2) return false;
-    
+
     if (name1.trim().toLowerCase() === name2.trim().toLowerCase()) {
       return true;
     }
@@ -506,9 +646,9 @@ export const syncDocumentDataToPersons = async (clientId) => {
 
     const sortedWords1 = [...words1].sort();
     const sortedWords2 = [...words2].sort();
-    
+
     if (sortedWords1.length === sortedWords2.length) {
-      const sortedMatch = sortedWords1.every((word, idx) => 
+      const sortedMatch = sortedWords1.every((word, idx) =>
         wordsMatch(word, sortedWords2[idx])
       );
       if (sortedMatch) return true;
@@ -517,7 +657,7 @@ export const syncDocumentDataToPersons = async (clientId) => {
     const shorterWords = words1.length <= words2.length ? words1 : words2;
     const longerWords = words1.length > words2.length ? words1 : words2;
 
-    const allWordsMatch = shorterWords.every(shortWord => 
+    const allWordsMatch = shorterWords.every(shortWord =>
       longerWords.some(longWord => wordsMatch(shortWord, longWord))
     );
 
@@ -531,7 +671,7 @@ export const syncDocumentDataToPersons = async (clientId) => {
 
     const keyWords1 = getKeyWords(words1);
     const keyWords2 = getKeyWords(words2);
-    
+
     const keyWordsMatch = keyWords1.length > 0 && keyWords2.length > 0 &&
       keyWords1.some(kw1 => keyWords2.some(kw2 => wordsMatch(kw1, kw2)));
 

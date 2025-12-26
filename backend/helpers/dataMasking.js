@@ -148,16 +148,8 @@ export const maskClientData = (client, isAuthorized = false) => {
     }));
   }
 
-  // Mask EmaraTax credentials
-  if (masked.emaraTaxAccount) {
-    masked.emaraTaxAccount = {
-      ...masked.emaraTaxAccount,
-      username: masked.emaraTaxAccount.username
-        ? maskUsername(masked.emaraTaxAccount.username)
-        : null,
-      password: masked.emaraTaxAccount.password ? maskPassword(masked.emaraTaxAccount.password) : null,
-    };
-  }
+  // Don't mask EmaraTax credentials - show actual values
+  // EmaraTax credentials are kept unmasked as per requirements
 
   return masked;
 };

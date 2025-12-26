@@ -634,9 +634,22 @@ export const mapExtractedDataToBusinessInfo = (documentCategory, extractedData) 
             }
             if (extractedData.vatReturnCycle?.value) {
                 const cycle = extractedData.vatReturnCycle.value.toUpperCase();
-                if (cycle === 'MONTHLY' || cycle === 'QUARTERLY') {
+                if (cycle === 'MONTHLY' || cycle === 'QUARTERLY' || cycle === 'OTHER') {
                     updates['businessInfo.vatReturnCycle'] = cycle;
                     aiExtractedFields.push('businessInfo.vatReturnCycle');
+                }
+            }
+            if (extractedData.taxPeriods?.value && Array.isArray(extractedData.taxPeriods.value)) {
+                // Map tax periods to Date objects
+                const taxPeriods = extractedData.taxPeriods.value
+                    .filter((period) => period.startDate && period.endDate)
+                    .map((period) => ({
+                        startDate: new Date(period.startDate),
+                        endDate: new Date(period.endDate),
+                    }));
+                if (taxPeriods.length > 0) {
+                    updates['businessInfo.vatTaxPeriods'] = taxPeriods;
+                    aiExtractedFields.push('businessInfo.vatTaxPeriods');
                 }
             }
             break;

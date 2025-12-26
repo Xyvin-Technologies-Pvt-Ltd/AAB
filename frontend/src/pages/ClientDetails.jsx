@@ -16,6 +16,8 @@ import {
   Building2,
   Users,
   Shield,
+  Calendar,
+  Receipt,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
@@ -23,6 +25,8 @@ import { BusinessInfoForm } from "@/components/BusinessInfoForm";
 import { PartnersManagers } from "@/components/PartnersManagers";
 import { CompactAlerts } from "@/components/CompactAlerts";
 import { EmaraTaxCredentials } from "@/components/EmaraTaxCredentials";
+import { formatDateDDMMYYYY } from "@/utils/dateFormat";
+import { Badge } from "@/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +57,228 @@ export const ClientDetails = () => {
 
   const client = clientData?.data;
   const packages = packagesData?.data?.packages || [];
+
+  // Calculate next submission dates for this client
+  const calculateNextVATSubmissionDate = (client) => {
+    if (!client?.businessInfo) return null;
+    const now = new Date();
+    const vatFilingDaysAfterPeriod = 28;
+
+    // Use tax periods if available
+    if (
+      client.businessInfo.vatTaxPeriods &&
+      client.businessInfo.vatTaxPeriods.length > 0
+    ) {
+      const vatTaxPeriods = client.businessInfo.vatTaxPeriods;
+      const sortedPeriods = [...vatTaxPeriods].sort(
+        (a, b) => new Date(a.startDate) - new Date(b.startDate)
+      );
+
+      // Find next upcoming period based on submission dates
+      for (const period of sortedPeriods) {
+        const periodEndDate = new Date(period.endDate);
+        const submissionDate = new Date(periodEndDate);
+        submissionDate.setDate(
+          submissionDate.getDate() + vatFilingDaysAfterPeriod
+        );
+
+        if (submissionDate.getTime() > now.getTime()) {
+          return {
+            submissionDate,
+            period: {
+              startDate: new Date(period.startDate),
+              endDate: periodEndDate,
+            },
+            daysUntilDue: Math.floor(
+              (submissionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+            ),
+          };
+        }
+      }
+
+      // All periods have passed - calculate next recurring period
+      // Find which period should come next based on current month
+      const currentMonth = now.getMonth() + 1; // 1-12
+      let nextPeriod = null;
+
+      // Find the period that should occur next based on current month
+      for (const period of sortedPeriods) {
+        const periodStart = new Date(period.startDate);
+        const periodStartMonth = periodStart.getMonth() + 1;
+
+        // Check if this period should occur in the current or next cycle
+        let testYear = now.getFullYear();
+        if (periodStartMonth < currentMonth) {
+          testYear = now.getFullYear() + 1;
+        }
+
+        const testPeriodStart = new Date(periodStart);
+        testPeriodStart.setFullYear(testYear);
+
+        const testPeriodEnd = new Date(period.endDate);
+        testPeriodEnd.setFullYear(testYear);
+
+        const testSubmissionDate = new Date(testPeriodEnd);
+        testSubmissionDate.setDate(
+          testSubmissionDate.getDate() + vatFilingDaysAfterPeriod
+        );
+
+        if (testSubmissionDate.getTime() > now.getTime()) {
+          if (
+            !nextPeriod ||
+            testSubmissionDate.getTime() <
+              new Date(nextPeriod.endDate).getTime()
+          ) {
+            nextPeriod = {
+              startDate: testPeriodStart,
+              endDate: testPeriodEnd,
+              submissionDate: testSubmissionDate,
+            };
+          }
+        }
+      }
+
+      // If no period found, use first period of next year
+      if (!nextPeriod) {
+        const firstPeriod = sortedPeriods[0];
+        const nextPeriodStart = new Date(firstPeriod.startDate);
+        nextPeriodStart.setFullYear(now.getFullYear() + 1);
+
+        const nextPeriodEnd = new Date(firstPeriod.endDate);
+        nextPeriodEnd.setFullYear(now.getFullYear() + 1);
+
+        const submissionDate = new Date(nextPeriodEnd);
+        submissionDate.setDate(
+          submissionDate.getDate() + vatFilingDaysAfterPeriod
+        );
+
+        return {
+          submissionDate,
+          period: {
+            startDate: nextPeriodStart,
+            endDate: nextPeriodEnd,
+          },
+          daysUntilDue: Math.floor(
+            (submissionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          ),
+        };
+      }
+
+      return {
+        submissionDate: nextPeriod.submissionDate,
+        period: {
+          startDate: nextPeriod.startDate,
+          endDate: nextPeriod.endDate,
+        },
+        daysUntilDue: Math.floor(
+          (nextPeriod.submissionDate.getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24)
+        ),
+      };
+    }
+
+    // Fallback to cycle-based calculation
+    if (client.businessInfo.vatReturnCycle) {
+      const cycle = client.businessInfo.vatReturnCycle;
+      const now = new Date();
+      let periodEndDate = new Date();
+      let submissionDate = new Date();
+
+      if (cycle === "MONTHLY") {
+        // Current month's end
+        periodEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        submissionDate = new Date(periodEndDate);
+        submissionDate.setDate(
+          submissionDate.getDate() + vatFilingDaysAfterPeriod
+        );
+
+        // If submission date has passed, move to next month (cycle forward)
+        if (submissionDate.getTime() <= now.getTime()) {
+          periodEndDate = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+          submissionDate = new Date(periodEndDate);
+          submissionDate.setDate(
+            submissionDate.getDate() + vatFilingDaysAfterPeriod
+          );
+        }
+      } else if (cycle === "QUARTERLY") {
+        // Calculate current quarter
+        const currentQuarter = Math.floor(now.getMonth() / 3);
+        // Current quarter end (month 3, 6, 9, or 12)
+        periodEndDate = new Date(
+          now.getFullYear(),
+          (currentQuarter + 1) * 3,
+          0
+        );
+        submissionDate = new Date(periodEndDate);
+        submissionDate.setDate(
+          submissionDate.getDate() + vatFilingDaysAfterPeriod
+        );
+
+        // If submission date has passed, move to next quarter (cycle forward)
+        if (submissionDate.getTime() <= now.getTime()) {
+          const nextQuarter = currentQuarter + 1;
+          if (nextQuarter >= 4) {
+            // Move to Q1 of next year
+            periodEndDate = new Date(now.getFullYear() + 1, 3, 0);
+          } else {
+            // Move to next quarter of same year
+            periodEndDate = new Date(
+              now.getFullYear(),
+              (nextQuarter + 1) * 3,
+              0
+            );
+          }
+          submissionDate = new Date(periodEndDate);
+          submissionDate.setDate(
+            submissionDate.getDate() + vatFilingDaysAfterPeriod
+          );
+        }
+      } else {
+        return null;
+      }
+
+      const daysUntilDue = Math.floor(
+        (submissionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return {
+        submissionDate,
+        cycle,
+        daysUntilDue,
+      };
+    }
+
+    return null;
+  };
+
+  const calculateNextCorporateTaxSubmissionDate = (client) => {
+    if (!client?.businessInfo?.corporateTaxDueDate) return null;
+    const now = new Date();
+    const dueDate = new Date(client.businessInfo.corporateTaxDueDate);
+
+    // If due date has passed, calculate next year
+    if (dueDate < now) {
+      const nextDueDate = new Date(dueDate);
+      nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+
+      return {
+        submissionDate: nextDueDate,
+        daysUntilDue: Math.floor((nextDueDate - now) / (1000 * 60 * 60 * 24)),
+      };
+    }
+
+    return {
+      submissionDate: dueDate,
+      daysUntilDue: Math.floor((dueDate - now) / (1000 * 60 * 60 * 24)),
+    };
+  };
+
+  const nextVATSubmission = client
+    ? calculateNextVATSubmissionDate(client)
+    : null;
+  const nextCorporateTaxSubmission = client
+    ? calculateNextCorporateTaxSubmissionDate(client)
+    : null;
 
   const createPackageMutation = useMutation({
     mutationFn: packagesApi.create,
@@ -159,7 +385,6 @@ export const ClientDetails = () => {
               <h1 className="text-2xl font-bold text-gray-900">
                 {client.name}
               </h1>
-            
             </div>
           </div>
         </div>
@@ -244,6 +469,96 @@ export const ClientDetails = () => {
                 credentials={client.emaraTaxAccount}
               />
             </div>
+
+            {/* Next Tax Submissions */}
+            {(nextVATSubmission || nextCorporateTaxSubmission) && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Next Tax Submissions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {nextVATSubmission && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            Next VAT Submission
+                          </h3>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Date:</span>{" "}
+                          {formatDateDDMMYYYY(nextVATSubmission.submissionDate)}
+                        </p>
+                        {nextVATSubmission.period && (
+                          <p className="text-xs text-gray-500 mb-2">
+                            Period:{" "}
+                            {formatDateDDMMYYYY(
+                              nextVATSubmission.period.startDate
+                            )}{" "}
+                            -{" "}
+                            {formatDateDDMMYYYY(
+                              nextVATSubmission.period.endDate
+                            )}
+                          </p>
+                        )}
+                        <Badge
+                          variant={
+                            nextVATSubmission.daysUntilDue <= 7
+                              ? "error"
+                              : nextVATSubmission.daysUntilDue <= 14
+                              ? "warning"
+                              : "info"
+                          }
+                          className="text-xs"
+                        >
+                          {nextVATSubmission.daysUntilDue < 0
+                            ? `Overdue ${Math.abs(
+                                nextVATSubmission.daysUntilDue
+                              )} days`
+                            : `${nextVATSubmission.daysUntilDue} days remaining`}
+                        </Badge>
+                      </div>
+                    )}
+                    {nextCorporateTaxSubmission && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Receipt className="h-4 w-4 text-green-600" />
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            Next Corporate Tax Submission
+                          </h3>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Date:</span>{" "}
+                          {formatDateDDMMYYYY(
+                            nextCorporateTaxSubmission.submissionDate
+                          )}
+                        </p>
+                        <Badge
+                          variant={
+                            nextCorporateTaxSubmission.daysUntilDue <= 7
+                              ? "error"
+                              : nextCorporateTaxSubmission.daysUntilDue <= 14
+                              ? "warning"
+                              : "info"
+                          }
+                          className="text-xs"
+                        >
+                          {nextCorporateTaxSubmission.daysUntilDue < 0
+                            ? `Overdue ${Math.abs(
+                                nextCorporateTaxSubmission.daysUntilDue
+                              )} days`
+                            : `${nextCorporateTaxSubmission.daysUntilDue} days remaining`}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Alerts & Packages Side by Side */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

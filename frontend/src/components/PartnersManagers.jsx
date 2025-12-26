@@ -48,80 +48,86 @@ const PersonCard = ({ person, role, onEdit, onDelete, clientId }) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Emirates ID Section */}
-        {person.emiratesId && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Emirates ID</span>
-              {person.emiratesId.verified && (
-                <Badge variant="success" className="text-xs">Verified</Badge>
-              )}
-            </div>
-            {person.emiratesId.number && (
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Number:</span> {person.emiratesId.number}
-              </div>
-            )}
-            {person.emiratesId.issueDate && (
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Issue Date:</span>{' '}
-                {new Date(person.emiratesId.issueDate).toLocaleDateString()}
-              </div>
-            )}
-            {person.emiratesId.expiryDate && (
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Expiry Date:</span>{' '}
-                {new Date(person.emiratesId.expiryDate).toLocaleDateString()}
-                {emiratesIdWarning && (
-                  <Badge
-                    variant={emiratesIdWarning.severity === 'expired' ? 'error' : 'warning'}
-                    className="ml-2"
-                  >
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {emiratesIdWarning.severity === 'expired'
-                      ? `Expired ${emiratesIdWarning.days} days ago`
-                      : `Expires in ${emiratesIdWarning.days} days`}
-                  </Badge>
+        {/* Emirates ID and Passport Side by Side */}
+        {(person.emiratesId?.number || person.emiratesId?.issueDate || person.emiratesId?.expiryDate || 
+          person.passport?.number || person.passport?.issueDate || person.passport?.expiryDate) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Emirates ID Section */}
+            {(person.emiratesId?.number || person.emiratesId?.issueDate || person.emiratesId?.expiryDate) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Emirates ID</span>
+                  {person.emiratesId.verified && (
+                    <Badge variant="success" className="text-xs">Verified</Badge>
+                  )}
+                </div>
+                {person.emiratesId.number && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Number:</span> {person.emiratesId.number}
+                  </div>
+                )}
+                {person.emiratesId.issueDate && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Issue Date:</span>{' '}
+                    {new Date(person.emiratesId.issueDate).toLocaleDateString()}
+                  </div>
+                )}
+                {person.emiratesId.expiryDate && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Expiry Date:</span>{' '}
+                    {new Date(person.emiratesId.expiryDate).toLocaleDateString()}
+                    {emiratesIdWarning && (
+                      <Badge
+                        variant={emiratesIdWarning.severity === 'expired' ? 'error' : 'warning'}
+                        className="ml-2"
+                      >
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        {emiratesIdWarning.severity === 'expired'
+                          ? `Expired ${emiratesIdWarning.days} days ago`
+                          : `Expires in ${emiratesIdWarning.days} days`}
+                      </Badge>
+                    )}
+                  </div>
                 )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Passport Section */}
-        {person.passport && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Passport</span>
-              {person.passport.verified && (
-                <Badge variant="success" className="text-xs">Verified</Badge>
-              )}
-            </div>
-            {person.passport.number && (
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Number:</span> {person.passport.number}
-              </div>
-            )}
-            {person.passport.issueDate && (
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Issue Date:</span>{' '}
-                {new Date(person.passport.issueDate).toLocaleDateString()}
-              </div>
-            )}
-            {person.passport.expiryDate && (
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Expiry Date:</span>{' '}
-                {new Date(person.passport.expiryDate).toLocaleDateString()}
-                {passportWarning && (
-                  <Badge
-                    variant={passportWarning.severity === 'expired' ? 'error' : 'warning'}
-                    className="ml-2"
-                  >
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {passportWarning.severity === 'expired'
-                      ? `Expired ${passportWarning.days} days ago`
-                      : `Expires in ${passportWarning.days} days`}
-                  </Badge>
+            {/* Passport Section */}
+            {(person.passport?.number || person.passport?.issueDate || person.passport?.expiryDate) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Passport</span>
+                  {person.passport.verified && (
+                    <Badge variant="success" className="text-xs">Verified</Badge>
+                  )}
+                </div>
+                {person.passport.number && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Number:</span> {person.passport.number}
+                  </div>
+                )}
+                {person.passport.issueDate && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Issue Date:</span>{' '}
+                    {new Date(person.passport.issueDate).toLocaleDateString()}
+                  </div>
+                )}
+                {person.passport.expiryDate && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Expiry Date:</span>{' '}
+                    {new Date(person.passport.expiryDate).toLocaleDateString()}
+                    {passportWarning && (
+                      <Badge
+                        variant={passportWarning.severity === 'expired' ? 'error' : 'warning'}
+                        className="ml-2"
+                      >
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        {passportWarning.severity === 'expired'
+                          ? `Expired ${passportWarning.days} days ago`
+                          : `Expires in ${passportWarning.days} days`}
+                      </Badge>
+                    )}
+                  </div>
                 )}
               </div>
             )}

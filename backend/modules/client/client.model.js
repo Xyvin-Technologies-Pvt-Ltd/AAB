@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const documentSchema = new mongoose.Schema(
   {
@@ -205,8 +205,23 @@ const clientSchema = new mongoose.Schema(
       },
       vatReturnCycle: {
         type: String,
-        enum: ['MONTHLY', 'QUARTERLY', null],
+        enum: ['MONTHLY', 'QUARTERLY', 'OTHER', null],
         default: null,
+      },
+      vatTaxPeriods: {
+        type: [
+          {
+            startDate: {
+              type: Date,
+              required: true,
+            },
+            endDate: {
+              type: Date,
+              required: true,
+            },
+          },
+        ],
+        default: [],
       },
       corporateTaxDueDate: {
         type: Date,
@@ -280,68 +295,40 @@ const clientSchema = new mongoose.Schema(
   }
 );
 
-// Encrypt EmaraTax password before saving
-const getEncryptionKey = () => {
-  const key = process.env.ENCRYPTION_KEY;
-  if (!key) {
-    // Generate a key if not set (should be set in production)
-    const generatedKey = crypto.randomBytes(32).toString('hex');
-    console.warn('WARNING: ENCRYPTION_KEY not set in environment. Using generated key (not persistent).');
-    return generatedKey;
-  }
-  // Ensure key is 64 hex characters (32 bytes)
-  if (key.length !== 64) {
-    throw new Error('ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
-  }
-  return key;
-};
-
-const ENCRYPTION_KEY = getEncryptionKey();
-const ALGORITHM = 'aes-256-cbc';
-
-const encrypt = (text) => {
-  if (!text) return null;
-  const iv = crypto.randomBytes(16);
-  const keyBuffer = Buffer.from(ENCRYPTION_KEY, 'hex');
-  const cipher = crypto.createCipheriv(ALGORITHM, keyBuffer, iv);
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  return iv.toString('hex') + ':' + encrypted;
-};
-
-const decrypt = (text) => {
-  if (!text) return null;
-  try {
-    const parts = text.split(':');
-    if (parts.length !== 2) return null;
-    const iv = Buffer.from(parts[0], 'hex');
-    const encryptedText = parts[1];
-    const keyBuffer = Buffer.from(ENCRYPTION_KEY, 'hex');
-    const decipher = crypto.createDecipheriv(ALGORITHM, keyBuffer, iv);
-    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  } catch (error) {
-    console.error('Decryption error:', error);
-    return null;
-  }
-};
-
+// Hash EmaraTax password before saving using bcrypt
 clientSchema.pre('save', async function (next) {
-  // Only encrypt password if it's modified and not already encrypted
+  // Only hash password if it's modified and not already hashed
   if (this.isModified('emaraTaxAccount.password') && this.emaraTaxAccount?.password) {
-    // Check if password is already encrypted (encrypted strings have format iv:encrypted)
-    if (!this.emaraTaxAccount.password.includes(':')) {
-      this.emaraTaxAccount.password = encrypt(this.emaraTaxAccount.password);
+    try {
+      // Check if password is already hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
+      const isHashed = this.emaraTaxAccount.password.startsWith('$2a$') || 
+                      this.emaraTaxAccount.password.startsWith('$2b$') || 
+                      this.emaraTaxAccount.password.startsWith('$2y$');
+      
+      if (!isHashed) {
+        // Hash the password with bcrypt (salt rounds: 10)
+        const saltRounds = 10;
+        this.emaraTaxAccount.password = await bcrypt.hash(this.emaraTaxAccount.password, saltRounds);
+      }
+    } catch (error) {
+      console.error('Error hashing password:', error);
+      return next(error);
     }
   }
   next();
 });
 
-// Add method to decrypt password
-clientSchema.methods.getDecryptedPassword = function () {
-  if (!this.emaraTaxAccount?.password) return null;
-  return decrypt(this.emaraTaxAccount.password);
+// Add method to verify password (compare plain text with hashed password)
+clientSchema.methods.verifyPassword = async function (plainPassword) {
+  if (!this.emaraTaxAccount?.password || !plainPassword) {
+    return false;
+  }
+  try {
+    return await bcrypt.compare(plainPassword, this.emaraTaxAccount.password);
+  } catch (error) {
+    console.error('Error verifying password:', error);
+    return false;
+  }
 };
 
 // Indexes for performance

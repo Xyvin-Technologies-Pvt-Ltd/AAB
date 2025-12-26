@@ -115,5 +115,10 @@ export const clientsApi = {
     const response = await api.get('/clients/alerts/all', { params });
     return response.data;
   },
+
+  getNextSubmissionDates: async () => {
+    const response = await api.get('/clients/submission-dates/next');
+    return response.data;
+  },
 };
 

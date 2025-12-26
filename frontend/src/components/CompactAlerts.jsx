@@ -2,6 +2,7 @@ import { AlertCircle, Clock, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
 import { Badge } from '@/ui/badge';
 import { useComplianceStatus } from '@/api/queries/clientQueries';
+import { formatDateDDMMYYYY } from '@/utils/dateFormat';
 
 const AlertCard = ({ alert }) => {
   const getIcon = () => {
@@ -40,10 +41,10 @@ const AlertCard = ({ alert }) => {
         </div>
         <div className="text-xs text-gray-600 space-y-0.5">
           {alert.expiryDate && (
-            <p>Expires: {new Date(alert.expiryDate).toLocaleDateString()}</p>
+            <p>Expires: {formatDateDDMMYYYY(alert.expiryDate)}</p>
           )}
           {alert.dueDate && (
-            <p>Due: {new Date(alert.dueDate).toLocaleDateString()}</p>
+            <p>Due: {formatDateDDMMYYYY(alert.dueDate)}</p>
           )}
           {alert.daysUntilExpiry !== undefined && (
             <p>

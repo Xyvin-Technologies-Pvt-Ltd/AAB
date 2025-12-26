@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/layout/AppLayout';
 import { clientsApi } from '@/api/clients';
@@ -9,7 +9,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Clock,
-  Calendar,
   Filter,
   X,
   FileText,
@@ -19,135 +18,125 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { formatDateDDMMYYYY } from '@/utils/dateFormat';
 
-const AlertCard = ({ alert, onClientClick }) => {
-  const getIcon = () => {
-    switch (alert.severity) {
-      case 'CRITICAL':
-        return <AlertCircle className="h-5 w-5 text-red-600" />;
-      case 'HIGH':
-        return <AlertTriangle className="h-5 w-5 text-orange-600" />;
-      case 'MEDIUM':
-        return <Clock className="h-5 w-5 text-yellow-600" />;
-      default:
-        return <AlertCircle className="h-5 w-5 text-gray-600" />;
-    }
-  };
-
-  const getSeverityBadge = () => {
-    switch (alert.severity) {
-      case 'CRITICAL':
-        return <Badge variant="error">Critical</Badge>;
-      case 'HIGH':
-        return <Badge variant="warning">High</Badge>;
-      case 'MEDIUM':
-        return <Badge variant="info">Medium</Badge>;
-      default:
-        return <Badge variant="outline">Low</Badge>;
-    }
-  };
-
+const AlertItem = ({ item, onClientClick }) => {
+  // Determine if this is an alert or deadline
+  const isDeadline = !item.message && item.type;
+  
+  // Get type icon
   const getTypeIcon = () => {
-    if (alert.type?.includes('LICENSE') || alert.category === 'TRADE_LICENSE') {
+    const type = item.type?.toLowerCase() || '';
+    const category = item.category?.toLowerCase() || '';
+    
+    if (type.includes('license') || category.includes('license')) {
       return <Building2 className="h-4 w-4 text-gray-500" />;
     }
-    if (alert.type?.includes('TAX') || alert.category === 'CORPORATE_TAX_CERTIFICATE') {
+    if (type.includes('corporate') || category.includes('corporate')) {
       return <Receipt className="h-4 w-4 text-gray-500" />;
     }
-    if (alert.type?.includes('VAT') || alert.category === 'VAT_CERTIFICATE') {
+    if (type.includes('vat') || category.includes('vat')) {
       return <FileText className="h-4 w-4 text-gray-500" />;
     }
-    if (alert.type?.includes('EMIRATES_ID') || alert.type?.includes('PASSPORT')) {
+    if (type.includes('emirates') || type.includes('passport')) {
       return <User className="h-4 w-4 text-gray-500" />;
     }
     return <FileText className="h-4 w-4 text-gray-500" />;
   };
 
+  // Get severity icon
+  const getSeverityIcon = () => {
+    const severity = item.severity;
+    const daysRemaining = item.daysUntilDue ?? item.daysUntilExpiry ?? 999;
+    
+    if (daysRemaining < 0) {
+      return <AlertCircle className="h-5 w-5 text-red-600" />;
+    }
+    if (severity === 'CRITICAL' || daysRemaining <= 7) {
+      return <AlertCircle className="h-5 w-5 text-red-600" />;
+    }
+    if (severity === 'HIGH' || daysRemaining <= 14) {
+      return <AlertTriangle className="h-5 w-5 text-orange-600" />;
+    }
+    if (severity === 'MEDIUM' || daysRemaining <= 30) {
+      return <Clock className="h-5 w-5 text-yellow-600" />;
+    }
+    return <AlertCircle className="h-5 w-5 text-gray-600" />;
+  };
+
+  // Get severity badge
+  const getSeverityBadge = () => {
+    const daysRemaining = item.daysUntilDue ?? item.daysUntilExpiry ?? 999;
+    const isOverdue = daysRemaining < 0;
+    
+    if (isOverdue) {
+      return <Badge variant="error">Overdue {Math.abs(daysRemaining)} days</Badge>;
+    }
+    
+    if (item.severity === 'CRITICAL' || daysRemaining <= 7) {
+      return <Badge variant="error">Critical</Badge>;
+    }
+    if (item.severity === 'HIGH' || daysRemaining <= 14) {
+      return <Badge variant="warning">High</Badge>;
+    }
+    if (item.severity === 'MEDIUM' || daysRemaining <= 30) {
+      return <Badge variant="info">Medium</Badge>;
+    }
+    return <Badge variant="outline">Low</Badge>;
+  };
+
+  // Get display message
+  const getMessage = () => {
+    if (item.message) {
+      return item.message;
+    }
+    // For deadlines, create message from type
+    const type = item.type?.replace(/_/g, ' ') || '';
+    const category = item.category?.replace(/_/g, ' ') || '';
+    return category || type || 'Deadline';
+  };
+
+  // Get date display
+  const getDateDisplay = () => {
+    const dueDate = item.dueDate || item.expiryDate;
+    const daysRemaining = item.daysUntilDue ?? item.daysUntilExpiry;
+    
+    if (daysRemaining !== undefined) {
+      if (daysRemaining < 0) {
+        return `Overdue ${Math.abs(daysRemaining)} days`;
+      }
+      return `${daysRemaining} days remaining`;
+    }
+    
+    if (dueDate) {
+      return formatDateDDMMYYYY(dueDate);
+    }
+    
+    return null;
+  };
+
   return (
     <div
       className="flex items-start gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-      onClick={() => onClientClick(alert.clientId)}
+      onClick={() => onClientClick(item.clientId)}
     >
-      {getIcon()}
+      {getSeverityIcon()}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-1">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {getTypeIcon()}
-            <p className="text-sm font-medium text-gray-900 truncate">{alert.message}</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{getMessage()}</p>
           </div>
           {getSeverityBadge()}
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-600">{alert.clientName}</p>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            {alert.dueDate && (
-              <span>Due: {new Date(alert.dueDate).toLocaleDateString()}</span>
-            )}
-            {alert.expiryDate && (
-              <span>Expires: {new Date(alert.expiryDate).toLocaleDateString()}</span>
-            )}
-            {alert.daysUntilExpiry !== undefined && (
-              <span>
-                {alert.daysUntilExpiry < 0
-                  ? `Expired ${Math.abs(alert.daysUntilExpiry)} days ago`
-                  : `${alert.daysUntilExpiry} days remaining`}
-              </span>
-            )}
-          </div>
+          <p className="text-xs text-gray-600">{item.clientName}</p>
+          {getDateDisplay() && (
+            <p className="text-xs text-gray-500">{getDateDisplay()}</p>
+          )}
         </div>
       </div>
-      <ChevronRight className="h-4 w-4 text-gray-400" />
-    </div>
-  );
-};
-
-const DeadlineCard = ({ deadline, onClientClick }) => {
-  const getCategoryIcon = () => {
-    if (deadline.category === 'TRADE_LICENSE') {
-      return <Building2 className="h-4 w-4 text-blue-500" />;
-    }
-    if (deadline.category === 'CORPORATE_TAX_CERTIFICATE') {
-      return <Receipt className="h-4 w-4 text-green-500" />;
-    }
-    if (deadline.category === 'VAT_CERTIFICATE') {
-      return <FileText className="h-4 w-4 text-purple-500" />;
-    }
-    return <Calendar className="h-4 w-4 text-gray-500" />;
-  };
-
-  const getCategoryLabel = () => {
-    if (deadline.category === 'TRADE_LICENSE') return 'Trade License';
-    if (deadline.category === 'CORPORATE_TAX_CERTIFICATE') return 'Corporate Tax';
-    if (deadline.category === 'VAT_CERTIFICATE') return 'VAT';
-    return deadline.type?.replace(/_/g, ' ') || 'Deadline';
-  };
-
-  const isOverdue = deadline.daysUntilExpiry < 0;
-  const isUrgent = deadline.daysUntilExpiry >= 0 && deadline.daysUntilExpiry <= 30;
-
-  return (
-    <div
-      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-      onClick={() => onClientClick(deadline.clientId)}
-    >
-      {getCategoryIcon()}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <p className="text-sm font-medium text-gray-900">{getCategoryLabel()}</p>
-          <Badge variant={isOverdue ? 'error' : isUrgent ? 'warning' : 'info'}>
-            {isOverdue
-              ? `Overdue ${Math.abs(deadline.daysUntilExpiry)} days`
-              : `${deadline.daysUntilExpiry} days left`}
-          </Badge>
-        </div>
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-600">{deadline.clientName}</p>
-          <p className="text-xs text-gray-500">
-            {new Date(deadline.expiryDate).toLocaleDateString()}
-          </p>
-        </div>
-      </div>
-      <ChevronRight className="h-4 w-4 text-gray-400" />
+      <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
     </div>
   );
 };
@@ -155,31 +144,76 @@ const DeadlineCard = ({ deadline, onClientClick }) => {
 export const Alerts = () => {
   const navigate = useNavigate();
   const [typeFilter, setTypeFilter] = useState('');
-  const [severityFilter, setSeverityFilter] = useState('');
 
+  // Fetch all data once - filter client-side
   const { data, isLoading } = useQuery({
-    queryKey: ['allAlerts', typeFilter, severityFilter],
-    queryFn: () => clientsApi.getAllAlerts({ type: typeFilter || undefined, severity: severityFilter || undefined }),
+    queryKey: ['allAlerts'],
+    queryFn: () => clientsApi.getAllAlerts({ type: undefined, severity: undefined }),
   });
 
-  const alerts = data?.data?.alerts || [];
-  const deadlines = data?.data?.deadlines || [];
+  const allAlerts = data?.data?.alerts || [];
+  const allDeadlines = data?.data?.deadlines || [];
+
+  // Merge all alerts and deadlines
+  const allUnifiedItems = useMemo(() => {
+    return [
+      ...allAlerts.map(alert => ({ ...alert, itemType: 'alert' })),
+      ...allDeadlines.map(deadline => ({ ...deadline, itemType: 'deadline' })),
+    ];
+  }, [allAlerts, allDeadlines]);
+
+  // Filter and sort unified items for display
+  const unifiedItems = useMemo(() => {
+    let filtered = allUnifiedItems;
+    
+    // Apply type filter
+    if (typeFilter) {
+      filtered = allUnifiedItems.filter((item) => {
+        const itemType = item.type?.toLowerCase() || '';
+        const itemCategory = item.category?.toLowerCase() || '';
+        return itemType.includes(typeFilter.toLowerCase()) || itemCategory.includes(typeFilter.toLowerCase());
+      });
+    }
+
+    // Sort by urgency: critical first, then by days remaining
+    return filtered.sort((a, b) => {
+      const daysA = a.daysUntilDue ?? a.daysUntilExpiry ?? 999;
+      const daysB = b.daysUntilDue ?? b.daysUntilExpiry ?? 999;
+      
+      // Overdue items first
+      if (daysA < 0 && daysB >= 0) return -1;
+      if (daysA >= 0 && daysB < 0) return 1;
+      
+      // Then by severity
+      const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      const severityA = severityOrder[a.severity] ?? 3;
+      const severityB = severityOrder[b.severity] ?? 3;
+      if (severityA !== severityB) {
+        return severityA - severityB;
+      }
+      
+      // Then by days remaining (sooner first)
+      return daysA - daysB;
+    });
+  }, [allUnifiedItems, typeFilter]);
+
+  // Calculate counts for each filter type from all unified items
+  const getTypeCount = (typeValue) => {
+    if (!typeValue) return allUnifiedItems.length;
+    return allUnifiedItems.filter((item) => {
+      const itemType = item.type?.toLowerCase() || '';
+      const itemCategory = item.category?.toLowerCase() || '';
+      return itemType.includes(typeValue.toLowerCase()) || itemCategory.includes(typeValue.toLowerCase());
+    }).length;
+  };
 
   const filterTypes = [
-    { value: '', label: 'All Types' },
-    { value: 'license', label: 'License' },
-    { value: 'corporate', label: 'Corporate Tax' },
-    { value: 'vat', label: 'VAT' },
-    { value: 'emirates', label: 'Emirates ID' },
-    { value: 'passport', label: 'Passport' },
-  ];
-
-  const severityTypes = [
-    { value: '', label: 'All Severities' },
-    { value: 'CRITICAL', label: 'Critical' },
-    { value: 'HIGH', label: 'High' },
-    { value: 'MEDIUM', label: 'Medium' },
-    { value: 'LOW', label: 'Low' },
+    { value: '', label: 'All Types', count: getTypeCount('') },
+    { value: 'license', label: 'License', count: getTypeCount('license') },
+    { value: 'corporate', label: 'Corporate Tax', count: getTypeCount('corporate') },
+    { value: 'vat', label: 'VAT', count: getTypeCount('vat') },
+    { value: 'emirates', label: 'Emirates ID', count: getTypeCount('emirates') },
+    { value: 'passport', label: 'Passport', count: getTypeCount('passport') },
   ];
 
   const handleClientClick = (clientId) => {
@@ -188,10 +222,9 @@ export const Alerts = () => {
 
   const clearFilters = () => {
     setTypeFilter('');
-    setSeverityFilter('');
   };
 
-  const hasActiveFilters = typeFilter || severityFilter;
+  const hasActiveFilters = typeFilter !== '';
 
   return (
     <AppLayout>
@@ -207,43 +240,46 @@ export const Alerts = () => {
         {/* Filters */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Filters:</span>
+                <span className="text-sm font-medium text-gray-700">Filter by Type:</span>
               </div>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
+              <div className="flex flex-wrap gap-2">
                 {filterTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
+                  <button
+                    key={type.value}
+                    onClick={() => setTypeFilter(type.value)}
+                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                      typeFilter === type.value
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
                     {type.label}
-                  </option>
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                      typeFilter === type.value
+                        ? 'bg-indigo-700 text-white'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {type.count}
+                    </span>
+                  </button>
                 ))}
-              </select>
-              <select
-                value={severityFilter}
-                onChange={(e) => setSeverityFilter(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                {severityTypes.map((severity) => (
-                  <option key={severity.value} value={severity.value}>
-                    {severity.label}
-                  </option>
-                ))}
-              </select>
+              </div>
               {hasActiveFilters && (
-                <Button size="sm" variant="outline" onClick={clearFilters}>
-                  <X className="h-3 w-3 mr-1" />
-                  Clear
-                </Button>
+                <div className="pt-2">
+                  <Button size="sm" variant="outline" onClick={clearFilters}>
+                    <X className="h-3 w-3 mr-1" />
+                    Clear Filters
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>
         </Card>
 
+        {/* Unified List */}
         {isLoading ? (
           <Card>
             <CardContent className="p-12 text-center">
@@ -252,62 +288,32 @@ export const Alerts = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Alerts Section */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    Active Alerts ({alerts.length})
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {alerts.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No alerts found</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                    {alerts.map((alert, index) => (
-                      <AlertCard key={index} alert={alert} onClientClick={handleClientClick} />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Deadlines Section */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Upcoming Deadlines ({deadlines.length})
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {deadlines.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No upcoming deadlines</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                    {deadlines.map((deadline, index) => (
-                      <DeadlineCard key={index} deadline={deadline} onClientClick={handleClientClick} />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  All Alerts & Deadlines ({unifiedItems.length})
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {unifiedItems.length === 0 ? (
+                <div className="p-8 text-center">
+                  <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No alerts or deadlines found</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {unifiedItems.map((item, index) => (
+                    <AlertItem key={`${item.itemType}-${index}`} item={item} onClientClick={handleClientClick} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
     </AppLayout>
   );
 };
-

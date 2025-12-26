@@ -30,43 +30,22 @@ export const getClients = async (req, res, next) => {
 export const getClientById = async (req, res, next) => {
   try {
     const client = await clientService.getClientById(req.params.id);
-    
-    // Check if user wants unmasked credentials (via query param)
-    const showUnmasked = req.query.showCredentials === 'true';
-    
-    // Mask EmaraTax credentials in response (unless explicitly requested)
+    // Always return unmasked EmaraTax credentials
+    // Note: Password is hashed with bcrypt and cannot be decrypted
+    // We only return whether a password exists, not the actual password
     if (client.emaraTaxAccount) {
-      const { maskUsername, maskPassword } = await import('../../helpers/dataMasking.js');
       const hasPassword = !!client.emaraTaxAccount.password;
-      
-      let password = null;
-      if (hasPassword) {
-        if (showUnmasked) {
-          // Decrypt password for display
-          password = client.getDecryptedPassword();
-        } else {
-          password = maskPassword('placeholder');
-        }
-      }
-      
-      // Always return the actual username if it exists, only mask if not showing unmasked
-      let username = null;
-      if (client.emaraTaxAccount.username) {
-        if (showUnmasked) {
-          // Return actual username (should not be masked in DB)
-          username = client.emaraTaxAccount.username;
-        } else {
-          // Mask username for display
-          username = maskUsername(client.emaraTaxAccount.username);
-        }
-      }
-      
+
+      // Return actual username and password status (not the actual password)
+      const username = client.emaraTaxAccount.username || null;
+
       client.emaraTaxAccount = {
         username: username,
-        password: password,
+        hasPassword: hasPassword, // Indicate if password is set (but don't return the hash)
+        password: null, // Never return the password hash
       };
     }
-    
+
     return successResponse(res, 200, 'Client retrieved successfully', client);
   } catch (error) {
     next(error);
@@ -252,7 +231,7 @@ export const processDocument = async (req, res, next) => {
 
       // Validate name consistency across documents
       const validation = validateNameConsistency(client, extractedData, document.category);
-      
+
       if (!validation.isValid) {
         logger.warn('Name validation errors detected', {
           clientId: req.params.id,
@@ -378,10 +357,10 @@ export const processDocument = async (req, res, next) => {
             const wordsMatch = (word1, word2) => {
               const w1 = word1.toLowerCase();
               const w2 = word2.toLowerCase();
-              
+
               // Exact match
               if (w1 === w2) return true;
-              
+
               // One contains the other (handles "jinumon" vs "jinomon" if they're similar enough)
               if (w1.includes(w2) || w2.includes(w1)) {
                 // Only consider it a match if the shorter word is at least 4 characters
@@ -391,7 +370,7 @@ export const processDocument = async (req, res, next) => {
                   return true;
                 }
               }
-              
+
               // Check similarity for longer words (handles "jinumon" vs "jinomon")
               if (w1.length >= 5 && w2.length >= 5) {
                 // Calculate simple similarity: how many characters match
@@ -403,13 +382,13 @@ export const processDocument = async (req, res, next) => {
                 // If 80% of characters match, consider it a match
                 if (matches / maxLen >= 0.8) return true;
               }
-              
+
               return false;
             };
 
             const checkNameMatch = (name1, name2) => {
               if (!name1 || !name2) return false;
-              
+
               // Exact match (case-insensitive)
               if (name1.trim().toLowerCase() === name2.trim().toLowerCase()) {
                 return true;
@@ -422,9 +401,9 @@ export const processDocument = async (req, res, next) => {
               // Check if sorted words match (handles order differences like "JINUMON GOVINDAN" vs "GOVINDAN JINUMON")
               const sortedWords1 = [...words1].sort();
               const sortedWords2 = [...words2].sort();
-              
+
               if (sortedWords1.length === sortedWords2.length) {
-                const sortedMatch = sortedWords1.every((word, idx) => 
+                const sortedMatch = sortedWords1.every((word, idx) =>
                   wordsMatch(word, sortedWords2[idx])
                 );
                 if (sortedMatch) return true;
@@ -436,7 +415,7 @@ export const processDocument = async (req, res, next) => {
               const longerWords = words1.length > words2.length ? words1 : words2;
 
               // All words from shorter name must match a word in longer name
-              const allWordsMatch = shorterWords.every(shortWord => 
+              const allWordsMatch = shorterWords.every(shortWord =>
                 longerWords.some(longWord => wordsMatch(shortWord, longWord))
               );
 
@@ -453,7 +432,7 @@ export const processDocument = async (req, res, next) => {
 
               const keyWords1 = getKeyWords(words1);
               const keyWords2 = getKeyWords(words2);
-              
+
               // At least one key word from each name should match
               const keyWordsMatch = keyWords1.length > 0 && keyWords2.length > 0 &&
                 keyWords1.some(kw1 => keyWords2.some(kw2 => wordsMatch(kw1, kw2)));
@@ -634,13 +613,15 @@ export const updateEmaraTaxCredentials = async (req, res, next) => {
   try {
     const client = await clientService.updateEmaraTaxCredentials(req.params.id, req.body);
 
-    // Mask credentials in response
+    // Return unmasked credentials in response
+    // Note: Password is hashed with bcrypt and cannot be decrypted
+    // We only return whether a password exists, not the actual password
     if (client.emaraTaxAccount) {
-      const { maskUsername, maskPassword } = await import('../../helpers/dataMasking.js');
       const hasPassword = !!client.emaraTaxAccount.password;
       client.emaraTaxAccount = {
-        username: client.emaraTaxAccount.username ? maskUsername(client.emaraTaxAccount.username) : null,
-        password: hasPassword ? maskPassword('placeholder') : null,
+        username: client.emaraTaxAccount.username || null,
+        hasPassword: hasPassword, // Indicate if password is set (but don't return the hash)
+        password: null, // Never return the password hash
       };
     }
 
@@ -742,7 +723,7 @@ export const getAllAlerts = async (req, res, next) => {
 export const syncDocumentDataToPersons = async (req, res, next) => {
   try {
     const { syncedCount } = await clientService.syncDocumentDataToPersons(req.params.id);
-    
+
     logger.info('Document data synced to persons', {
       clientId: req.params.id,
       syncedCount,
@@ -751,6 +732,16 @@ export const syncDocumentDataToPersons = async (req, res, next) => {
     return successResponse(res, 200, `Synced ${syncedCount} document(s) to person records`, {
       syncedCount,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getNextSubmissionDates = async (req, res, next) => {
+  try {
+    const submissionDates = await clientService.getNextSubmissionDates();
+
+    return successResponse(res, 200, 'Next submission dates retrieved successfully', submissionDates);
   } catch (error) {
     next(error);
   }

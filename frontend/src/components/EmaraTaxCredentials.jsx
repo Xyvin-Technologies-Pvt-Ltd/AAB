@@ -1,32 +1,48 @@
-import { useState } from 'react';
-import { Edit2, Save, X, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Edit2, Save, X } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { Card } from '@/ui/card';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientsApi } from '@/api/clients';
 import { useToast } from '@/hooks/useToast';
 
 export const EmaraTaxCredentials = ({ clientId, credentials }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [showCredentials, setShowCredentials] = useState(false);
-  const [actualValues, setActualValues] = useState({
-    username: null,
-    password: null,
-  });
   const [formData, setFormData] = useState({
-    username: credentials?.username || '',
+    username: '',
     password: '',
   });
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Fetch credentials using React Query for proper caching and refetching
+  const { data: credentialsData, isLoading: isLoadingCredentials } = useQuery({
+    queryKey: ['client', clientId, 'emaratax-credentials'],
+    queryFn: async () => {
+      const response = await clientsApi.getById(clientId, { showCredentials: 'true' });
+      return response?.data?.emaraTaxAccount || null;
+    },
+    enabled: !!clientId,
+    staleTime: 0, // Always refetch to get latest credentials
+  });
+
+  // Update formData when credentials are loaded
+  useEffect(() => {
+    if (credentialsData) {
+      setFormData({
+        username: credentialsData.username || '',
+        password: '',
+      });
+    }
+  }, [credentialsData]);
+
   const updateMutation = useMutation({
     mutationFn: (data) => clientsApi.updateEmaraTaxCredentials(clientId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client', clientId, 'emaratax-credentials'] });
       setIsEditing(false);
       setFormData({ username: formData.username, password: '' });
-      setShowCredentials(false);
       toast({
         title: 'Success',
         description: 'EmaraTax credentials updated successfully',
@@ -45,87 +61,45 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
   const handleSave = () => {
     const updateData = {
       username: formData.username || null,
-      password: formData.password || null,
+      // Only send password if it's provided (empty string means don't update password)
+      password: formData.password ? formData.password : undefined,
     };
     updateMutation.mutate(updateData);
   };
 
   const handleCancel = () => {
     setFormData({
-      username: credentials?.username || '',
+      username: credentialsData?.username || '',
       password: '',
     });
     setIsEditing(false);
-    setShowCredentials(false);
-  };
-
-  const handleToggleView = async () => {
-    if (!showCredentials) {
-      // Fetch actual credentials from backend
-      try {
-        const response = await clientsApi.getById(clientId, { showCredentials: 'true' });
-        if (response?.data?.emaraTaxAccount) {
-          const account = response.data.emaraTaxAccount;
-          // Store the actual values (even if empty string, we want to preserve it)
-          setActualValues({
-            username: account.username !== undefined ? account.username : null,
-            password: account.password !== undefined ? account.password : null,
-          });
-          setShowCredentials(true);
-        } else {
-          toast({
-            title: 'Info',
-            description: 'No credentials found. Please edit to add credentials.',
-            type: 'default',
-          });
-        }
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch credentials',
-          type: 'destructive',
-        });
-      }
-    } else {
-      setShowCredentials(false);
-    }
-  };
-
-  const maskValue = (value) => {
-    if (!value) return '-';
-    if (value.length <= 4) return '*'.repeat(value.length);
-    const first = value.slice(0, 2);
-    const last = value.slice(-2);
-    const middle = '*'.repeat(value.length - 4);
-    return `${first}${middle}${last}`;
   };
 
   const getDisplayUsername = () => {
     if (isEditing) {
       return formData.username;
     }
-    if (showCredentials) {
-      // When showing credentials, use actual values if available
-      if (actualValues.username !== null && actualValues.username !== undefined) {
-        return actualValues.username;
-      }
-      // Fallback to credentials prop if actualValues not set yet
-      if (credentials?.username && !credentials.username.includes('*')) {
-        return credentials.username;
-      }
+    if (isLoadingCredentials) {
+      return 'Loading...';
     }
-    // Show masked version
-    return credentials?.username ? maskValue(credentials.username) : '-';
+    return credentialsData?.username !== undefined && credentialsData?.username !== null
+      ? credentialsData.username
+      : '-';
   };
 
   const getDisplayPassword = () => {
     if (isEditing) {
       return formData.password || '';
     }
-    if (showCredentials && actualValues.password) {
-      return actualValues.password;
+    if (isLoadingCredentials) {
+      return 'Loading...';
     }
-    return credentials?.password ? '••••••••' : '-';
+    // Password is hashed with bcrypt and cannot be displayed
+    // Show placeholder if password is set, otherwise show '-'
+    if (credentialsData?.hasPassword) {
+      return '••••••••'; // Show dots to indicate password is set
+    }
+    return '-';
   };
 
   return (
@@ -135,18 +109,6 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
           <h3 className="text-sm font-semibold text-gray-900">EmaraTax Account</h3>
           {!isEditing && (
             <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleToggleView}
-                title={showCredentials ? 'Hide credentials' : 'Show credentials'}
-              >
-                {showCredentials ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -200,11 +162,11 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
             <p className="text-xs text-gray-500 mb-1">Password</p>
             {isEditing ? (
               <input
-                type="text"
+                type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono"
-                placeholder="Enter password"
+                placeholder={credentialsData?.hasPassword ? "Enter new password (leave blank to keep current)" : "Enter password"}
               />
             ) : (
               <p className="text-sm font-medium text-gray-900 font-mono break-all">
