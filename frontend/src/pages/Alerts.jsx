@@ -144,11 +144,21 @@ const AlertItem = ({ item, onClientClick }) => {
 export const Alerts = () => {
   const navigate = useNavigate();
   const [typeFilter, setTypeFilter] = useState('');
+  
+  // Initialize month/year to current month/year
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-12
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
 
-  // Fetch all data once - filter client-side
+  // Fetch all data with month/year filter
   const { data, isLoading } = useQuery({
-    queryKey: ['allAlerts'],
-    queryFn: () => clientsApi.getAllAlerts({ type: undefined, severity: undefined }),
+    queryKey: ['allAlerts', selectedMonth, selectedYear],
+    queryFn: () => clientsApi.getAllAlerts({ 
+      type: undefined, 
+      severity: undefined,
+      month: selectedMonth,
+      year: selectedYear,
+    }),
   });
 
   const allAlerts = data?.data?.alerts || [];
@@ -220,11 +230,46 @@ export const Alerts = () => {
     navigate(`/clients/${clientId}`);
   };
 
-  const clearFilters = () => {
-    setTypeFilter('');
+  // Generate month/year options (past 3 months and future 12 months)
+  const getMonthYearOptions = () => {
+    const options = [];
+    const currentDate = new Date();
+    currentDate.setMonth(currentDate.getMonth() - 3); // Start 3 months ago
+    
+    for (let i = 0; i < 16; i++) { // 3 past + current + 12 future = 16 months
+      const date = new Date(currentDate);
+      date.setMonth(currentDate.getMonth() + i);
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      options.push({
+        value: `${month}-${year}`,
+        label: `${monthNames[month - 1]} ${year}`,
+        month,
+        year,
+      });
+    }
+    return options;
   };
 
-  const hasActiveFilters = typeFilter !== '';
+  const monthYearOptions = getMonthYearOptions();
+  const currentMonthYearValue = `${selectedMonth}-${selectedYear}`;
+
+  const handleMonthYearChange = (value) => {
+    const [month, year] = value.split('-').map(Number);
+    setSelectedMonth(month);
+    setSelectedYear(year);
+  };
+
+  const clearFilters = () => {
+    setTypeFilter('');
+    const currentDate = new Date();
+    setSelectedMonth(currentDate.getMonth() + 1);
+    setSelectedYear(currentDate.getFullYear());
+  };
+
+  const currentDate = new Date();
+  const hasActiveFilters = typeFilter !== '' || selectedMonth !== currentDate.getMonth() + 1 || selectedYear !== currentDate.getFullYear();
 
   return (
     <AppLayout>
@@ -240,38 +285,62 @@ export const Alerts = () => {
         {/* Filters */}
         <Card>
           <CardContent className="p-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
+            <div className="space-y-4">
+              {/* Month/Year Filter */}
+              <div className="flex items-center gap-3">
                 <Filter className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Filter by Type:</span>
+                <span className="text-sm font-medium text-gray-700">Filter by Month:</span>
+                <select
+                  value={currentMonthYearValue}
+                  onChange={(e) => handleMonthYearChange(e.target.value)}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  {monthYearOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-500">
+                  Showing alerts for {monthYearOptions.find(opt => opt.value === currentMonthYearValue)?.label}
+                </span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {filterTypes.map((type) => (
-                  <button
-                    key={type.value}
-                    onClick={() => setTypeFilter(type.value)}
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                      typeFilter === type.value
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {type.label}
-                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                      typeFilter === type.value
-                        ? 'bg-indigo-700 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {type.count}
-                    </span>
-                  </button>
-                ))}
+
+              {/* Type Filter */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Filter by Type:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {filterTypes.map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => setTypeFilter(type.value)}
+                      className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                        typeFilter === type.value
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {type.label}
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                        typeFilter === type.value
+                          ? 'bg-indigo-700 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {type.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
+
               {hasActiveFilters && (
                 <div className="pt-2">
                   <Button size="sm" variant="outline" onClick={clearFilters}>
                     <X className="h-3 w-3 mr-1" />
-                    Clear Filters
+                    Clear All Filters
                   </Button>
                 </div>
               )}

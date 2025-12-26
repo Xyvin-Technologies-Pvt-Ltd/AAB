@@ -729,6 +729,8 @@ export const getAllAlerts = async (req, res, next) => {
     const filters = {
       type: req.query.type,
       severity: req.query.severity,
+      month: req.query.month,
+      year: req.query.year,
     };
     const result = await clientService.getAllAlerts(filters);
     return successResponse(res, 200, 'Alerts retrieved successfully', result);

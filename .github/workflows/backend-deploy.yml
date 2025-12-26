@@ -88,6 +88,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY="$8"
           AWS_S3_BUCKET_NAME="$9"
           FRONTEND_URL="${10}"
+          OPENAI_API_KEY="${11}"
           
           # Login to ECR
           aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
@@ -114,6 +115,7 @@ jobs:
             -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
             -e AWS_S3_BUCKET_NAME="${AWS_S3_BUCKET_NAME}" \
             -e FRONTEND_URL="${FRONTEND_URL}" \
+            -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
             ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
           
           # Wait for container to be healthy
@@ -143,13 +145,13 @@ jobs:
             '${{ env.ECR_REPOSITORY }}' \
             '${{ secrets.AWS_REGION }}' \
             '${{ secrets.MONGODB_URI }}' \
-            '${{ secrets.OPENAI_API_KEY_TEST }}' \
             '${{ secrets.JWT_SECRET }}' \
             '${{ secrets.JWT_EXPIRE }}' \
             '${{ secrets.AWS_ACCESS_KEY_ID }}' \
             '${{ secrets.AWS_SECRET_ACCESS_KEY }}' \
             '${{ secrets.AWS_S3_BUCKET_NAME }}' \
-            '${{ secrets.FRONTEND_URL }}'"
+            '${{ secrets.FRONTEND_URL }}' \
+            '${{ secrets.OPENAI_API_KEY_TEST }}'"
           rm deploy-backend.sh
 
       - name: Verify Deployment

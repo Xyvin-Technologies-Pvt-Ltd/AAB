@@ -326,13 +326,25 @@ export const getComplianceStatus = async (clientId) => {
 };
 
 export const getAllAlerts = async (filters = {}) => {
-  const { type, severity } = filters;
+  const { type, severity, month, year } = filters;
   const clients = await Client.find({ status: 'ACTIVE' });
   const {
     calculateComplianceStatus,
     calculateNextVATSubmissionDate,
     calculateNextCorporateTaxSubmissionDate
   } = await import('../../services/compliance.service.js');
+
+  // Default to current month/year if not provided
+  const now = new Date();
+  const filterMonth = month !== undefined ? parseInt(month, 10) : now.getMonth() + 1; // 1-12
+  const filterYear = year !== undefined ? parseInt(year, 10) : now.getFullYear();
+
+  // Helper function to check if a date falls within the specified month/year
+  const isDateInMonthYear = (date) => {
+    if (!date) return false;
+    const d = new Date(date);
+    return d.getMonth() + 1 === filterMonth && d.getFullYear() === filterYear;
+  };
 
   const allAlerts = [];
   const deadlines = [];
@@ -486,15 +498,33 @@ export const getAllAlerts = async (filters = {}) => {
     }
   }
 
+  // Filter by month/year if specified
+  let filteredAlerts = allAlerts;
+  let filteredDeadlines = deadlines;
+
+  if (month !== undefined || year !== undefined) {
+    // Filter alerts by dueDate/expiryDate month/year
+    filteredAlerts = allAlerts.filter((alert) => {
+      const alertDate = alert.dueDate || alert.expiryDate;
+      return isDateInMonthYear(alertDate);
+    });
+
+    // Filter deadlines by expiryDate month/year
+    filteredDeadlines = deadlines.filter((deadline) => {
+      const deadlineDate = deadline.expiryDate;
+      return isDateInMonthYear(deadlineDate);
+    });
+  }
+
   // Sort deadlines by date (soonest first)
-  deadlines.sort((a, b) => {
+  filteredDeadlines.sort((a, b) => {
     const dateA = new Date(a.expiryDate);
     const dateB = new Date(b.expiryDate);
     return dateA - dateB;
   });
 
   // Sort alerts by severity and date
-  allAlerts.sort((a, b) => {
+  filteredAlerts.sort((a, b) => {
     const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
     if (severityOrder[a.severity] !== severityOrder[b.severity]) {
       return severityOrder[a.severity] - severityOrder[b.severity];
@@ -505,10 +535,10 @@ export const getAllAlerts = async (filters = {}) => {
   });
 
   return {
-    alerts: allAlerts,
-    deadlines,
-    totalAlerts: allAlerts.length,
-    totalDeadlines: deadlines.length,
+    alerts: filteredAlerts,
+    deadlines: filteredDeadlines,
+    totalAlerts: filteredAlerts.length,
+    totalDeadlines: filteredDeadlines.length,
   };
 };
 
