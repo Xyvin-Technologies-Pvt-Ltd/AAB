@@ -8,6 +8,7 @@ import { tasksApi } from '@/api/tasks';
 import { analyticsApi } from '@/api/analytics';
 import { Button } from '@/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
+import { Avatar } from '@/components/Avatar';
 import { ArrowLeft, Clock, CheckSquare, TrendingUp, User } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import { format } from 'date-fns';
@@ -88,13 +89,18 @@ export const EmployeeDetails = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/employees')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
+            <Button variant="ghost" onClick={() => navigate('/employees')} size="sm">
+              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
               Back
             </Button>
+            <Avatar
+              src={employee.profilePicture?.url}
+              name={employee.name}
+              size="lg"
+            />
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{employee.name}</h1>
-              <p className="text-gray-600 mt-1">
+              <h1 className="text-xl font-bold text-gray-900">{employee.name}</h1>
+              <p className="text-xs text-gray-600 mt-0.5">
                 {employee.designation || 'Employee'} • {employee.email || 'No email'}
               </p>
             </div>

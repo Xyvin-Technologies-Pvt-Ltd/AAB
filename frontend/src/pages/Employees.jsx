@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
 import { employeesApi } from "@/api/employees";
 import { Button } from "@/ui/button";
+import { Card } from "@/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,8 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { FileUpload } from "@/components/FileUpload";
-import { Plus, Pencil, Trash2, Eye, FileText } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
+import { Plus, Pencil, Trash2, Eye, FileText, Upload, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 
@@ -114,6 +116,47 @@ export const Employees = () => {
     },
   });
 
+  const uploadProfilePictureMutation = useMutation({
+    mutationFn: ({ employeeId, file }) =>
+      employeesApi.uploadProfilePicture(employeeId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      toast({
+        title: "Success",
+        description: "Profile picture uploaded successfully",
+        type: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to upload profile picture",
+        type: "destructive",
+      });
+    },
+  });
+
+  const deleteProfilePictureMutation = useMutation({
+    mutationFn: (employeeId) => employeesApi.deleteProfilePicture(employeeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      toast({
+        title: "Success",
+        description: "Profile picture deleted successfully",
+        type: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to delete profile picture",
+        type: "destructive",
+      });
+    },
+  });
+
   const deleteDocumentMutation = useMutation({
     mutationFn: ({ employeeId, documentId }) =>
       employeesApi.deleteDocument(employeeId, documentId),
@@ -194,147 +237,161 @@ export const Employees = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-3">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Employees</h1>
-            <p className="text-gray-600 mt-1">Manage your team members</p>
+            <h1 className="text-xl font-bold text-gray-900">Employees</h1>
+            <p className="text-xs text-gray-600 mt-0.5">Manage your team members</p>
           </div>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button onClick={() => setShowForm(true)} size="sm">
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
             Add Employee
           </Button>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
+          <Card>
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+              <p className="mt-3 text-xs text-gray-600">Loading...</p>
+            </div>
+          </Card>
         ) : (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Designation
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Hourly Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Monthly Cost
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Documents
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {employees.length === 0 ? (
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <td
-                      colSpan="8"
-                      className="px-6 py-12 text-center text-gray-500"
-                    >
-                      No employees found
-                    </td>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Designation
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Hourly Rate
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Monthly Cost
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Documents
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ) : (
-                  employees.map((employee) => (
-                    <tr
-                      key={employee._id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/employees/${employee._id}`)}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {employee.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.designation || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.email || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.hourlyRate?.toFixed(2) ||
-                          employee.hourlyCost?.toFixed(2) ||
-                          "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${employee.monthlyCost?.toFixed(2) || "0.00"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <FileText className="h-4 w-4 text-gray-400" />
-                          <span>{employee.documents?.length || 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            employee.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {employee.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {employees.length === 0 ? (
+                    <tr>
                       <td
-                        className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
-                        onClick={(e) => e.stopPropagation()}
+                        colSpan="8"
+                        className="px-2 py-8 text-center text-xs text-gray-500"
                       >
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              navigate(`/employees/${employee._id}`)
-                            }
-                            className="text-indigo-600 hover:text-indigo-800"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(employee);
-                            }}
-                            className="text-indigo-600 hover:text-indigo-800"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(employee._id);
-                            }}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        No employees found
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    employees.map((employee) => (
+                      <tr
+                        key={employee._id}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => navigate(`/employees/${employee._id}`)}
+                      >
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Avatar
+                              src={employee.profilePicture?.url}
+                              name={employee.name}
+                              size="sm"
+                            />
+                            <span className="text-xs font-medium text-gray-900">{employee.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-600">
+                          {employee.designation || "-"}
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-600">
+                          {employee.email || "-"}
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-600">
+                          {employee.hourlyRate?.toFixed(2) ||
+                            employee.hourlyCost?.toFixed(2) ||
+                            "-"}
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-600">
+                          ${employee.monthlyCost?.toFixed(2) || "0.00"}
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <FileText className="h-3 w-3 text-gray-400" />
+                            <span>{employee.documents?.length || 0}</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          <span
+                            className={`px-1.5 py-0.5 inline-flex text-[10px] font-semibold rounded-full ${
+                              employee.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {employee.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td
+                          className="px-2 py-1.5 whitespace-nowrap text-right text-xs font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                navigate(`/employees/${employee._id}`)
+                              }
+                              className="h-7 w-7 text-indigo-600 hover:text-indigo-800"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(employee);
+                              }}
+                              className="h-7 w-7 text-indigo-600 hover:text-indigo-800"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(employee._id);
+                              }}
+                              className="h-7 w-7 text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
 
         {/* Form Dialog */}
@@ -351,9 +408,77 @@ export const Employees = () => {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Profile Picture Section */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
+                  Profile Picture
+                </h3>
+                <div className="flex items-center gap-4">
+                  <Avatar
+                    src={editingEmployee?.profilePicture?.url}
+                    name={editingEmployee?.name || ''}
+                    size="lg"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <label className="block">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && editingEmployee?._id) {
+                            uploadProfilePictureMutation.mutate({
+                              employeeId: editingEmployee._id,
+                              file,
+                            });
+                          }
+                        }}
+                        disabled={!editingEmployee?._id || uploadProfilePictureMutation.isPending}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="cursor-pointer"
+                        disabled={!editingEmployee?._id || uploadProfilePictureMutation.isPending}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const input = e.target.closest('label').querySelector('input[type="file"]');
+                          input?.click();
+                        }}
+                      >
+                        <Upload className="h-3.5 w-3.5 mr-1.5" />
+                        {uploadProfilePictureMutation.isPending ? 'Uploading...' : 'Upload Picture'}
+                      </Button>
+                    </label>
+                    {editingEmployee?.profilePicture?.url && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => {
+                          if (editingEmployee?._id) {
+                            deleteProfilePictureMutation.mutate(editingEmployee._id);
+                          }
+                        }}
+                        disabled={deleteProfilePictureMutation.isPending}
+                      >
+                        <X className="h-3.5 w-3.5 mr-1.5" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Upload a profile picture (optional). Supported formats: JPG, PNG
+                </p>
+              </div>
+
               {/* Basic Info Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
                   Basic Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

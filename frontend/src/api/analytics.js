@@ -20,5 +20,10 @@ export const analyticsApi = {
     const response = await api.get(`/analytics/client/${clientId}/dashboard`, { params });
     return response.data;
   },
+
+  getDashboardStatistics: async () => {
+    const response = await api.get('/analytics/dashboard-statistics');
+    return response.data;
+  },
 };
 

@@ -1,9 +1,29 @@
 import { Card, CardContent } from '@/ui/card';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
-export const StatCard = ({ title, value, icon: Icon, gradient, trend, subtitle }) => {
+export const StatCard = ({ title, value, icon: Icon, gradient, trend, subtitle, to, onClick }) => {
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    if (to) {
+      navigate(to);
+    } else if (onClick) {
+      onClick();
+    }
+  };
+
+  const isClickable = to || onClick;
+
   return (
-    <Card className={cn('overflow-hidden transition-all hover:shadow-lg', gradient)}>
+    <Card 
+      className={cn(
+        'overflow-hidden transition-all hover:shadow-lg', 
+        gradient,
+        isClickable && 'cursor-pointer'
+      )}
+      onClick={isClickable ? handleClick : undefined}
+    >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">

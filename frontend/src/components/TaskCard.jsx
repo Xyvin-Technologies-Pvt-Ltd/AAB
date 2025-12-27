@@ -1,5 +1,6 @@
 import { Pencil, Trash2, User, Calendar, AlertCircle } from "lucide-react";
 import { Button } from "@/ui/button";
+import { Avatar } from "@/components/Avatar";
 import { format } from "date-fns";
 
 const priorityColors = {
@@ -97,25 +98,46 @@ export const TaskCard = ({
       <div className="grid grid-cols-3 gap-1.5 items-center mt-1.5 pt-1.5 border-t border-gray-100">
         {/* Assignee */}
         <div className="flex items-center gap-1 min-w-0">
-          <User className="h-2.5 w-2.5 text-gray-400 flex-shrink-0" />
-          <div className="text-[10px] text-gray-600 truncate min-w-0">
-            {task.assignedTo && Array.isArray(task.assignedTo) ? (
-              task.assignedTo.length > 0 ? (
-                <span className="truncate">
-                  {task.assignedTo[0]?.name || task.assignedTo[0]?.email || task.assignedTo[0]}
-                  {task.assignedTo.length > 1 && ` +${task.assignedTo.length - 1}`}
-                </span>
-              ) : (
-                <span className="text-gray-400">-</span>
-              )
-            ) : task.assignedTo ? (
-              <span className="truncate">
-                {task.assignedTo.name || task.assignedTo.email || task.assignedTo}
-              </span>
+          {task.assignedTo && Array.isArray(task.assignedTo) ? (
+            task.assignedTo.length > 0 ? (
+              <>
+                <Avatar
+                  src={task.assignedTo[0]?.profilePicture?.url}
+                  name={task.assignedTo[0]?.name || task.assignedTo[0]?.email || ''}
+                  size="xs"
+                />
+                <div className="text-[10px] text-gray-600 truncate min-w-0">
+                  <span className="truncate">
+                    {task.assignedTo[0]?.name || task.assignedTo[0]?.email || task.assignedTo[0]}
+                    {task.assignedTo.length > 1 && ` +${task.assignedTo.length - 1}`}
+                  </span>
+                </div>
+              </>
             ) : (
-              <span className="text-gray-400">-</span>
-            )}
-          </div>
+              <>
+                <User className="h-2.5 w-2.5 text-gray-400 flex-shrink-0" />
+                <span className="text-[10px] text-gray-400">-</span>
+              </>
+            )
+          ) : task.assignedTo ? (
+            <>
+              <Avatar
+                src={task.assignedTo.profilePicture?.url}
+                name={task.assignedTo.name || task.assignedTo.email || ''}
+                size="xs"
+              />
+              <div className="text-[10px] text-gray-600 truncate min-w-0">
+                <span className="truncate">
+                  {task.assignedTo.name || task.assignedTo.email || task.assignedTo}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <User className="h-2.5 w-2.5 text-gray-400 flex-shrink-0" />
+              <span className="text-[10px] text-gray-400">-</span>
+            </>
+          )}
         </div>
 
         {/* Due Date */}

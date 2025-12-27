@@ -12,6 +12,7 @@ router.get('/packages', analyticsController.getPackageProfitability);
 router.get('/clients', analyticsController.getClientProfitability);
 router.get('/employees', analyticsController.getEmployeeUtilization);
 router.get('/client/:id/dashboard', analyticsController.getClientDashboard);
+router.get('/dashboard-statistics', analyticsController.getDashboardStatistics);
 
 export default router;
 

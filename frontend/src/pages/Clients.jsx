@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/layout/AppLayout';
 import { clientsApi } from '@/api/clients';
+import { packagesApi } from '@/api/packages';
 import { Button } from '@/ui/button';
+import { Badge } from '@/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +29,24 @@ export const Clients = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['clients', search],
     queryFn: () => clientsApi.getAll({ search, limit: 100 }),
+  });
+
+  const { data: packagesData } = useQuery({
+    queryKey: ['packages'],
+    queryFn: () => packagesApi.getAll({ limit: 1000 }),
+  });
+
+  // Group packages by client ID
+  const packagesByClient = {};
+  const packages = packagesData?.data?.packages || [];
+  packages.forEach((pkg) => {
+    const clientId = typeof pkg.clientId === 'object' ? pkg.clientId._id : pkg.clientId;
+    if (clientId) {
+      if (!packagesByClient[clientId]) {
+        packagesByClient[clientId] = [];
+      }
+      packagesByClient[clientId].push(pkg);
+    }
   });
 
   const createMutation = useMutation({
@@ -117,32 +137,33 @@ export const Clients = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-3">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-            <p className="text-gray-600 mt-1">Manage your client relationships</p>
+            <h1 className="text-xl font-bold text-gray-900">Clients</h1>
+            <p className="text-xs text-gray-600 mt-0.5">Manage your client relationships</p>
           </div>
           <Button
             onClick={() => setShowForm(true)}
+            size="sm"
             className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
             Add Client
           </Button>
         </div>
 
         {/* Search */}
         <Card>
-          <div className="p-4">
+          <div className="p-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search clients..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -160,27 +181,30 @@ export const Clients = () => {
           <Card>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Contact Person
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Phone
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Documents
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Packages
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -188,83 +212,108 @@ export const Clients = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {clients.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center">
-                        <p className="text-gray-500">No clients found</p>
+                      <td colSpan="8" className="px-2 py-8 text-center">
+                        <p className="text-xs text-gray-500">No clients found</p>
                       </td>
                     </tr>
                   ) : (
-                    clients.map((client) => (
-                      <tr
-                        key={client._id}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/clients/${client._id}`)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-gray-900">{client.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-600">{client.contactPerson || '-'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-600">{client.email || '-'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-600">{client.phone || '-'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1">
-                            <FileText className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-600">{client.documents?.length || 0}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                              client.status === 'ACTIVE'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            {client.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/clients/${client._id}`)}
-                              className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                              title="View Details"
+                    clients.map((client) => {
+                      const clientPackages = packagesByClient[client._id] || [];
+                      return (
+                        <tr
+                          key={client._id}
+                          className="hover:bg-gray-50 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/clients/${client._id}`)}
+                        >
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <div className="text-xs font-medium text-gray-900">{client.name}</div>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <div className="text-xs text-gray-600">{client.contactPerson || '-'}</div>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <div className="text-xs text-gray-600">{client.email || '-'}</div>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <div className="text-xs text-gray-600">{client.phone || '-'}</div>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              <FileText className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-600">{client.documents?.length || 0}</span>
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <div className="flex flex-wrap gap-1">
+                              {clientPackages.length === 0 ? (
+                                <span className="text-xs text-gray-400">-</span>
+                              ) : (
+                                clientPackages.slice(0, 3).map((pkg) => (
+                                  <Badge
+                                    key={pkg._id}
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0.5"
+                                  >
+                                    {pkg.name}
+                                  </Badge>
+                                ))
+                              )}
+                              {clientPackages.length > 3 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
+                                  +{clientPackages.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                                client.status === 'ACTIVE'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
                             >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(client);
-                              }}
-                              className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(client._id);
-                              }}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              {client.status}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-right text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => navigate(`/clients/${client._id}`)}
+                                className="h-7 w-7 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                                title="View Details"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(client);
+                                }}
+                                className="h-7 w-7 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(client._id);
+                                }}
+                                className="h-7 w-7 text-red-600 hover:text-red-800 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

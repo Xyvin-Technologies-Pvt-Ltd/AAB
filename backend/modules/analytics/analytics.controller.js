@@ -59,3 +59,12 @@ export const getClientDashboard = async (req, res, next) => {
   }
 };
 
+export const getDashboardStatistics = async (req, res, next) => {
+  try {
+    const results = await analyticsService.getDashboardStatistics();
+    return successResponse(res, 200, 'Dashboard statistics retrieved successfully', results);
+  } catch (error) {
+    next(error);
+  }
+};
+

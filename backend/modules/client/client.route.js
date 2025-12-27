@@ -22,6 +22,13 @@ router.use(authenticate);
 // All routes accessible to both ADMIN and EMPLOYEE
 router.post('/', validate(createClientSchema), clientController.createClient);
 router.get('/', clientController.getClients);
+
+// Compliance routes (must be before /:id route to avoid route conflicts)
+router.get('/alerts/all', clientController.getAllAlerts);
+router.get('/submission-dates/next', clientController.getNextSubmissionDates);
+router.get('/calendar-events', clientController.getCalendarEvents);
+
+// Client-specific routes
 router.get('/:id', clientController.getClientById);
 router.put('/:id', validate(updateClientSchema), clientController.updateClient);
 router.delete('/:id', clientController.deleteClient);
@@ -65,8 +72,6 @@ router.patch(
 router.delete('/:id/managers/:personId', clientController.removePerson);
 
 // Compliance routes
-router.get('/alerts/all', clientController.getAllAlerts);
-router.get('/submission-dates/next', clientController.getNextSubmissionDates);
 router.get('/:id/compliance', clientController.getComplianceStatus);
 
 // Sync document data to persons

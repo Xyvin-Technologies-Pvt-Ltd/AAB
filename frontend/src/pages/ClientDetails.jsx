@@ -33,6 +33,11 @@ import { EmaraTaxCredentials } from "@/components/EmaraTaxCredentials";
 import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 import { Badge } from "@/ui/badge";
 import {
+  useBusinessInfoUpdate,
+  useAddPartner,
+  useAddManager,
+} from "@/api/queries/clientQueries";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -156,21 +161,6 @@ export const ClientDetails = () => {
       }
 
       // Quarterly cycles: Jan-Apr-Jul-Oct, Feb-May-Aug-Nov, or Mar-Jun-Sep-Dec
-      const monthNames = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-
       if (startMonth === 0) {
         return "Jan • Apr • Jul • Oct";
       } else if (startMonth === 1) {
@@ -199,7 +189,15 @@ export const ClientDetails = () => {
         status: client.status || "ACTIVE",
       });
     }
-  }, [client, isEditingContact]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    client?.name,
+    client?.contactPerson,
+    client?.email,
+    client?.phone,
+    client?.status,
+    isEditingContact,
+  ]);
 
   const updateClientMutation = useMutation({
     mutationFn: (data) => clientsApi.update(id, data),
@@ -222,6 +220,75 @@ export const ClientDetails = () => {
       });
     },
   });
+
+  const businessInfoUpdateMutation = useBusinessInfoUpdate();
+  const addPartnerMutation = useAddPartner();
+  const addManagerMutation = useAddManager();
+
+  const handleExtractedDataUpdate = async (document, extractedData) => {
+    try {
+      // Update business info if applicable
+      if (
+        [
+          "TRADE_LICENSE",
+          "VAT_CERTIFICATE",
+          "CORPORATE_TAX_CERTIFICATE",
+        ].includes(document.category) &&
+        extractedData.businessInfo
+      ) {
+        await businessInfoUpdateMutation.mutateAsync({
+          clientId: id,
+          data: extractedData.businessInfo,
+        });
+      }
+
+      // Add partners if any
+      if (extractedData.partners && Array.isArray(extractedData.partners)) {
+        for (const partnerName of extractedData.partners) {
+          if (partnerName && partnerName.trim()) {
+            try {
+              await addPartnerMutation.mutateAsync({
+                clientId: id,
+                data: { name: partnerName.trim() },
+              });
+            } catch {
+              // Partner might already exist, continue
+              console.log("Partner might already exist:", partnerName);
+            }
+          }
+        }
+      }
+
+      // Add manager if exists
+      if (extractedData.managerName && extractedData.managerName.trim()) {
+        try {
+          await addManagerMutation.mutateAsync({
+            clientId: id,
+            data: { name: extractedData.managerName.trim() },
+          });
+        } catch {
+          // Manager might already exist, continue
+          console.log(
+            "Manager might already exist:",
+            extractedData.managerName
+          );
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: "Extracted data updated successfully",
+        type: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to update extracted data",
+        type: "error",
+      });
+    }
+  };
 
   const handleContactSave = () => {
     updateClientMutation.mutate(contactFormData);
@@ -671,126 +738,120 @@ export const ClientDetails = () => {
                       </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">
-                          Client Name
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Client Name</p>
+                      {isEditingContact ? (
+                        <input
+                          type="text"
+                          value={contactFormData.name}
+                          onChange={(e) =>
+                            setContactFormData({
+                              ...contactFormData,
+                              name: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Client name"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium">
+                          {client.name || "-"}
                         </p>
-                        {isEditingContact ? (
-                          <input
-                            type="text"
-                            value={contactFormData.name}
-                            onChange={(e) =>
-                              setContactFormData({
-                                ...contactFormData,
-                                name: e.target.value,
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            placeholder="Client name"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium">
-                            {client.name || "-"}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">
-                          Contact Person
-                        </p>
-                        {isEditingContact ? (
-                          <input
-                            type="text"
-                            value={contactFormData.contactPerson}
-                            onChange={(e) =>
-                              setContactFormData({
-                                ...contactFormData,
-                                contactPerson: e.target.value,
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            placeholder="Contact person"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium">
-                            {client.contactPerson || "-"}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Email</p>
-                        {isEditingContact ? (
-                          <input
-                            type="email"
-                            value={contactFormData.email}
-                            onChange={(e) =>
-                              setContactFormData({
-                                ...contactFormData,
-                                email: e.target.value,
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            placeholder="Email address"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium">
-                            {client.email || "-"}
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Phone</p>
-                        {isEditingContact ? (
-                          <input
-                            type="tel"
-                            value={contactFormData.phone}
-                            onChange={(e) =>
-                              setContactFormData({
-                                ...contactFormData,
-                                phone: e.target.value,
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            placeholder="Phone number"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium">
-                            {client.phone || "-"}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Status</p>
-                        {isEditingContact ? (
-                          <select
-                            value={contactFormData.status}
-                            onChange={(e) =>
-                              setContactFormData({
-                                ...contactFormData,
-                                status: e.target.value,
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                          >
-                            <option value="ACTIVE">ACTIVE</option>
-                            <option value="INACTIVE">INACTIVE</option>
-                          </select>
-                        ) : (
-                          <span
-                            className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                              client.status === "ACTIVE"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {client.status}
-                          </span>
-                        )}
-                      </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">
+                        Contact Person
+                      </p>
+                      {isEditingContact ? (
+                        <input
+                          type="text"
+                          value={contactFormData.contactPerson}
+                          onChange={(e) =>
+                            setContactFormData({
+                              ...contactFormData,
+                              contactPerson: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Contact person"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium">
+                          {client.contactPerson || "-"}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Email</p>
+                      {isEditingContact ? (
+                        <input
+                          type="email"
+                          value={contactFormData.email}
+                          onChange={(e) =>
+                            setContactFormData({
+                              ...contactFormData,
+                              email: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Email address"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium">
+                          {client.email || "-"}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Phone</p>
+                      {isEditingContact ? (
+                        <input
+                          type="tel"
+                          value={contactFormData.phone}
+                          onChange={(e) =>
+                            setContactFormData({
+                              ...contactFormData,
+                              phone: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Phone number"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium">
+                          {client.phone || "-"}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Status</p>
+                      {isEditingContact ? (
+                        <select
+                          value={contactFormData.status}
+                          onChange={(e) =>
+                            setContactFormData({
+                              ...contactFormData,
+                              status: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                          <option value="ACTIVE">ACTIVE</option>
+                          <option value="INACTIVE">INACTIVE</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                            client.status === "ACTIVE"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {client.status}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -816,82 +877,102 @@ export const ClientDetails = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {nextVATSubmission && (
                       <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-3">
                           <FileText className="h-4 w-4 text-blue-600" />
                           <h3 className="text-sm font-semibold text-gray-900">
                             Next VAT Submission
                           </h3>
                         </div>
-                        <p className="text-xs text-gray-600 mb-1">
-                          <span className="font-medium">Date:</span>{" "}
-                          {formatDateDDMMYYYY(nextVATSubmission.submissionDate)}
-                        </p>
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Date</p>
+                            <p className="text-xs font-medium text-gray-900">
+                              {formatDateDDMMYYYY(
+                                nextVATSubmission.submissionDate
+                              )}
+                            </p>
+                          </div>
+                          {vatCycleMonths && (
+                            <div>
+                              <p className="text-xs text-gray-500 mb-0.5">
+                                Cycle
+                              </p>
+                              <p className="text-xs font-medium text-gray-900">
+                                {vatCycleMonths}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                         {nextVATSubmission.period && (
-                          <p className="text-xs text-gray-500 mb-1">
-                            Period:{" "}
-                            {formatDateDDMMYYYY(
-                              nextVATSubmission.period.startDate
-                            )}{" "}
-                            -{" "}
-                            {formatDateDDMMYYYY(
-                              nextVATSubmission.period.endDate
-                            )}
-                          </p>
+                          <div className="mb-2">
+                            <p className="text-xs text-gray-500 mb-0.5">
+                              Period
+                            </p>
+                            <p className="text-xs text-gray-700">
+                              {formatDateDDMMYYYY(
+                                nextVATSubmission.period.startDate
+                              )}{" "}
+                              -{" "}
+                              {formatDateDDMMYYYY(
+                                nextVATSubmission.period.endDate
+                              )}
+                            </p>
+                          </div>
                         )}
-                        {vatCycleMonths && (
-                          <p className="text-xs text-gray-500 mb-2">
-                            <span className="font-medium">Cycle:</span>{" "}
-                            {vatCycleMonths}
-                          </p>
-                        )}
-                        <Badge
-                          variant={
-                            nextVATSubmission.daysUntilDue <= 7
-                              ? "error"
-                              : nextVATSubmission.daysUntilDue <= 14
-                              ? "warning"
-                              : "info"
-                          }
-                          className="text-xs"
-                        >
-                          {nextVATSubmission.daysUntilDue < 0
-                            ? `Overdue ${Math.abs(
-                                nextVATSubmission.daysUntilDue
-                              )} days`
-                            : `${nextVATSubmission.daysUntilDue} days remaining`}
-                        </Badge>
+                        <div>
+                          <Badge
+                            variant={
+                              nextVATSubmission.daysUntilDue <= 7
+                                ? "error"
+                                : nextVATSubmission.daysUntilDue <= 14
+                                ? "warning"
+                                : "info"
+                            }
+                            className="text-xs"
+                          >
+                            {nextVATSubmission.daysUntilDue < 0
+                              ? `Overdue ${Math.abs(
+                                  nextVATSubmission.daysUntilDue
+                                )} days`
+                              : `${nextVATSubmission.daysUntilDue} days remaining`}
+                          </Badge>
+                        </div>
                       </div>
                     )}
                     {nextCorporateTaxSubmission && (
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-3">
                           <Receipt className="h-4 w-4 text-green-600" />
                           <h3 className="text-sm font-semibold text-gray-900">
                             Next Corporate Tax Submission
                           </h3>
                         </div>
-                        <p className="text-xs text-gray-600 mb-1">
-                          <span className="font-medium">Date:</span>{" "}
-                          {formatDateDDMMYYYY(
-                            nextCorporateTaxSubmission.submissionDate
-                          )}
-                        </p>
-                        <Badge
-                          variant={
-                            nextCorporateTaxSubmission.daysUntilDue <= 7
-                              ? "error"
-                              : nextCorporateTaxSubmission.daysUntilDue <= 14
-                              ? "warning"
-                              : "info"
-                          }
-                          className="text-xs"
-                        >
-                          {nextCorporateTaxSubmission.daysUntilDue < 0
-                            ? `Overdue ${Math.abs(
-                                nextCorporateTaxSubmission.daysUntilDue
-                              )} days`
-                            : `${nextCorporateTaxSubmission.daysUntilDue} days remaining`}
-                        </Badge>
+                        <div className="mb-2">
+                          <p className="text-xs text-gray-500 mb-0.5">Date</p>
+                          <p className="text-xs font-medium text-gray-900">
+                            {formatDateDDMMYYYY(
+                              nextCorporateTaxSubmission.submissionDate
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <Badge
+                            variant={
+                              nextCorporateTaxSubmission.daysUntilDue <= 7
+                                ? "error"
+                                : nextCorporateTaxSubmission.daysUntilDue <= 14
+                                ? "warning"
+                                : "info"
+                            }
+                            className="text-xs"
+                          >
+                            {nextCorporateTaxSubmission.daysUntilDue < 0
+                              ? `Overdue ${Math.abs(
+                                  nextCorporateTaxSubmission.daysUntilDue
+                                )} days`
+                              : `${nextCorporateTaxSubmission.daysUntilDue} days remaining`}
+                          </Badge>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -900,14 +981,14 @@ export const ClientDetails = () => {
             )}
 
             {/* Alerts & Packages Side by Side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols gap-3">
               {/* Alerts */}
               <div>
                 <CompactAlerts clientId={id} />
               </div>
 
               {/* Packages Section */}
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-2">
                 <div className="flex justify-between items-center">
                   <h2 className="text-base font-bold text-gray-900">
                     Packages
@@ -931,112 +1012,167 @@ export const ClientDetails = () => {
                     </div>
                   </Card>
                 ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {packages.map((pkg) => (
-                      <Card key={pkg._id}>
-                        <div className="p-3">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="text-sm font-semibold">
-                              {pkg.name}
-                            </h3>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditPackage(pkg)}
-                                title="Edit package"
+                  <Card>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                              Name
+                            </th>
+                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                              Type
+                            </th>
+                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                              Value
+                            </th>
+                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                              Services
+                            </th>
+                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                              Activities
+                            </th>
+                            <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-900 uppercase tracking-wider"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {packages.map((pkg) => (
+                            <tr
+                              key={pkg._id}
+                              className="hover:bg-gray-50 transition-colors cursor-pointer"
+                              onClick={() => handleEditPackage(pkg)}
+                            >
+                              <td className="px-2 py-1.5 whitespace-nowrap">
+                                <div className="text-xs font-medium text-gray-900">
+                                  {pkg.name}
+                                </div>
+                              </td>
+                              <td className="px-2 py-1.5 whitespace-nowrap">
+                                <div className="text-xs text-gray-600">
+                                  {pkg.type}
+                                </div>
+                              </td>
+                              <td className="px-2 py-1.5 whitespace-nowrap">
+                                <div className="text-xs text-gray-600">
+                                  AED {pkg.contractValue?.toFixed(2)}
+                                </div>
+                              </td>
+                              <td className="px-2 py-1.5 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                                    pkg.status === "ACTIVE"
+                                      ? "bg-green-100 text-green-800"
+                                      : pkg.status === "COMPLETED"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {pkg.status}
+                                </span>
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <div className="flex flex-wrap gap-1">
+                                  {pkg.services && pkg.services.length > 0 ? (
+                                    <>
+                                      {pkg.services
+                                        .slice(0, 2)
+                                        .map((service) => (
+                                          <Badge
+                                            key={
+                                              typeof service === "object"
+                                                ? service._id
+                                                : service
+                                            }
+                                            variant="outline"
+                                            className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
+                                          >
+                                            {typeof service === "object"
+                                              ? service.name
+                                              : service}
+                                          </Badge>
+                                        ))}
+                                      {pkg.services.length > 2 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] px-1.5 py-0.5"
+                                        >
+                                          +{pkg.services.length - 2}
+                                        </Badge>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">
+                                      -
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <div className="flex flex-wrap gap-1">
+                                  {pkg.activities &&
+                                  pkg.activities.length > 0 ? (
+                                    <>
+                                      {pkg.activities
+                                        .slice(0, 2)
+                                        .map((activity) => (
+                                          <Badge
+                                            key={
+                                              typeof activity === "object"
+                                                ? activity._id
+                                                : activity
+                                            }
+                                            variant="outline"
+                                            className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-700 border-purple-200"
+                                          >
+                                            {typeof activity === "object"
+                                              ? activity.name
+                                              : activity}
+                                          </Badge>
+                                        ))}
+                                      {pkg.activities.length > 2 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] px-1.5 py-0.5"
+                                        >
+                                          +{pkg.activities.length - 2}
+                                        </Badge>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">
+                                      -
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td
+                                className="px-2 py-1.5 whitespace-nowrap text-right"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (confirm("Delete this package?")) {
-                                    deletePackageMutation.mutate(pkg._id);
-                                  }
-                                }}
-                                className="text-red-600"
-                                title="Delete package"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-xs mb-2">
-                            <div>
-                              <span className="text-gray-500">Type</span>
-                              <p className="font-medium">{pkg.type}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Value</span>
-                              <p className="font-medium">
-                                AED {pkg.contractValue?.toFixed(2)}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Status</span>
-                              <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-xs mt-0.5 ${
-                                  pkg.status === "ACTIVE"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {pkg.status}
-                              </span>
-                            </div>
-                          </div>
-                          {pkg.services && pkg.services.length > 0 && (
-                            <div className="mb-2">
-                              <span className="text-xs text-gray-500">
-                                Services:{" "}
-                              </span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {pkg.services.map((service) => (
-                                  <span
-                                    key={
-                                      typeof service === "object"
-                                        ? service._id
-                                        : service
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm("Delete this package?")) {
+                                      deletePackageMutation.mutate(pkg._id);
                                     }
-                                    className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded"
-                                  >
-                                    {typeof service === "object"
-                                      ? service.name
-                                      : service}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {pkg.activities && pkg.activities.length > 0 && (
-                            <div>
-                              <span className="text-xs text-gray-500">
-                                Activities:{" "}
-                              </span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {pkg.activities.map((activity) => (
-                                  <span
-                                    key={
-                                      typeof activity === "object"
-                                        ? activity._id
-                                        : activity
-                                    }
-                                    className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs rounded"
-                                  >
-                                    {typeof activity === "object"
-                                      ? activity.name
-                                      : activity}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                                  }}
+                                  className="h-6 w-6 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  title="Delete package"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
                 )}
               </div>
             </div>
@@ -1052,6 +1188,9 @@ export const ClientDetails = () => {
                 <DocumentChecklist
                   clientId={id}
                   documents={client.documents || []}
+                  partners={client.partners || []}
+                  managers={client.managers || []}
+                  onExtractedDataUpdate={handleExtractedDataUpdate}
                 />
               </CardContent>
             </Card>
@@ -1062,7 +1201,7 @@ export const ClientDetails = () => {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">
-                  Business Information
+                  
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1085,13 +1224,14 @@ export const ClientDetails = () => {
               clientId={id}
               partners={client.partners || []}
               managers={client.managers || []}
+              documents={client.documents || []}
             />
           </TabsContent>
         </Tabs>
 
         {/* Package Form Dialog */}
         <Dialog open={showPackageForm} onOpenChange={setShowPackageForm}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingPackage ? "Edit Package" : "Add New Package"}
@@ -1103,189 +1243,193 @@ export const ClientDetails = () => {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handlePackageSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label
-                  htmlFor="name"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Package Name *
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  defaultValue={editingPackage?.name}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Services
-                </label>
-                <MultiSelect
-                  options={services}
-                  selected={selectedServices}
-                  onChange={setSelectedServices}
-                  placeholder="Select services..."
-                  searchPlaceholder="Search services..."
-                  emptyMessage="No services found"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Activities
-                </label>
-                <MultiSelect
-                  options={activities}
-                  selected={selectedActivities}
-                  onChange={setSelectedActivities}
-                  placeholder="Select activities..."
-                  searchPlaceholder="Search activities..."
-                  emptyMessage="No activities found"
-                />
-              </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="type"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Type *
-                </label>
-                <select
-                  id="type"
-                  name="type"
-                  required
-                  value={packageType}
-                  onChange={(e) => setPackageType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="RECURRING">Recurring</option>
-                  <option value="ONE_TIME">One Time</option>
-                </select>
-              </div>
-              {packageType === "RECURRING" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label
-                    htmlFor="billingFrequency"
+                    htmlFor="name"
                     className="text-sm font-medium text-gray-700"
                   >
-                    Billing Frequency *
+                    Package Name *
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    defaultValue={editingPackage?.name}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="type"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Type *
                   </label>
                   <select
-                    id="billingFrequency"
-                    name="billingFrequency"
-                    required={packageType === "RECURRING"}
-                    defaultValue={editingPackage?.billingFrequency}
+                    id="type"
+                    name="type"
+                    required
+                    value={packageType}
+                    onChange={(e) => setPackageType(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="">Select</option>
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="QUARTERLY">Quarterly</option>
-                    <option value="YEARLY">Yearly</option>
+                    <option value="RECURRING">Recurring</option>
+                    <option value="ONE_TIME">One Time</option>
                   </select>
                 </div>
-              )}
-              <div className="space-y-2">
-                <label
-                  htmlFor="contractValue"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Contract Value (AED) *
-                </label>
-                <input
-                  id="contractValue"
-                  name="contractValue"
-                  type="number"
-                  step="0.01"
-                  required
-                  defaultValue={editingPackage?.contractValue}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="startDate"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Start Date *
-                </label>
-                <input
-                  id="startDate"
-                  name="startDate"
-                  type="date"
-                  required
-                  defaultValue={
-                    editingPackage?.startDate
-                      ? new Date(editingPackage.startDate)
-                          .toISOString()
-                          .split("T")[0]
-                      : ""
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              {editingPackage && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="stillActive"
-                      checked={stillActive}
-                      onChange={(e) => setStillActive(e.target.checked)}
-                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                    />
+                {packageType === "RECURRING" && (
+                  <div className="space-y-2">
                     <label
-                      htmlFor="stillActive"
-                      className="text-sm font-medium text-gray-700 cursor-pointer"
+                      htmlFor="billingFrequency"
+                      className="text-sm font-medium text-gray-700"
                     >
-                      Still Active
+                      Billing Frequency *
                     </label>
+                    <select
+                      id="billingFrequency"
+                      name="billingFrequency"
+                      required={packageType === "RECURRING"}
+                      defaultValue={editingPackage?.billingFrequency}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select</option>
+                      <option value="MONTHLY">Monthly</option>
+                      <option value="QUARTERLY">Quarterly</option>
+                      <option value="YEARLY">Yearly</option>
+                    </select>
                   </div>
-                  {!stillActive && (
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="endDate"
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        End Date *
-                      </label>
+                )}
+                <div className="space-y-2">
+                  <label
+                    htmlFor="contractValue"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Contract Value (AED) *
+                  </label>
+                  <input
+                    id="contractValue"
+                    name="contractValue"
+                    type="number"
+                    step="0.01"
+                    required
+                    defaultValue={editingPackage?.contractValue}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="startDate"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Start Date *
+                  </label>
+                  <input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    required
+                    defaultValue={
+                      editingPackage?.startDate
+                        ? new Date(editingPackage.startDate)
+                            .toISOString()
+                            .split("T")[0]
+                        : ""
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                {editingPackage && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 pt-6">
                       <input
-                        id="endDate"
-                        name="endDate"
-                        type="date"
-                        required={!stillActive}
-                        defaultValue={
-                          editingPackage?.endDate
-                            ? new Date(editingPackage.endDate)
-                                .toISOString()
-                                .split("T")[0]
-                            : ""
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        type="checkbox"
+                        id="stillActive"
+                        checked={stillActive}
+                        onChange={(e) => setStillActive(e.target.checked)}
+                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                       />
+                      <label
+                        htmlFor="stillActive"
+                        className="text-sm font-medium text-gray-700 cursor-pointer"
+                      >
+                        Still Active
+                      </label>
                     </div>
-                  )}
-                </>
-              )}
-              <div className="space-y-2">
-                <label
-                  htmlFor="status"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Status
-                </label>
-                <select
-                  id="status"
-                  name="status"
-                  defaultValue={editingPackage?.status || "ACTIVE"}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
+                    {!stillActive && (
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="endDate"
+                          className="text-sm font-medium text-gray-700"
+                        >
+                          End Date *
+                        </label>
+                        <input
+                          id="endDate"
+                          name="endDate"
+                          type="date"
+                          required={!stillActive}
+                          defaultValue={
+                            editingPackage?.endDate
+                              ? new Date(editingPackage.endDate)
+                                  .toISOString()
+                                  .split("T")[0]
+                              : ""
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <label
+                    htmlFor="status"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Status
+                  </label>
+                  <select
+                    id="status"
+                    name="status"
+                    defaultValue={editingPackage?.status || "ACTIVE"}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="COMPLETED">Completed</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Services
+                  </label>
+                  <MultiSelect
+                    options={services}
+                    selected={selectedServices}
+                    onChange={setSelectedServices}
+                    placeholder="Select services..."
+                    searchPlaceholder="Search services..."
+                    emptyMessage="No services found"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Activities
+                  </label>
+                  <MultiSelect
+                    options={activities}
+                    selected={selectedActivities}
+                    onChange={setSelectedActivities}
+                    placeholder="Select activities..."
+                    searchPlaceholder="Search activities..."
+                    emptyMessage="No activities found"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button

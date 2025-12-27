@@ -15,6 +15,10 @@ const employeeSchema = new mongoose.Schema(
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
     },
+    dateOfBirth: {
+      type: Date,
+      default: null,
+    },
     designation: {
       type: String,
       trim: true,
@@ -56,6 +60,14 @@ const employeeSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    profilePicture: {
+      url: {
+        type: String,
+      },
+      key: {
+        type: String,
+      },
     },
   },
   {

@@ -93,3 +93,45 @@ export const deleteDocument = async (req, res, next) => {
   }
 };
 
+export const uploadProfilePicture = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Check if file is an image
+    if (!req.file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ message: 'File must be an image' });
+    }
+
+    const { uploadFile } = await import('../../helpers/s3Storage.js');
+    const fileData = await uploadFile(req.file, 'employees/profile-pictures');
+
+    const profilePictureData = {
+      url: fileData.url,
+      key: fileData.key,
+    };
+
+    const employee = await employeeService.updateProfilePicture(req.params.id, profilePictureData);
+    return successResponse(res, 200, 'Profile picture uploaded successfully', employee);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteProfilePicture = async (req, res, next) => {
+  try {
+    const { employee, oldKey } = await employeeService.removeProfilePicture(req.params.id);
+
+    // Delete from S3 if exists
+    if (oldKey) {
+      const { deleteFile } = await import('../../helpers/s3Storage.js');
+      await deleteFile(oldKey);
+    }
+
+    return successResponse(res, 200, 'Profile picture deleted successfully', employee);
+  } catch (error) {
+    next(error);
+  }
+};
+

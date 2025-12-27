@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/store/authStore';
 import {
   LayoutDashboard,
   Users,
@@ -10,7 +9,6 @@ import {
   Calendar,
   Menu,
   X,
-  LogOut,
   Bell,
   Settings,
 } from 'lucide-react';
@@ -27,18 +25,11 @@ const menuItems = [
   { path: '/employees', label: 'Employees', icon: UserCog },
   { path: '/time-entries', label: 'Time Entries', icon: Clock },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export const Sidebar = () => {
   const location = useLocation();
-  const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
-
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/login';
-  };
 
   return (
     <>
@@ -104,27 +95,21 @@ export const Sidebar = () => {
             })}
           </nav>
 
-          {/* User Section */}
+          {/* Settings Section */}
           <div className="p-4 border-t border-indigo-700">
-            <div className="flex items-center space-x-3 px-4 py-3 rounded-lg bg-indigo-700/50 mb-2">
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <span className="text-indigo-600 font-semibold">
-                  {user?.email?.charAt(0).toUpperCase() || 'U'}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.email || 'User'}</p>
-                <p className="text-xs text-indigo-300">{user?.role || 'Employee'}</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-indigo-100 hover:bg-indigo-700 hover:text-white"
-              onClick={handleLogout}
+            <Link
+              to="/settings"
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                'flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200',
+                location.pathname === '/settings'
+                  ? 'bg-white text-indigo-900 shadow-lg'
+                  : 'text-indigo-100 hover:bg-indigo-700 hover:text-white'
+              )}
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+              <Settings className={cn('h-5 w-5', location.pathname === '/settings' ? 'text-indigo-600' : 'text-indigo-300')} />
+              <span className="font-medium">Settings</span>
+            </Link>
           </div>
         </div>
       </aside>

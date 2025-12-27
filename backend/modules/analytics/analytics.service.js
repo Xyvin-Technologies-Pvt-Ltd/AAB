@@ -395,3 +395,213 @@ export const getClientDashboard = async (clientId, filters = {}) => {
   };
 };
 
+/**
+ * Get dashboard statistics for next 4 months
+ * Returns tasks count and VAT/CT/Expiry submissions count by month
+ */
+export const getDashboardStatistics = async () => {
+  const Task = (await import('../task/task.model.js')).default;
+  const Client = (await import('../client/client.model.js')).default;
+  const {
+    calculateNextVATSubmissionDate,
+    calculateNextCorporateTaxSubmissionDate,
+  } = await import('../../services/compliance.service.js');
+
+  const now = new Date();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // Initialize data for next 4 months
+  const monthsData = [];
+  for (let i = 0; i < 4; i++) {
+    const monthDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    monthsData.push({
+      month: monthDate.getMonth() + 1,
+      year: monthDate.getFullYear(),
+      monthLabel: `${monthNames[monthDate.getMonth()]} ${monthDate.getFullYear()}`,
+      monthStart: new Date(monthDate.getFullYear(), monthDate.getMonth(), 1),
+      monthEnd: new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0),
+    });
+  }
+
+  // Get all tasks with due dates in next 4 months
+  const fourMonthsFromNow = new Date(now.getFullYear(), now.getMonth() + 4, 0);
+  const tasks = await Task.find({
+    dueDate: {
+      $gte: now,
+      $lte: fourMonthsFromNow,
+    },
+  }).populate('clientId', 'name').lean();
+
+  // Group tasks by month
+  const tasksByMonth = monthsData.map((monthInfo) => {
+    const monthTasks = tasks.filter((task) => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate);
+      return (
+        taskDate.getMonth() + 1 === monthInfo.month &&
+        taskDate.getFullYear() === monthInfo.year
+      );
+    });
+
+    return {
+      month: monthInfo.month,
+      monthLabel: monthInfo.monthLabel,
+      todo: monthTasks.filter((t) => t.status === 'TODO').length,
+      inProgress: monthTasks.filter((t) => t.status === 'IN_PROGRESS').length,
+      done: monthTasks.filter((t) => t.status === 'DONE').length,
+      total: monthTasks.length,
+    };
+  });
+
+  // Get all active clients
+  const clients = await Client.find({ status: 'ACTIVE' }).lean();
+
+  // Helper function to generate VAT submissions for next 4 months
+  const generateVATSubmissionsForMonths = (client, monthsData) => {
+    const submissions = [];
+    const now = new Date();
+    const vatFilingDaysAfterPeriod = 28;
+    const maxDate = monthsData[monthsData.length - 1].monthEnd;
+
+    if (!client.businessInfo) return submissions;
+
+    // Use tax periods if available
+    if (client.businessInfo.vatTaxPeriods && client.businessInfo.vatTaxPeriods.length > 0) {
+      const vatTaxPeriods = client.businessInfo.vatTaxPeriods;
+      const sortedPeriods = [...vatTaxPeriods].sort((a, b) =>
+        new Date(a.startDate) - new Date(b.startDate)
+      );
+
+      // Generate submissions for the next 4 months
+      const generatedDates = new Set();
+      const currentYear = now.getFullYear();
+
+      // Generate submissions for current year and next year
+      for (let yearOffset = 0; yearOffset <= 1; yearOffset++) {
+        for (const period of sortedPeriods) {
+          const periodStart = new Date(period.startDate);
+          const periodEnd = new Date(period.endDate);
+
+          const targetPeriodStart = new Date(periodStart);
+          targetPeriodStart.setFullYear(currentYear + yearOffset);
+
+          const targetPeriodEnd = new Date(periodEnd);
+          targetPeriodEnd.setFullYear(currentYear + yearOffset);
+
+          const submissionDate = new Date(targetPeriodEnd);
+          submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
+
+          // Only add if within date range and not already added
+          const dateKey = submissionDate.toISOString().split('T')[0];
+          if (
+            submissionDate >= now &&
+            submissionDate <= maxDate &&
+            !generatedDates.has(dateKey)
+          ) {
+            generatedDates.add(dateKey);
+            submissions.push({
+              submissionDate: new Date(submissionDate),
+            });
+          }
+        }
+      }
+    } else if (client.businessInfo.vatReturnCycle) {
+      // Fallback to cycle-based calculation
+      const cycle = client.businessInfo.vatReturnCycle;
+      let currentDate = new Date(now);
+
+      if (cycle === 'MONTHLY') {
+        while (currentDate <= maxDate) {
+          const periodEndDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+          const submissionDate = new Date(periodEndDate);
+          submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
+
+          if (submissionDate >= now && submissionDate <= maxDate) {
+            submissions.push({
+              submissionDate: new Date(submissionDate),
+            });
+          }
+
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+      } else if (cycle === 'QUARTERLY') {
+        while (currentDate <= maxDate) {
+          const periodEndDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 3, 0);
+          const submissionDate = new Date(periodEndDate);
+          submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
+
+          if (submissionDate >= now && submissionDate <= maxDate) {
+            submissions.push({
+              submissionDate: new Date(submissionDate),
+            });
+          }
+
+          currentDate.setMonth(currentDate.getMonth() + 3);
+        }
+      }
+    }
+
+    return submissions;
+  };
+
+  // Group submissions by month (VAT, Corporate Tax, Expiry)
+  const submissionsByMonth = monthsData.map((monthInfo) => {
+    let vat = 0;
+    let corporateTax = 0;
+    let expiry = 0;
+
+    clients.forEach((client) => {
+      // VAT submissions - get all for next 4 months
+      const vatSubmissions = generateVATSubmissionsForMonths(client, monthsData);
+      vatSubmissions.forEach((submission) => {
+        const submissionDate = new Date(submission.submissionDate);
+        if (
+          submissionDate.getMonth() + 1 === monthInfo.month &&
+          submissionDate.getFullYear() === monthInfo.year
+        ) {
+          vat++;
+        }
+      });
+
+      // Corporate Tax submissions - only next one
+      const ctSubmission = calculateNextCorporateTaxSubmissionDate(client);
+      if (ctSubmission && ctSubmission.submissionDate) {
+        const submissionDate = new Date(ctSubmission.submissionDate);
+        if (
+          submissionDate.getMonth() + 1 === monthInfo.month &&
+          submissionDate.getFullYear() === monthInfo.year &&
+          submissionDate >= now
+        ) {
+          corporateTax++;
+        }
+      }
+
+      // License expiry
+      if (client.businessInfo?.licenseExpiryDate) {
+        const expiryDate = new Date(client.businessInfo.licenseExpiryDate);
+        if (
+          expiryDate.getMonth() + 1 === monthInfo.month &&
+          expiryDate.getFullYear() === monthInfo.year &&
+          expiryDate >= now
+        ) {
+          expiry++;
+        }
+      }
+    });
+
+    return {
+      month: monthInfo.month,
+      monthLabel: monthInfo.monthLabel,
+      vat,
+      corporateTax,
+      expiry,
+      total: vat + corporateTax + expiry,
+    };
+  });
+
+  return {
+    tasks: tasksByMonth,
+    submissions: submissionsByMonth,
+  };
+};
+

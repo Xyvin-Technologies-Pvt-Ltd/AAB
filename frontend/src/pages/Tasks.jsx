@@ -11,6 +11,7 @@ import { Button } from "@/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { AdvancedFilters } from "@/components/AdvancedFilters";
 import { TaskDetailDrawer } from "@/components/TaskDetailDrawer";
+import { Avatar } from "@/components/Avatar";
 import { SelectSearch } from "@/ui/select-search";
 import { MultiSelect } from "@/ui/multi-select";
 import { FileUpload } from "@/components/FileUpload";
@@ -37,6 +38,15 @@ import {
   ArrowUpDown,
   Filter,
   X,
+  User,
+  Calendar,
+  Building2,
+  Package,
+  Briefcase,
+  Activity,
+  AlertCircle,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { format } from "date-fns";
@@ -529,58 +539,67 @@ export const Tasks = () => {
           />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-50">
                 <tr>
                   <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center gap-1">
                       Task Name
-                      <ArrowUpDown className="h-3 w-3" />
+                      <ArrowUpDown className="h-2.5 w-2.5" />
                     </div>
                   </th>
                   <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("clientId")}
                   >
                     <div className="flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
                       Client
-                      <ArrowUpDown className="h-3 w-3" />
+                      <ArrowUpDown className="h-2.5 w-2.5" />
                     </div>
                   </th>
                   <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("assignedTo")}
                   >
                     <div className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
                       Assignee
-                      <ArrowUpDown className="h-3 w-3" />
+                      <ArrowUpDown className="h-2.5 w-2.5" />
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Services
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="h-3 w-3" />
+                      Services
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Activities
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                    <div className="flex items-center gap-1">
+                      <Activity className="h-3 w-3" />
+                      Activities
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                     Priority
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                     Status
                   </th>
                   <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("dueDate")}
                   >
                     <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
                       Due Date
-                      <ArrowUpDown className="h-3 w-3" />
+                      <ArrowUpDown className="h-2.5 w-2.5" />
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -590,7 +609,7 @@ export const Tasks = () => {
                   <tr>
                     <td
                       colSpan="9"
-                      className="px-6 py-12 text-center text-gray-500"
+                      className="px-3 py-8 text-center text-xs text-gray-500"
                     >
                       No tasks found
                     </td>
@@ -619,89 +638,109 @@ export const Tasks = () => {
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() => handleTaskClick(task)}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                        <td className="px-3 py-2">
+                          <div className="text-xs font-medium text-gray-900 truncate max-w-[200px]">
                             {task.name}
                           </div>
                           {task.description && (
-                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                            <div className="text-[10px] text-gray-500 truncate max-w-[200px] mt-0.5">
                               {task.description}
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {task.clientId?.name || "-"}
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex items-center gap-1 text-xs text-gray-600">
+                            <Building2 className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                            <span className="truncate max-w-[120px]">{task.clientId?.name || "-"}</span>
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {task.assignedTo && Array.isArray(task.assignedTo) ? (
-                            task.assignedTo.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {task.assignedTo.map((emp, idx) => (
-                                  <span
-                                    key={emp._id || emp || idx}
-                                    className="inline-block"
-                                  >
-                                    {emp.name || emp.email || emp}
-                                    {idx < task.assignedTo.length - 1 && ","}
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                            {task.assignedTo && Array.isArray(task.assignedTo) ? (
+                              task.assignedTo.length > 0 ? (
+                                <>
+                                  <Avatar
+                                    src={task.assignedTo[0]?.profilePicture?.url}
+                                    name={task.assignedTo[0]?.name || task.assignedTo[0]?.email || ''}
+                                    size="xs"
+                                  />
+                                  <span className="truncate max-w-[100px]">
+                                    {task.assignedTo[0]?.name || task.assignedTo[0]?.email || task.assignedTo[0]}
+                                    {task.assignedTo.length > 1 && ` +${task.assignedTo.length - 1}`}
                                   </span>
-                                ))}
-                              </div>
+                                </>
+                              ) : (
+                                <>
+                                  <User className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                  <span className="text-gray-400">-</span>
+                                </>
+                              )
+                            ) : task.assignedTo ? (
+                              <>
+                                <Avatar
+                                  src={task.assignedTo.profilePicture?.url}
+                                  name={task.assignedTo.name || task.assignedTo.email || ''}
+                                  size="xs"
+                                />
+                                <span className="truncate max-w-[100px]">
+                                  {task.assignedTo.name || task.assignedTo.email || task.assignedTo}
+                                </span>
+                              </>
                             ) : (
-                              "Unassigned"
-                            )
-                          ) : task.assignedTo ? (
-                            task.assignedTo.name ||
-                            task.assignedTo.email ||
-                            task.assignedTo
-                          ) : (
-                            "Unassigned"
-                          )}
+                              <>
+                                <User className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                <span className="text-gray-400">-</span>
+                              </>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td className="px-3 py-2">
                           {task.services && task.services.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {task.services.slice(0, 2).map((service, idx) => (
+                            <div className="flex flex-wrap gap-0.5">
+                              {task.services.slice(0, 1).map((service, idx) => (
                                 <span
                                   key={service._id || service || idx}
-                                  className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs"
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px]"
                                 >
-                                  {service.name || service}
+                                  <Briefcase className="h-2.5 w-2.5" />
+                                  <span className="truncate max-w-[80px]">{service.name || service}</span>
                                 </span>
                               ))}
-                              {task.services.length > 2 && (
-                                <span className="text-xs text-gray-500">
-                                  +{task.services.length - 2}
+                              {task.services.length > 1 && (
+                                <span className="text-[10px] text-gray-500 px-1">
+                                  +{task.services.length - 1}
                                 </span>
                               )}
                             </div>
                           ) : (
-                            "-"
+                            <span className="text-[10px] text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td className="px-3 py-2">
                           {task.activities && task.activities.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {task.activities.slice(0, 2).map((activity, idx) => (
+                            <div className="flex flex-wrap gap-0.5">
+                              {task.activities.slice(0, 1).map((activity, idx) => (
                                 <span
                                   key={activity._id || activity || idx}
-                                  className="inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs"
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px]"
                                 >
-                                  {activity.name || activity}
+                                  <Activity className="h-2.5 w-2.5" />
+                                  <span className="truncate max-w-[80px]">{activity.name || activity}</span>
                                 </span>
                               ))}
-                              {task.activities.length > 2 && (
-                                <span className="text-xs text-gray-500">
-                                  +{task.activities.length - 2}
+                              {task.activities.length > 1 && (
+                                <span className="text-[10px] text-gray-500 px-1">
+                                  +{task.activities.length - 1}
                                 </span>
                               )}
                             </div>
                           ) : (
-                            "-"
+                            <span className="text-[10px] text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 py-2 whitespace-nowrap">
                           <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            className={`px-1.5 py-0.5 inline-flex text-[10px] font-semibold rounded-full ${
                               priorityColors[task.priority] ||
                               priorityColors.MEDIUM
                             }`}
@@ -709,47 +748,56 @@ export const Tasks = () => {
                             {task.priority || "MEDIUM"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 py-2 whitespace-nowrap">
                           <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            className={`px-1.5 py-0.5 inline-flex text-[10px] font-semibold rounded-full ${
                               statusColors[task.status] || statusColors.TODO
                             }`}
                           >
                             {task.status?.replace("_", " ") || "TODO"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {task.dueDate ? (
-                            <span
-                              className={
-                                isOverdue ? "text-red-600 font-semibold" : ""
-                              }
-                            >
-                              {format(new Date(task.dueDate), "MMM dd, yyyy")}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex items-center gap-1 text-xs">
+                            <Calendar className={`h-3 w-3 flex-shrink-0 ${
+                              isOverdue ? "text-red-500" : "text-gray-400"
+                            }`} />
+                            {task.dueDate ? (
+                              <span
+                                className={
+                                  isOverdue ? "text-red-600 font-semibold" : "text-gray-600"
+                                }
+                              >
+                                {format(new Date(task.dueDate), "MMM dd")}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                            {isOverdue && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-3 py-2 whitespace-nowrap text-right">
                           <div
-                            className="flex items-center justify-end gap-2"
+                            className="flex items-center justify-end gap-1"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(task)}
+                              className="h-6 w-6 p-0"
+                              title="Edit"
                             >
-                              Edit
+                              <Pencil className="h-3 w-3" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(task._id)}
-                              className="text-red-600"
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              title="Delete"
                             >
-                              Delete
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         </td>
@@ -771,14 +819,14 @@ export const Tasks = () => {
 
         {/* Filter Drawer */}
         <Drawer open={showFilters} onOpenChange={setShowFilters}>
-          <DrawerContent side="right" className="sm:max-w-md">
-            <DrawerHeader>
-              <DrawerTitle>Filter Tasks</DrawerTitle>
-              <DrawerDescription>
-                Filter tasks by client, package, assignee, priority, and more.
+          <DrawerContent side="right" className="sm:max-w-sm">
+            <DrawerHeader className="px-4 pt-4 pb-3 border-b border-gray-200">
+              <DrawerTitle className="text-base font-semibold">Filter Tasks</DrawerTitle>
+              <DrawerDescription className="text-xs text-gray-500 mt-1">
+                Refine your task list with filters
               </DrawerDescription>
             </DrawerHeader>
-            <div className="px-6 pb-6 overflow-y-auto">
+            <div className="px-4 py-4 overflow-y-auto flex-1">
               <AdvancedFilters
                 clients={clients}
                 packages={packagesData?.data?.packages || []}

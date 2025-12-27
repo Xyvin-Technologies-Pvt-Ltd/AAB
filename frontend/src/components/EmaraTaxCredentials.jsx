@@ -139,7 +139,7 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
             </div>
           )}
         </div>
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="text-xs text-gray-500 mb-1">Username</p>
             {isEditing ? (

@@ -3,28 +3,21 @@ import { useQuery } from "@tanstack/react-query";
 import { clientsApi } from "@/api/clients";
 import { packagesApi } from "@/api/packages";
 import { employeesApi } from "@/api/employees";
-import { timeEntriesApi } from "@/api/timeEntries";
 import { tasksApi } from "@/api/tasks";
 import { StatCard } from "@/components/StatCard";
+import { DashboardGraphs } from "@/components/DashboardGraphs";
 import {
   Users,
   Package,
   UserCog,
-  Clock,
-  TrendingUp,
-  DollarSign,
   Calendar,
   AlertCircle,
-  FileText,
-  Receipt,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import { Button } from "@/ui/button";
-import { Badge } from "@/ui/badge";
 import { useAuthStore } from "@/store/authStore";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 
 export const Dashboard = () => {
   const { user } = useAuthStore();
@@ -45,29 +38,53 @@ export const Dashboard = () => {
     queryFn: () => employeesApi.getAll({ limit: 1 }),
   });
 
-  const { data: timeEntriesData } = useQuery({
-    queryKey: ["time-entries", "recent"],
-    queryFn: () => timeEntriesApi.getAll({ limit: 5 }),
-  });
-
   const { data: tasksData } = useQuery({
     queryKey: ["tasks", "dashboard"],
     queryFn: () => tasksApi.getAll({ limit: 1000 }),
   });
 
-  const { data: submissionDatesData } = useQuery({
-    queryKey: ["submission-dates"],
-    queryFn: () => clientsApi.getNextSubmissionDates(),
+  // Get current and next month for alerts count
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const nextMonth = nextMonthDate.getMonth() + 1;
+  const nextYear = nextMonthDate.getFullYear();
+
+  // Fetch alerts for both current and next month to get total count
+  const { data: currentMonthAlerts } = useQuery({
+    queryKey: ["allAlerts", currentMonth, currentYear, "all"],
+    queryFn: () => clientsApi.getAllAlerts({
+      type: undefined,
+      severity: undefined,
+      month: currentMonth,
+      year: currentYear,
+    }),
+  });
+
+  const { data: nextMonthAlerts } = useQuery({
+    queryKey: ["allAlerts", nextMonth, nextYear, "all"],
+    queryFn: () => clientsApi.getAllAlerts({
+      type: undefined,
+      severity: undefined,
+      month: nextMonth,
+      year: nextYear,
+    }),
   });
 
   const totalClients = clientsData?.data?.pagination?.total || 0;
   const totalPackages = packagesData?.data?.pagination?.total || 0;
   const totalEmployees = employeesData?.data?.pagination?.total || 0;
-  const recentEntries = timeEntriesData?.data?.timeEntries || [];
   const allTasks = tasksData?.data?.tasks || [];
 
+  // Calculate total alerts count
+  const currentAlerts = currentMonthAlerts?.data?.alerts || [];
+  const currentDeadlines = currentMonthAlerts?.data?.deadlines || [];
+  const nextAlerts = nextMonthAlerts?.data?.alerts || [];
+  const nextDeadlines = nextMonthAlerts?.data?.deadlines || [];
+  const totalAlerts = currentAlerts.length + currentDeadlines.length + nextAlerts.length + nextDeadlines.length;
+
   // Filter overdue tasks
-  const now = new Date();
   const overdueTasks = allTasks.filter(
     (task) =>
       task.dueDate && new Date(task.dueDate) < now && task.status !== "DONE"
@@ -114,24 +131,28 @@ export const Dashboard = () => {
             value={totalClients}
             icon={Users}
             gradient="bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+            to="/clients"
           />
           <StatCard
             title="Active Packages"
             value={totalPackages}
             icon={Package}
             gradient="bg-gradient-to-br from-purple-500 to-purple-600 text-white"
+            to="/packages"
           />
           <StatCard
             title="Employees"
             value={totalEmployees}
             icon={UserCog}
             gradient="bg-gradient-to-br from-green-500 to-green-600 text-white"
+            to="/employees"
           />
           <StatCard
-            title="Recent Entries"
-            value={recentEntries.length}
-            icon={Clock}
+            title="Alerts"
+            value={totalAlerts}
+            icon={AlertCircle}
             gradient="bg-gradient-to-br from-orange-500 to-orange-600 text-white"
+            to="/alerts"
           />
         </div>
 
@@ -175,68 +196,8 @@ export const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Tax Submission Dates */}
-        {(submissionDatesData?.data?.nextVATSubmission || submissionDatesData?.data?.nextCorporateTaxSubmission) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-indigo-600" />
-                Next Tax Submissions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {submissionDatesData?.data?.nextVATSubmission && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                      <h3 className="font-semibold text-gray-900">Next VAT Submission</h3>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">
-                      <span className="font-medium">Client:</span> {submissionDatesData.data.nextVATSubmission.clientName}
-                    </p>
-                    <p className="text-sm text-gray-600 mb-1">
-                      <span className="font-medium">Date:</span> {formatDateDDMMYYYY(submissionDatesData.data.nextVATSubmission.submissionDate)}
-                    </p>
-                    {submissionDatesData.data.nextVATSubmission.period && (
-                      <p className="text-xs text-gray-500">
-                        Period: {formatDateDDMMYYYY(submissionDatesData.data.nextVATSubmission.period.startDate)} - {formatDateDDMMYYYY(submissionDatesData.data.nextVATSubmission.period.endDate)}
-                      </p>
-                    )}
-                    <div className="mt-2">
-                      <Badge variant={submissionDatesData.data.nextVATSubmission.daysUntilDue <= 7 ? 'error' : submissionDatesData.data.nextVATSubmission.daysUntilDue <= 14 ? 'warning' : 'info'}>
-                        {submissionDatesData.data.nextVATSubmission.daysUntilDue < 0
-                          ? `Overdue ${Math.abs(submissionDatesData.data.nextVATSubmission.daysUntilDue)} days`
-                          : `${submissionDatesData.data.nextVATSubmission.daysUntilDue} days remaining`}
-                      </Badge>
-                    </div>
-                  </div>
-                )}
-                {submissionDatesData?.data?.nextCorporateTaxSubmission && (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Receipt className="h-5 w-5 text-green-600" />
-                      <h3 className="font-semibold text-gray-900">Next Corporate Tax Submission</h3>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">
-                      <span className="font-medium">Client:</span> {submissionDatesData.data.nextCorporateTaxSubmission.clientName}
-                    </p>
-                    <p className="text-sm text-gray-600 mb-1">
-                      <span className="font-medium">Date:</span> {formatDateDDMMYYYY(submissionDatesData.data.nextCorporateTaxSubmission.submissionDate)}
-                    </p>
-                    <div className="mt-2">
-                      <Badge variant={submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue <= 7 ? 'error' : submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue <= 14 ? 'warning' : 'info'}>
-                        {submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue < 0
-                          ? `Overdue ${Math.abs(submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue)} days`
-                          : `${submissionDatesData.data.nextCorporateTaxSubmission.daysUntilDue} days remaining`}
-                      </Badge>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Dashboard Graphs */}
+        <DashboardGraphs />
 
         {/* Deadlines and Overdue */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -361,98 +322,6 @@ export const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Clock className="h-5 w-5 mr-2 text-indigo-600" />
-                Recent Time Entries
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentEntries.length > 0 ? (
-                <div className="space-y-4">
-                  {recentEntries.map((entry) => (
-                    <div
-                      key={entry._id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">
-                          {entry.employeeId?.name || "Unknown Employee"}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {entry.taskId?.name || "Task"} -{" "}
-                          {entry.clientId?.name || "Client"}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {new Date(entry.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-indigo-600">
-                          {Math.floor(entry.minutesSpent / 60)}h{" "}
-                          {entry.minutesSpent % 60}m
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Clock className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No recent time entries</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <TrendingUp className="h-5 w-5 mr-2 text-indigo-600" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <a
-                  href="/clients"
-                  className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all cursor-pointer"
-                >
-                  <Users className="h-6 w-6 text-blue-600 mb-2" />
-                  <p className="font-semibold text-gray-900">Manage Clients</p>
-                  <p className="text-sm text-gray-600">View and edit clients</p>
-                </a>
-                <a
-                  href="/time-entries"
-                  className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all cursor-pointer"
-                >
-                  <Clock className="h-6 w-6 text-green-600 mb-2" />
-                  <p className="font-semibold text-gray-900">Log Time</p>
-                  <p className="text-sm text-gray-600">Add new time entry</p>
-                </a>
-                <a
-                  href="/packages"
-                  className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all cursor-pointer"
-                >
-                  <Package className="h-6 w-6 text-purple-600 mb-2" />
-                  <p className="font-semibold text-gray-900">Packages</p>
-                  <p className="text-sm text-gray-600">Manage packages</p>
-                </a>
-                <a
-                  href="/analytics"
-                  className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg hover:from-orange-100 hover:to-orange-200 transition-all cursor-pointer"
-                >
-                  <DollarSign className="h-6 w-6 text-orange-600 mb-2" />
-                  <p className="font-semibold text-gray-900">Analytics</p>
-                  <p className="text-sm text-gray-600">View reports</p>
-                </a>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </AppLayout>
   );

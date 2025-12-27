@@ -84,9 +84,22 @@ export const deleteDocument = async (req, res, next) => {
       req.params.documentId
     );
 
-    // Delete from S3
-    const { deleteFile } = await import('../../helpers/s3Storage.js');
-    await deleteFile(document.key);
+    // Delete from S3 (only if key exists)
+    if (document.key) {
+      try {
+        const { deleteFile } = await import('../../helpers/s3Storage.js');
+        await deleteFile(document.key);
+      } catch (s3Error) {
+        // Log S3 deletion error but don't fail the request
+        // Document is already removed from MongoDB
+        logger.error('Failed to delete file from S3', {
+          clientId: req.params.id,
+          documentId: req.params.documentId,
+          key: document.key,
+          error: s3Error.message,
+        });
+      }
+    }
 
     return successResponse(res, 200, 'Document deleted successfully', client);
   } catch (error) {
@@ -471,15 +484,24 @@ export const uploadDocumentByType = async (req, res, next) => {
       uploadedAt: new Date(),
     };
 
+    // Extract personId from request body if provided (for partner/manager documents)
+    const personId = req.body.personId || null;
+
     const client = await clientService.uploadDocumentByType(
       req.params.id,
       category,
       documentData,
-      req.user._id
+      req.user._id,
+      personId
     );
 
     // Get the uploaded document ID
-    const uploadedDocument = client.documents.find((doc) => doc.category === category);
+    // For person documents, find by category and personId; for company documents, find by category only
+    const uploadedDocument = personId
+      ? client.documents.find(
+          (doc) => doc.category === category && doc.assignedToPerson?.toString() === personId.toString()
+        )
+      : client.documents.find((doc) => doc.category === category && !doc.assignedToPerson);
     if (uploadedDocument) {
       // Automatically process the document
       try {
@@ -678,6 +700,29 @@ export const getNextSubmissionDates = async (req, res, next) => {
     const submissionDates = await clientService.getNextSubmissionDates();
 
     return successResponse(res, 200, 'Next submission dates retrieved successfully', submissionDates);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCalendarEvents = async (req, res, next) => {
+  try {
+    const { start, end, clientId } = req.query;
+
+    if (!start || !end) {
+      return res.status(400).json({ message: 'Start and end dates are required' });
+    }
+
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+
+    const events = await clientService.getCalendarEvents(startDate, endDate, clientId || null);
+
+    return successResponse(res, 200, 'Calendar events retrieved successfully', { events });
   } catch (error) {
     next(error);
   }

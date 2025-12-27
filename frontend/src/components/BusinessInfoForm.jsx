@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Sparkles, CheckCircle2, Edit2, Save, X } from 'lucide-react';
-import { Button } from '@/ui/button';
-import { Badge } from '@/ui/badge';
-import { useBusinessInfoUpdate } from '@/api/queries/clientQueries';
+import { useState } from "react";
+import { Edit2, Save, X, Copy, CheckCircle2 } from "lucide-react";
+import { Button } from "@/ui/button";
+import { useBusinessInfoUpdate } from "@/api/queries/clientQueries";
+import { formatDateDDMonthYear } from "@/utils/dateFormat";
+import { useToast } from "@/hooks/useToast";
 
 // Helper function to calculate VAT submission cycle months
 const getVATCycleMonths = (businessInfo) => {
@@ -25,20 +26,30 @@ const getVATCycleMonths = (businessInfo) => {
     const uniqueMonths = [...new Set(months)].sort((a, b) => a - b);
 
     const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
 
-    return uniqueMonths.map((month) => monthNames[month]).join(' • ');
+    return uniqueMonths.map((month) => monthNames[month]).join(" • ");
   }
 
   // Fallback to cycle-based calculation
-  if (businessInfo.vatReturnCycle === 'MONTHLY') {
-    return 'Jan • Feb • Mar • Apr • May • Jun • Jul • Aug • Sep • Oct • Nov • Dec';
-  } else if (businessInfo.vatReturnCycle === 'QUARTERLY') {
+  if (businessInfo.vatReturnCycle === "MONTHLY") {
+    return "Jan • Feb • Mar • Apr • May • Jun • Jul • Aug • Sep • Oct • Nov • Dec";
+  } else if (businessInfo.vatReturnCycle === "QUARTERLY") {
     // Determine starting month from first period if available, otherwise default to Jan
     let startMonth = 0; // January by default
-    
+
     if (businessInfo.vatTaxPeriods && businessInfo.vatTaxPeriods.length > 0) {
       const firstPeriod = businessInfo.vatTaxPeriods[0];
       const startDate = new Date(firstPeriod.startDate);
@@ -47,52 +58,82 @@ const getVATCycleMonths = (businessInfo) => {
 
     // Quarterly cycles: Jan-Apr-Jul-Oct, Feb-May-Aug-Nov, or Mar-Jun-Sep-Dec
     const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
 
     if (startMonth === 0) {
-      return 'Jan • Apr • Jul • Oct';
+      return "Jan • Apr • Jul • Oct";
     } else if (startMonth === 1) {
-      return 'Feb • May • Aug • Nov';
+      return "Feb • May • Aug • Nov";
     } else if (startMonth === 2) {
-      return 'Mar • Jun • Sep • Dec';
+      return "Mar • Jun • Sep • Dec";
     } else {
       // Default to Jan-Apr-Jul-Oct
-      return 'Jan • Apr • Jul • Oct';
+      return "Jan • Apr • Jul • Oct";
     }
   }
 
   return null;
 };
 
-export const BusinessInfoForm = ({ clientId, client, businessInfo, aiExtractedFields = [], verifiedFields = [] }) => {
+export const BusinessInfoForm = ({
+  clientId,
+  client,
+  businessInfo,
+  aiExtractedFields = [],
+  verifiedFields = [],
+}) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
-    name: client?.name || '',
-    nameArabic: client?.nameArabic || '',
-    address: businessInfo?.address || '',
-    emirate: businessInfo?.emirate || '',
-    trn: businessInfo?.trn || '',
-    ctrn: businessInfo?.ctrn || '',
-    vatReturnCycle: businessInfo?.vatReturnCycle || '',
-    corporateTaxDueDate: businessInfo?.corporateTaxDueDate || '',
-    licenseNumber: businessInfo?.licenseNumber || '',
-    licenseStartDate: businessInfo?.licenseStartDate || '',
-    licenseExpiryDate: businessInfo?.licenseExpiryDate || '',
-    remarks: businessInfo?.remarks || '',
+    name: client?.name || "",
+    nameArabic: client?.nameArabic || "",
+    address: businessInfo?.address || "",
+    emirate: businessInfo?.emirate || "",
+    trn: businessInfo?.trn || "",
+    ctrn: businessInfo?.ctrn || "",
+    vatReturnCycle: businessInfo?.vatReturnCycle || "",
+    corporateTaxDueDate: businessInfo?.corporateTaxDueDate || "",
+    licenseNumber: businessInfo?.licenseNumber || "",
+    licenseStartDate: businessInfo?.licenseStartDate || "",
+    licenseExpiryDate: businessInfo?.licenseExpiryDate || "",
+    remarks: businessInfo?.remarks || "",
   });
 
   const vatCycleMonths = getVATCycleMonths(businessInfo);
 
   const updateMutation = useBusinessInfoUpdate();
 
-  const isAiExtracted = (field) => {
-    return aiExtractedFields.includes(`businessInfo.${field}`) || aiExtractedFields.includes(field);
-  };
-
-  const isVerified = (field) => {
-    return verifiedFields.includes(`businessInfo.${field}`) || verifiedFields.includes(field);
+  const handleCopy = async (text, fieldName) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      toast({
+        title: "Copied",
+        description: `${fieldName} copied to clipboard`,
+        type: "success",
+      });
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy",
+        type: "error",
+      });
+    }
   };
 
   const handleFieldChange = (field, value) => {
@@ -111,70 +152,61 @@ export const BusinessInfoForm = ({ clientId, client, businessInfo, aiExtractedFi
       await updateMutation.mutateAsync({ clientId, data: updateData });
       setIsEditing(false);
     } catch (error) {
-      console.error('Update error:', error);
+      console.error("Update error:", error);
     }
   };
 
   const handleCancel = () => {
     setFormData({
-      name: client?.name || '',
-      nameArabic: client?.nameArabic || '',
-      address: businessInfo?.address || '',
-      emirate: businessInfo?.emirate || '',
-      trn: businessInfo?.trn || '',
-      ctrn: businessInfo?.ctrn || '',
-      vatReturnCycle: businessInfo?.vatReturnCycle || '',
-      corporateTaxDueDate: businessInfo?.corporateTaxDueDate || '',
-      licenseNumber: businessInfo?.licenseNumber || '',
-      licenseStartDate: businessInfo?.licenseStartDate || '',
-      licenseExpiryDate: businessInfo?.licenseExpiryDate || '',
-      remarks: businessInfo?.remarks || '',
+      name: client?.name || "",
+      nameArabic: client?.nameArabic || "",
+      address: businessInfo?.address || "",
+      emirate: businessInfo?.emirate || "",
+      trn: businessInfo?.trn || "",
+      ctrn: businessInfo?.ctrn || "",
+      vatReturnCycle: businessInfo?.vatReturnCycle || "",
+      corporateTaxDueDate: businessInfo?.corporateTaxDueDate || "",
+      licenseNumber: businessInfo?.licenseNumber || "",
+      licenseStartDate: businessInfo?.licenseStartDate || "",
+      licenseExpiryDate: businessInfo?.licenseExpiryDate || "",
+      remarks: businessInfo?.remarks || "",
     });
     setIsEditing(false);
   };
 
-  const FieldWrapper = ({ field, label, type = 'text' }) => {
-    const isAi = isAiExtracted(field);
-    const isVer = isVerified(field);
+  const FieldWrapper = ({ field, label, type = "text", showCopy = false }) => {
+    const value = formData[field];
+    const displayValue =
+      type === "date" && value ? formatDateDDMonthYear(value) : value;
 
     return (
       <div className="space-y-1">
-        <label className="text-xs font-medium text-gray-700 flex items-center gap-2">
-          {label}
-          {isAi && (
-            <Badge variant="info" className="text-xs flex items-center gap-1">
-              <Sparkles className="h-3 w-3" />
-              AI
-            </Badge>
-          )}
-          {isVer && (
-            <Badge variant="success" className="text-xs flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              Verified
-            </Badge>
-          )}
-        </label>
+        <label className="text-xs font-medium text-gray-700">{label}</label>
         {isEditing ? (
           <>
-            {type === 'textarea' ? (
+            {type === "textarea" ? (
               <textarea
                 value={formData[field]}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                rows={2}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                rows={3}
               />
-            ) : type === 'date' ? (
+            ) : type === "date" ? (
               <input
                 type="date"
-                value={formData[field] ? new Date(formData[field]).toISOString().split('T')[0] : ''}
+                value={
+                  formData[field]
+                    ? new Date(formData[field]).toISOString().split("T")[0]
+                    : ""
+                }
                 onChange={(e) => handleFieldChange(field, e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
-            ) : type === 'select' ? (
+            ) : type === "select" ? (
               <select
                 value={formData[field]}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="">Select</option>
                 <option value="MONTHLY">Monthly</option>
@@ -185,13 +217,28 @@ export const BusinessInfoForm = ({ clientId, client, businessInfo, aiExtractedFi
                 type={type}
                 value={formData[field]}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             )}
           </>
         ) : (
-          <div className="px-2 py-1 text-sm bg-gray-50 rounded text-gray-900 min-h-[28px] flex items-center">
-            {formData[field] || <span className="text-gray-400">Not set</span>}
+          <div className="px-3 py-2 text-sm text-gray-900 min-h-[36px] flex items-center justify-between bg-white border border-gray-200 rounded-lg">
+            <span className={!displayValue ? "text-gray-400" : ""}>
+              {displayValue || "Not set"}
+            </span>
+            {showCopy && displayValue && (
+              <button
+                onClick={() => handleCopy(value, label)}
+                className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Copy to clipboard"
+              >
+                {copiedField === label ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -199,17 +246,19 @@ export const BusinessInfoForm = ({ clientId, client, businessInfo, aiExtractedFi
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-between items-center pb-2 border-b">
-        <h3 className="text-sm font-semibold text-gray-900">Business Information</h3>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-base font-semibold text-gray-900">
+          Business Information
+        </h3>
         {!isEditing ? (
           <Button
             size="sm"
-            variant="outline"
             onClick={() => setIsEditing(true)}
+            className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
           >
-            <Edit2 className="h-3 w-3 mr-1" />
-            Edit All
+            <Edit2 className="h-3.5 w-3.5 mr-1.5" />
+            Edit
           </Button>
         ) : (
           <div className="flex gap-2">
@@ -217,40 +266,68 @@ export const BusinessInfoForm = ({ clientId, client, businessInfo, aiExtractedFi
               size="sm"
               onClick={handleSave}
               disabled={updateMutation.isPending}
+              className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
             >
-              <Save className="h-3 w-3 mr-1" />
-              Save All
+              <Save className="h-3.5 w-3.5 mr-1.5" />
+              Save
             </Button>
             <Button size="sm" variant="outline" onClick={handleCancel}>
-              <X className="h-3 w-3 mr-1" />
+              <X className="h-3.5 w-3.5 mr-1.5" />
               Cancel
             </Button>
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <FieldWrapper field="name" label="Legal Name (English)" />
-        <FieldWrapper field="nameArabic" label="Legal Name (Arabic)" />
-        <FieldWrapper field="address" label="Address" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FieldWrapper
+          field="name"
+          label="Legal Name (English)"
+          showCopy={true}
+        />
+        <FieldWrapper
+          field="nameArabic"
+          label="Legal Name (Arabic)"
+          showCopy={true}
+        />
+        <FieldWrapper field="address" label="Address" showCopy={true} />
         <FieldWrapper field="emirate" label="Emirate" />
-        <FieldWrapper field="trn" label="TRN" />
-        <FieldWrapper field="ctrn" label="CTRN" />
+        <FieldWrapper field="trn" label="TRN" showCopy={true} />
+        <FieldWrapper field="ctrn" label="CTRN" showCopy={true} />
         <div className="space-y-1">
-          <FieldWrapper field="vatReturnCycle" label="VAT Return Cycle" type="select" />
+          <FieldWrapper
+            field="vatReturnCycle"
+            label="VAT Return Cycle"
+            type="select"
+          />
           {!isEditing && vatCycleMonths && (
-            <div className="px-2 py-1 text-sm bg-gray-50 rounded text-gray-600">
+            <div className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-600">
               <span className="text-xs text-gray-500">Cycle months: </span>
               {vatCycleMonths}
             </div>
           )}
         </div>
-        <FieldWrapper field="corporateTaxDueDate" label="Corporate Tax Due Date" type="date" />
-        <FieldWrapper field="licenseNumber" label="License Number" />
-        <FieldWrapper field="licenseStartDate" label="License Start Date" type="date" />
-        <FieldWrapper field="licenseExpiryDate" label="License Expiry Date" type="date" />
+        <FieldWrapper
+          field="corporateTaxDueDate"
+          label="Corporate Tax Due Date"
+          type="date"
+        />
+        <FieldWrapper
+          field="licenseNumber"
+          label="License Number"
+          showCopy={true}
+        />
+        <FieldWrapper
+          field="licenseStartDate"
+          label="License Start Date"
+          type="date"
+        />
+        <FieldWrapper
+          field="licenseExpiryDate"
+          label="License Expiry Date"
+          type="date"
+        />
       </div>
       <FieldWrapper field="remarks" label="Remarks" type="textarea" />
     </div>
   );
 };
-

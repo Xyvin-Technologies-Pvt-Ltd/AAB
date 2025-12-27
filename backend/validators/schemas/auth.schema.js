@@ -23,3 +23,23 @@ export const loginSchema = Joi.object({
   }),
 });
 
+export const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().required().messages({
+    'any.required': 'Current password is required',
+  }),
+  newPassword: Joi.string().min(6).required().messages({
+    'string.min': 'Password must be at least 6 characters',
+    'any.required': 'New password is required',
+  }),
+});
+
+export const updateAccountDetailsSchema = Joi.object({
+  name: Joi.string().trim().required().messages({
+    'any.required': 'Name is required',
+    'string.empty': 'Name cannot be empty',
+  }),
+  dateOfBirth: Joi.date().allow(null, '').messages({
+    'date.base': 'Date of birth must be a valid date',
+  }),
+}).unknown(true); // Allow additional fields (like file uploads)
+

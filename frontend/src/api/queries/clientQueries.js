@@ -15,8 +15,8 @@ export const useDocumentUpload = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ clientId, category, file }) =>
-      clientsApi.uploadDocumentByType(clientId, category, file),
+    mutationFn: ({ clientId, category, file, personId }) =>
+      clientsApi.uploadDocumentByType(clientId, category, file, personId),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['client', variables.clientId] });
       toast({
@@ -55,6 +55,21 @@ export const useDocumentProcess = () => {
         description: error.response?.data?.message || 'Failed to process document',
         type: 'error',
       });
+    },
+  });
+};
+
+export const useDocumentReprocess = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ clientId, documentId }) => clientsApi.processDocument(clientId, documentId),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['client', variables.clientId] });
+      // Toast notifications handled in component
+    },
+    onError: () => {
+      // Error handling done in component with specific status messages
     },
   });
 };

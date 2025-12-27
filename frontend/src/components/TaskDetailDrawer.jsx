@@ -142,22 +142,22 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">{taskData.name}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-4">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-lg leading-tight">{taskData.name}</DialogTitle>
+          <DialogDescription className="text-xs text-gray-500 mt-0.5">
             {taskData.clientId?.name} • {taskData.packageId?.name}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
-          {/* Task Info */}
-          <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3 mt-2">
+          {/* Compact Task Info - 3 Column Grid */}
+          <div className="grid grid-cols-3 gap-2 pb-2 border-b border-gray-100">
             <div>
-              <label className="text-sm font-medium text-gray-500">Status</label>
-              <div className="mt-1">
+              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Status</label>
+              <div className="mt-0.5">
                 <span
-                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${
                     statusColors[taskData.status] || statusColors.TODO
                   }`}
                 >
@@ -166,10 +166,10 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Priority</label>
-              <div className="mt-1">
+              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Priority</label>
+              <div className="mt-0.5">
                 <span
-                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${
                     priorityColors[taskData.priority] || priorityColors.MEDIUM
                   }`}
                 >
@@ -177,71 +177,64 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
                 </span>
               </div>
             </div>
-            {taskData.assignedTo && (
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium text-gray-500">Assigned To</label>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  {Array.isArray(taskData.assignedTo) ? (
-                    taskData.assignedTo.length > 0 ? (
-                      taskData.assignedTo.map((emp, idx) => (
-                        <div key={emp._id || emp || idx} className="flex items-center gap-1">
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm">{emp.name || emp.email || emp}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-sm text-gray-400">Unassigned</span>
-                    )
-                  ) : (
-                    <>
-                      <User className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm">{taskData.assignedTo.name || taskData.assignedTo.email}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
             {taskData.dueDate && (
               <div>
-                <label className="text-sm font-medium text-gray-500">Due Date</label>
-                <div className="mt-1 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm">{format(new Date(taskData.dueDate), 'MMM dd, yyyy')}</span>
-                </div>
-              </div>
-            )}
-            {taskData.estimatedMinutes && (
-              <div>
-                <label className="text-sm font-medium text-gray-500">Estimated Time</label>
-                <div className="mt-1 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm">
-                    {estimatedHours}h {estimatedMins}m
+                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Due Date</label>
+                <div className="mt-0.5 flex items-center gap-1">
+                  <Calendar className="h-3 w-3 text-gray-400" />
+                  <span className="text-xs text-gray-700">
+                    {format(new Date(taskData.dueDate), 'MMM dd, yyyy')}
                   </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Description */}
-          {taskData.description && (
-            <div>
-              <label className="text-sm font-medium text-gray-500">Description</label>
-              <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{taskData.description}</p>
+          {/* Assignees - Compact */}
+          {taskData.assignedTo && (
+            <div className="pb-2 border-b border-gray-100">
+              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide block mb-1">Assigned To</label>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {Array.isArray(taskData.assignedTo) ? (
+                  taskData.assignedTo.length > 0 ? (
+                    taskData.assignedTo.map((emp, idx) => (
+                      <div key={emp._id || emp || idx} className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 rounded">
+                        <User className="h-3 w-3 text-gray-400" />
+                        <span className="text-xs text-gray-700">{emp.name || emp.email || emp}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">Unassigned</span>
+                  )
+                ) : (
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 rounded">
+                    <User className="h-3 w-3 text-gray-400" />
+                    <span className="text-xs text-gray-700">{taskData.assignedTo.name || taskData.assignedTo.email}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Services & Activities */}
+          {/* Description */}
+          {taskData.description && (
+            <div className="pb-2 border-b border-gray-100">
+              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide block mb-1">Description</label>
+              <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{taskData.description}</p>
+            </div>
+          )}
+
+          {/* Services & Activities - Compact */}
           {(taskData.services?.length > 0 || taskData.activities?.length > 0) && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 pb-2 border-b border-gray-100">
               {taskData.services?.length > 0 && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500 mb-2 block">Services</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide block mb-1">Services</label>
+                  <div className="flex flex-wrap gap-1">
                     {taskData.services.map((service, idx) => (
                       <span
                         key={service._id || service || idx}
-                        className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800"
+                        className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full bg-blue-100 text-blue-800"
                       >
                         {service.name || service}
                       </span>
@@ -251,12 +244,12 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
               )}
               {taskData.activities?.length > 0 && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500 mb-2 block">Activities</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide block mb-1">Activities</label>
+                  <div className="flex flex-wrap gap-1">
                     {taskData.activities.map((activity, idx) => (
                       <span
                         key={activity._id || activity || idx}
-                        className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800"
+                        className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full bg-purple-100 text-purple-800"
                       >
                         {activity.name || activity}
                       </span>
@@ -267,10 +260,10 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
             </div>
           )}
 
-          {/* Attachments */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-500">Attachments</label>
+          {/* Attachments - Compact */}
+          <div className="pb-2 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Attachments</label>
               <label className="cursor-pointer">
                 <input
                   type="file"
@@ -278,27 +271,27 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
                   onChange={handleFileUpload}
                   disabled={addAttachmentMutation.isPending}
                 />
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild className="h-6 px-2 text-xs">
                   <span>
-                    <Paperclip className="h-4 w-4 mr-1" />
+                    <Paperclip className="h-3 w-3 mr-1" />
                     Upload
                   </span>
                 </Button>
               </label>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {taskData.attachments?.map((attachment) => (
                 <div
                   key={attachment._id || attachment.key}
-                  className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-1.5 bg-gray-50 rounded text-xs"
                 >
-                  <div className="flex items-center gap-2 flex-1">
-                    <Paperclip className="h-4 w-4 text-gray-400" />
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <Paperclip className="h-3 w-3 text-gray-400 flex-shrink-0" />
                     <a
                       href={attachment.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline flex-1"
+                      className="text-xs text-blue-600 hover:underline truncate flex-1"
                     >
                       {attachment.name}
                     </a>
@@ -309,57 +302,58 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteAttachment(attachment._id || attachment.key)}
-                        className="text-red-600 hover:text-red-700"
+                        className="h-5 w-5 p-0 text-red-600 hover:text-red-700 flex-shrink-0"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     )}
                   </div>
                 </div>
               ))}
               {(!taskData.attachments || taskData.attachments.length === 0) && (
-                <p className="text-sm text-gray-400">No attachments</p>
+                <p className="text-xs text-gray-400 py-1">No attachments</p>
               )}
             </div>
           </div>
 
-          {/* Comments */}
+          {/* Comments - Compact */}
           <div>
-            <label className="text-sm font-medium text-gray-500 mb-2 block">Comments</label>
-            <div className="space-y-4">
+            <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Comments</label>
+            <div className="space-y-2">
               {/* Add Comment */}
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Add a comment..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
-                  rows={3}
+                  className="flex-1 px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-xs"
+                  rows={2}
                 />
                 <Button
                   onClick={handleAddComment}
                   disabled={!commentText.trim() || addCommentMutation.isPending}
                   size="sm"
+                  className="h-8 w-8 p-0"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3 w-3" />
                 </Button>
               </div>
 
               {/* Comments List */}
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 {taskData.comments?.map((comment) => (
-                  <div key={comment._id} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium">
+                  <div key={comment._id} className="p-2 bg-gray-50 rounded text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-xs font-medium text-gray-700">
                             {comment.author?.email || 'Unknown'}
                           </span>
-                          <span className="text-xs text-gray-400">
-                            {format(new Date(comment.createdAt), 'MMM dd, yyyy HH:mm')}
+                          <span className="text-[10px] text-gray-400">
+                            {format(new Date(comment.createdAt), 'MMM dd, HH:mm')}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                        <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
                       </div>
                       {(user?.role === 'ADMIN' ||
                         comment.author?._id === user?._id ||
@@ -368,16 +362,16 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteComment(comment._id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="h-5 w-5 p-0 text-red-600 hover:text-red-700 flex-shrink-0"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       )}
                     </div>
                   </div>
                 ))}
                 {(!taskData.comments || taskData.comments.length === 0) && (
-                  <p className="text-sm text-gray-400 text-center py-4">No comments yet</p>
+                  <p className="text-xs text-gray-400 text-center py-2">No comments yet</p>
                 )}
               </div>
             </div>

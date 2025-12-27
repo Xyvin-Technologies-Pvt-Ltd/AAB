@@ -96,3 +96,31 @@ export const removeDocument = async (employeeId, documentId) => {
   return { employee, document };
 };
 
+export const updateProfilePicture = async (employeeId, profilePictureData) => {
+  const employee = await Employee.findById(employeeId);
+  if (!employee) {
+    throw new Error('Employee not found');
+  }
+
+  // Store old key for deletion
+  const oldKey = employee.profilePicture?.key;
+
+  employee.profilePicture = profilePictureData;
+  await employee.save();
+
+  return { employee, oldKey };
+};
+
+export const removeProfilePicture = async (employeeId) => {
+  const employee = await Employee.findById(employeeId);
+  if (!employee) {
+    throw new Error('Employee not found');
+  }
+
+  const oldKey = employee.profilePicture?.key;
+  employee.profilePicture = undefined;
+  await employee.save();
+
+  return { employee, oldKey };
+};
+

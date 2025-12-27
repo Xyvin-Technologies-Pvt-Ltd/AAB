@@ -42,10 +42,13 @@ export const clientsApi = {
     return response.data;
   },
 
-  uploadDocumentByType: async (id, category, file) => {
+  uploadDocumentByType: async (id, category, file, personId = null) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('category', category);
+    if (personId) {
+      formData.append('personId', personId);
+    }
     const response = await api.post(`/clients/${id}/documents/${category}/upload`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -118,6 +121,11 @@ export const clientsApi = {
 
   getNextSubmissionDates: async () => {
     const response = await api.get('/clients/submission-dates/next');
+    return response.data;
+  },
+
+  getCalendarEvents: async (params = {}) => {
+    const response = await api.get('/clients/calendar-events', { params });
     return response.data;
   },
 };

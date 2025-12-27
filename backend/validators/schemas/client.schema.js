@@ -97,8 +97,7 @@ export const personSchema = Joi.object({
   name: Joi.string().trim().required().messages({
     'any.required': 'Name is required',
   }),
-  role: Joi.string().valid('PARTNER', 'MANAGER').required().messages({
-    'any.required': 'Role is required',
+  role: Joi.string().valid('PARTNER', 'MANAGER').optional().messages({
     'any.only': 'Role must be either PARTNER or MANAGER',
   }),
   emiratesId: Joi.object({

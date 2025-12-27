@@ -41,5 +41,21 @@ export const employeesApi = {
     const response = await api.delete(`/employees/${id}/documents/${documentId}`);
     return response.data;
   },
+
+  uploadProfilePicture: async (id, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/employees/${id}/profile-picture`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  deleteProfilePicture: async (id) => {
+    const response = await api.delete(`/employees/${id}/profile-picture`);
+    return response.data;
+  },
 };
 
