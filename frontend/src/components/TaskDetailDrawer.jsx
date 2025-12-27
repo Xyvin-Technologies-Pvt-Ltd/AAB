@@ -15,7 +15,6 @@ import {
   X,
   MessageSquare,
   Paperclip,
-  Tag,
   User,
   Calendar,
   Clock,
@@ -27,7 +26,6 @@ import { format } from 'date-fns';
 
 export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
   const [commentText, setCommentText] = useState('');
-  const [newLabel, setNewLabel] = useState({ name: '', color: '#3B82F6' });
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuthStore();
@@ -233,25 +231,41 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
             </div>
           )}
 
-          {/* Labels */}
-          <div>
-            <label className="text-sm font-medium text-gray-500 mb-2 block">Labels</label>
-            <div className="flex flex-wrap gap-2">
-              {taskData.labels?.map((label, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full text-white"
-                  style={{ backgroundColor: label.color }}
-                >
-                  <Tag className="h-3 w-3" />
-                  {label.name}
-                </span>
-              ))}
-              {(!taskData.labels || taskData.labels.length === 0) && (
-                <span className="text-sm text-gray-400">No labels</span>
+          {/* Services & Activities */}
+          {(taskData.services?.length > 0 || taskData.activities?.length > 0) && (
+            <div className="grid grid-cols-2 gap-4">
+              {taskData.services?.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 mb-2 block">Services</label>
+                  <div className="flex flex-wrap gap-2">
+                    {taskData.services.map((service, idx) => (
+                      <span
+                        key={service._id || service || idx}
+                        className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800"
+                      >
+                        {service.name || service}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {taskData.activities?.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 mb-2 block">Activities</label>
+                  <div className="flex flex-wrap gap-2">
+                    {taskData.activities.map((activity, idx) => (
+                      <span
+                        key={activity._id || activity || idx}
+                        className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800"
+                      >
+                        {activity.name || activity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
+          )}
 
           {/* Attachments */}
           <div>

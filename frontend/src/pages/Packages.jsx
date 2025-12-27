@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/layout/AppLayout';
 import { packagesApi } from '@/api/packages';
 import { clientsApi } from '@/api/clients';
+import { servicesApi } from '@/api/services';
+import { activitiesApi } from '@/api/activities';
 import { Button } from '@/ui/button';
 
 export const Packages = () => {
@@ -18,6 +20,16 @@ export const Packages = () => {
   const { data: clientsData } = useQuery({
     queryKey: ['clients'],
     queryFn: () => clientsApi.getAll({ limit: 100 }),
+  });
+
+  const { data: servicesData } = useQuery({
+    queryKey: ['services'],
+    queryFn: () => servicesApi.getAll({ limit: 100 }),
+  });
+
+  const { data: activitiesData } = useQuery({
+    queryKey: ['activities'],
+    queryFn: () => activitiesApi.getAll({ limit: 100 }),
   });
 
   const createMutation = useMutation({
@@ -65,6 +77,8 @@ export const Packages = () => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const type = formData.get('type');
+    const services = Array.from(formData.getAll('services')).filter(Boolean);
+    const activities = Array.from(formData.getAll('activities')).filter(Boolean);
     const data = {
       clientId: formData.get('clientId'),
       name: formData.get('name'),
@@ -74,6 +88,8 @@ export const Packages = () => {
       startDate: formData.get('startDate'),
       endDate: formData.get('endDate') || null,
       status: formData.get('status'),
+      services: services.length > 0 ? services : [],
+      activities: activities.length > 0 ? activities : [],
     };
 
     if (editingPackage) {
@@ -85,6 +101,8 @@ export const Packages = () => {
 
   const packages = packagesData?.data?.packages || [];
   const clients = clientsData?.data?.clients || [];
+  const services = servicesData?.data?.services || [];
+  const activities = activitiesData?.data?.activities || [];
 
   return (
     <AppLayout>
@@ -191,6 +209,52 @@ export const Packages = () => {
                   <option value="INACTIVE">Inactive</option>
                   <option value="COMPLETED">Completed</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Services</label>
+                <select
+                  name="services"
+                  multiple
+                  size={5}
+                  defaultValue={
+                    editingPackage?.services
+                      ? editingPackage.services.map((s) => (typeof s === 'object' ? s._id : s))
+                      : []
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  {services.map((service) => (
+                    <option key={service._id} value={service._id}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Hold Ctrl (Windows) or Cmd (Mac) to select multiple services
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Activities</label>
+                <select
+                  name="activities"
+                  multiple
+                  size={5}
+                  defaultValue={
+                    editingPackage?.activities
+                      ? editingPackage.activities.map((a) => (typeof a === 'object' ? a._id : a))
+                      : []
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  {activities.map((activity) => (
+                    <option key={activity._id} value={activity._id}>
+                      {activity.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Hold Ctrl (Windows) or Cmd (Mac) to select multiple activities
+                </p>
               </div>
               <div className="flex gap-2">
                 <Button type="submit">Save</Button>

@@ -4,10 +4,11 @@ import { Button } from '@/ui/button';
 import { Badge } from '@/ui/badge';
 import {
   useDocumentUpload,
-  useDocumentProcess,
   useDocumentVerify,
   useDocumentDelete,
 } from '@/api/queries/clientQueries';
+import { useQueryClient } from '@tanstack/react-query';
+import { formatDateDDMonthYear } from '@/utils/dateFormat';
 
 const DOCUMENT_CATEGORIES = [
   { value: 'TRADE_LICENSE', label: 'Trade License', required: true },
@@ -19,17 +20,6 @@ const DOCUMENT_CATEGORIES = [
   { value: 'PASSPORT_MANAGER', label: 'Passport (Manager)', required: false },
 ];
 
-const getStatusBadge = (status) => {
-  switch (status) {
-    case 'VERIFIED':
-      return <Badge variant="success">Verified</Badge>;
-    case 'UPLOADED':
-      return <Badge variant="info">Uploaded</Badge>;
-    case 'PENDING':
-    default:
-      return <Badge variant="warning">Pending</Badge>;
-  }
-};
 
 const getProcessingBadge = (status) => {
   switch (status) {
@@ -53,9 +43,9 @@ const getProcessingBadge = (status) => {
 export const DocumentChecklist = ({ clientId, documents = [] }) => {
   const [uploadingCategory, setUploadingCategory] = useState(null);
   const fileInputRefs = useRef({});
+  const queryClient = useQueryClient();
 
   const uploadMutation = useDocumentUpload();
-  const processMutation = useDocumentProcess();
   const verifyMutation = useDocumentVerify();
   const deleteMutation = useDocumentDelete();
 
@@ -85,12 +75,8 @@ export const DocumentChecklist = ({ clientId, documents = [] }) => {
     }
   };
 
-  const handleProcess = async (documentId) => {
-    try {
-      await processMutation.mutateAsync({ clientId, documentId });
-    } catch (error) {
-      console.error('Process error:', error);
-    }
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['client', clientId] });
   };
 
   const handleVerify = async (documentId) => {
@@ -122,7 +108,7 @@ export const DocumentChecklist = ({ clientId, documents = [] }) => {
           <thead>
             <tr className="border-b">
               <th className="text-left p-3 font-semibold text-gray-700">Document Category</th>
-              <th className="text-left p-3 font-semibold text-gray-700">Upload Status</th>
+              <th className="text-left p-3 font-semibold text-gray-700">Uploaded Date</th>
               <th className="text-left p-3 font-semibold text-gray-700">Processing Status</th>
               <th className="text-left p-3 font-semibold text-gray-700">File</th>
               <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
@@ -144,7 +130,13 @@ export const DocumentChecklist = ({ clientId, documents = [] }) => {
                     </div>
                   </td>
                   <td className="p-3">
-                    {document ? getStatusBadge(document.uploadStatus) : <Badge variant="warning">Pending</Badge>}
+                    {document?.uploadedAt ? (
+                      <span className="text-sm text-gray-700">
+                        {formatDateDDMonthYear(document.uploadedAt)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="p-3">
                     {document ? getProcessingBadge(document.processingStatus) : <Badge variant="outline">-</Badge>}
@@ -205,42 +197,14 @@ export const DocumentChecklist = ({ clientId, documents = [] }) => {
                           >
                             <Eye className="h-3 w-3" />
                           </Button>
-                          {document.processingStatus === 'PENDING' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleProcess(document._id)}
-                              disabled={processMutation.isPending}
-                              title="Process document with AI"
-                            >
-                              {processMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <>
-                                  <Sparkles className="h-3 w-3 mr-1" />
-                                  Process
-                                </>
-                              )}
-                            </Button>
-                          )}
-                          {document.processingStatus === 'FAILED' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleProcess(document._id)}
-                              disabled={processMutation.isPending}
-                              title="Retry processing document"
-                            >
-                              {processMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <>
-                                  <RefreshCw className="h-3 w-3 mr-1" />
-                                  Retry
-                                </>
-                              )}
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleRefresh}
+                            title="Refresh"
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                          </Button>
                           {document.processingStatus === 'COMPLETED' &&
                             document.uploadStatus !== 'VERIFIED' && (
                               <Button

@@ -25,6 +25,18 @@ const taskSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    services: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Service',
+      },
+    ],
+    activities: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Activity',
+      },
+    ],
     status: {
       type: String,
       enum: ['TODO', 'IN_PROGRESS', 'DONE'],

@@ -5,10 +5,15 @@ import { tasksApi } from "@/api/tasks";
 import { clientsApi } from "@/api/clients";
 import { packagesApi } from "@/api/packages";
 import { employeesApi } from "@/api/employees";
+import { servicesApi } from "@/api/services";
+import { activitiesApi } from "@/api/activities";
 import { Button } from "@/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { AdvancedFilters } from "@/components/AdvancedFilters";
 import { TaskDetailDrawer } from "@/components/TaskDetailDrawer";
+import { SelectSearch } from "@/ui/select-search";
+import { MultiSelect } from "@/ui/multi-select";
+import { FileUpload } from "@/components/FileUpload";
 import {
   Dialog,
   DialogContent,
@@ -41,7 +46,10 @@ export const Tasks = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedPackageId, setSelectedPackageId] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedActivities, setSelectedActivities] = useState([]);
   const [filters, setFilters] = useState({});
   const [viewMode, setViewMode] = useState("kanban"); // 'kanban' or 'table'
   const [selectedTask, setSelectedTask] = useState(null);
@@ -60,19 +68,50 @@ export const Tasks = () => {
   });
 
   const { data: packagesData } = useQuery({
-    queryKey: ["packages", filters.clientId || selectedClientId],
+    queryKey: ["packages", filters.clientId || selectedClientId || editingTask?.clientId?._id || editingTask?.clientId],
     queryFn: () =>
       packagesApi.getAll({
-        clientId: filters.clientId || selectedClientId,
+        clientId: filters.clientId || selectedClientId || editingTask?.clientId?._id || editingTask?.clientId,
         limit: 100,
       }),
-    enabled: !!(filters.clientId || selectedClientId),
+    enabled: !!(filters.clientId || selectedClientId || editingTask?.clientId?._id || editingTask?.clientId),
   });
 
   const { data: employeesData } = useQuery({
     queryKey: ["employees"],
     queryFn: () => employeesApi.getAll({ limit: 100 }),
   });
+
+  const { data: servicesData } = useQuery({
+    queryKey: ["services"],
+    queryFn: () => servicesApi.getAll({ limit: 100 }),
+  });
+
+  const { data: activitiesData } = useQuery({
+    queryKey: ["activities"],
+    queryFn: () => activitiesApi.getAll({ limit: 100 }),
+  });
+
+  // Extract data from queries
+  const tasks = tasksData?.data?.tasks || [];
+  const clients = clientsData?.data?.clients || [];
+  const packages = packagesData?.data?.packages || [];
+  const employees = employeesData?.data?.employees || [];
+
+  // Get selected package to filter services and activities
+  const selectedPackage = packages.find((pkg) => pkg._id === selectedPackageId);
+  const packageServiceIds = selectedPackage?.services?.map((s) => (typeof s === 'object' ? s._id : s)) || [];
+  const packageActivityIds = selectedPackage?.activities?.map((a) => (typeof a === 'object' ? a._id : a)) || [];
+
+  // Filter services and activities based on selected package
+  const availableServices = servicesData?.data?.services || [];
+  const availableActivities = activitiesData?.data?.activities || [];
+  const filteredServices = selectedPackageId
+    ? availableServices.filter((s) => packageServiceIds.includes(s._id))
+    : availableServices;
+  const filteredActivities = selectedPackageId
+    ? availableActivities.filter((a) => packageActivityIds.includes(a._id))
+    : availableActivities;
 
   const createMutation = useMutation({
     mutationFn: tasksApi.create,
@@ -146,12 +185,16 @@ export const Tasks = () => {
   const resetForm = () => {
     setEditingTask(null);
     setSelectedClientId("");
+    setSelectedPackageId("");
     setSelectedEmployees([]);
+    setSelectedServices([]);
+    setSelectedActivities([]);
   };
 
   const handleEdit = (task) => {
     setEditingTask(task);
     setSelectedClientId(task.clientId?._id || task.clientId || "");
+    setSelectedPackageId(task.packageId?._id || task.packageId || "");
     // Handle both single employee (old format) and array (new format)
     const assignedEmployees = Array.isArray(task.assignedTo)
       ? task.assignedTo.map((emp) => emp._id || emp)
@@ -159,6 +202,11 @@ export const Tasks = () => {
       ? [task.assignedTo._id || task.assignedTo]
       : [];
     setSelectedEmployees(assignedEmployees);
+    // Handle services and activities
+    const serviceIds = task.services?.map((s) => (typeof s === 'object' ? s._id : s)) || [];
+    const activityIds = task.activities?.map((a) => (typeof a === 'object' ? a._id : a)) || [];
+    setSelectedServices(serviceIds);
+    setSelectedActivities(activityIds);
     setShowForm(true);
   };
 
@@ -179,29 +227,69 @@ export const Tasks = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = {
-      clientId: formData.get("clientId"),
-      packageId: formData.get("packageId"),
+      clientId: selectedClientId,
+      packageId: selectedPackageId,
       name: formData.get("name"),
       description: formData.get("description"),
-      category: formData.get("category"),
-      status: formData.get("status") || "TODO",
+      status: "TODO", // Default status for new tasks
       assignedTo: selectedEmployees.length > 0 ? selectedEmployees : undefined,
       priority: formData.get("priority") || "MEDIUM",
       dueDate: formData.get("dueDate") || undefined,
-      estimatedMinutes: formData.get("estimatedMinutes")
-        ? parseInt(formData.get("estimatedMinutes"))
-        : undefined,
-      labels: editingTask?.labels || [],
+      services: selectedServices.length > 0 ? selectedServices : undefined,
+      activities: selectedActivities.length > 0 ? selectedActivities : undefined,
     };
 
     if (editingTask) {
+      // Include status for updates
+      data.status = editingTask.status || "TODO";
       updateMutation.mutate({ id: editingTask._id, data });
     } else {
       createMutation.mutate(data);
+    }
+  };
+
+  const handleFileUpload = async (file) => {
+    // For new tasks, files will be uploaded after task creation
+    // For existing tasks, upload immediately
+    if (editingTask) {
+      try {
+        await tasksApi.addAttachment(editingTask._id, file);
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        toast({
+          title: "Success",
+          description: "File uploaded successfully",
+          type: "success",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error.response?.data?.message || "Failed to upload file",
+          type: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleFileDelete = async (fileId) => {
+    if (!editingTask) return;
+    try {
+      await tasksApi.deleteAttachment(editingTask._id, fileId);
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast({
+        title: "Success",
+        description: "File deleted successfully",
+        type: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to delete file",
+        type: "destructive",
+      });
     }
   };
 
@@ -212,11 +300,6 @@ export const Tasks = () => {
         : [...prev, employeeId]
     );
   };
-
-  const tasks = tasksData?.data?.tasks || [];
-  const clients = clientsData?.data?.clients || [];
-  const packages = packagesData?.data?.packages || [];
-  const employees = employeesData?.data?.employees || [];
 
   const handleSort = (key) => {
     setSortConfig((prev) => ({
@@ -477,6 +560,12 @@ export const Tasks = () => {
                     </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Services
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Activities
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
                     Priority
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
@@ -500,7 +589,7 @@ export const Tasks = () => {
                 {sortedTasks.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="7"
+                      colSpan="9"
                       className="px-6 py-12 text-center text-gray-500"
                     >
                       No tasks found
@@ -566,6 +655,48 @@ export const Tasks = () => {
                             task.assignedTo
                           ) : (
                             "Unassigned"
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {task.services && task.services.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {task.services.slice(0, 2).map((service, idx) => (
+                                <span
+                                  key={service._id || service || idx}
+                                  className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs"
+                                >
+                                  {service.name || service}
+                                </span>
+                              ))}
+                              {task.services.length > 2 && (
+                                <span className="text-xs text-gray-500">
+                                  +{task.services.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {task.activities && task.activities.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {task.activities.slice(0, 2).map((activity, idx) => (
+                                <span
+                                  key={activity._id || activity || idx}
+                                  className="inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs"
+                                >
+                                  {activity.name || activity}
+                                </span>
+                              ))}
+                              {task.activities.length > 2 && (
+                                <span className="text-xs text-gray-500">
+                                  +{task.activities.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            "-"
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -688,26 +819,19 @@ export const Tasks = () => {
                     >
                       Client *
                     </label>
-                    <select
-                      id="clientId"
-                      name="clientId"
-                      required
-                      value={
-                        selectedClientId ||
-                        editingTask?.clientId?._id ||
-                        editingTask?.clientId ||
-                        ""
-                      }
-                      onChange={(e) => setSelectedClientId(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">Select Client</option>
-                      {clients.map((client) => (
-                        <option key={client._id} value={client._id}>
-                          {client.name}
-                        </option>
-                      ))}
-                    </select>
+                    <SelectSearch
+                      options={clients}
+                      value={selectedClientId}
+                      onChange={(value) => {
+                        setSelectedClientId(value);
+                        setSelectedPackageId(""); // Reset package when client changes
+                        setSelectedServices([]);
+                        setSelectedActivities([]);
+                      }}
+                      placeholder="Search and select client..."
+                      searchPlaceholder="Search clients..."
+                      emptyMessage="No clients found"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label
@@ -716,23 +840,20 @@ export const Tasks = () => {
                     >
                       Package *
                     </label>
-                    <select
-                      id="packageId"
-                      name="packageId"
-                      required
-                      defaultValue={
-                        editingTask?.packageId?._id || editingTask?.packageId
-                      }
+                    <SelectSearch
+                      options={packages}
+                      value={selectedPackageId}
+                      onChange={(value) => {
+                        setSelectedPackageId(value);
+                        // Reset services and activities when package changes
+                        setSelectedServices([]);
+                        setSelectedActivities([]);
+                      }}
+                      placeholder="Search and select package..."
+                      searchPlaceholder="Search packages..."
+                      emptyMessage="No packages found"
                       disabled={!selectedClientId && !editingTask}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">Select Package</option>
-                      {packages.map((pkg) => (
-                        <option key={pkg._id} value={pkg._id}>
-                          {pkg.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </div>
               </div>
@@ -773,21 +894,49 @@ export const Tasks = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="category"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Category
-                  </label>
-                  <input
-                    id="category"
-                    name="category"
-                    type="text"
-                    defaultValue={editingTask?.category}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Services
+                    </label>
+                    <MultiSelect
+                      options={filteredServices}
+                      selected={selectedServices}
+                      onChange={setSelectedServices}
+                      placeholder="Select services..."
+                      searchPlaceholder="Search services..."
+                      emptyMessage="No services found"
+                      disabled={!selectedPackageId && !editingTask}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Activities
+                    </label>
+                    <MultiSelect
+                      options={filteredActivities}
+                      selected={selectedActivities}
+                      onChange={setSelectedActivities}
+                      placeholder="Select activities..."
+                      searchPlaceholder="Search activities..."
+                      emptyMessage="No activities found"
+                      disabled={!selectedPackageId && !editingTask}
+                    />
+                  </div>
                 </div>
+                {editingTask && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Attachments
+                    </label>
+                    <FileUpload
+                      onUpload={handleFileUpload}
+                      onDelete={handleFileDelete}
+                      existingFiles={editingTask.attachments || []}
+                      maxFiles={10}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Assignment */}
@@ -795,47 +944,19 @@ export const Tasks = () => {
                 <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
                   Assignment
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2 md:col-span-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
                       Assignees
                     </label>
-                    <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto bg-white">
-                      {employees.length === 0 ? (
-                        <p className="text-sm text-gray-500">
-                          No employees available
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {employees.map((employee) => (
-                            <label
-                              key={employee._id}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedEmployees.includes(
-                                  employee._id
-                                )}
-                                onChange={() =>
-                                  handleEmployeeToggle(employee._id)
-                                }
-                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                              />
-                              <span className="text-sm text-gray-700">
-                                {employee.name}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {selectedEmployees.length > 0 && (
-                      <p className="text-xs text-gray-500">
-                        {selectedEmployees.length} employee
-                        {selectedEmployees.length !== 1 ? "s" : ""} selected
-                      </p>
-                    )}
+                    <MultiSelect
+                      options={employees}
+                      selected={selectedEmployees}
+                      onChange={setSelectedEmployees}
+                      placeholder="Select employees..."
+                      searchPlaceholder="Search employees..."
+                      emptyMessage="No employees found"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label
@@ -856,63 +977,27 @@ export const Tasks = () => {
                       <option value="URGENT">Urgent</option>
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="dueDate"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Due Date
-                    </label>
-                    <input
-                      id="dueDate"
-                      name="dueDate"
-                      type="date"
-                      defaultValue={
-                        editingTask?.dueDate
-                          ? new Date(editingTask.dueDate)
-                              .toISOString()
-                              .split("T")[0]
-                          : ""
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="estimatedMinutes"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Estimated Time (minutes)
-                    </label>
-                    <input
-                      id="estimatedMinutes"
-                      name="estimatedMinutes"
-                      type="number"
-                      min="0"
-                      defaultValue={editingTask?.estimatedMinutes || ""}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="status"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Status
-                    </label>
-                    <select
-                      id="status"
-                      name="status"
-                      defaultValue={editingTask?.status || "TODO"}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="TODO">To Do</option>
-                      <option value="IN_PROGRESS">In Progress</option>
-                      <option value="DONE">Done</option>
-                    </select>
-                  </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="dueDate"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Due Date
+                  </label>
+                  <input
+                    id="dueDate"
+                    name="dueDate"
+                    type="date"
+                    defaultValue={
+                      editingTask?.dueDate
+                        ? new Date(editingTask.dueDate)
+                            .toISOString()
+                            .split("T")[0]
+                        : ""
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
                 </div>
               </div>
 

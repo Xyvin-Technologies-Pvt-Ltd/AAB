@@ -1,7 +1,4 @@
 import mongoose from 'mongoose';
-import crypto from 'crypto';
-import dotenv from 'dotenv';
-dotenv.config();
 
 const documentSchema = new mongoose.Schema(
   {
@@ -277,7 +274,6 @@ const clientSchema = new mongoose.Schema(
       password: {
         type: String,
         default: null,
-        select: false, // Don't return password by default
       },
     },
     // Compliance tracking
@@ -297,69 +293,6 @@ const clientSchema = new mongoose.Schema(
   }
 );
 
-// Encrypt EmaraTax password before saving
-const getEncryptionKey = () => {
-  const key = process.env.ENCRYPTION_KEY || 'default-encryption-key';
-  if (!key) {
-    // Generate a key if not set (should be set in production)
-    const generatedKey = crypto.randomBytes(32).toString('hex');
-    console.warn('WARNING: ENCRYPTION_KEY not set in environment. Using generated key (not persistent).');
-    return generatedKey;
-  }
-  // Ensure key is 64 hex characters (32 bytes)
-  if (key.length !== 64) {
-    throw new Error('ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
-  }
-  return key;
-};
-
-const ENCRYPTION_KEY = getEncryptionKey();
-const ALGORITHM = 'aes-256-cbc';
-
-const encrypt = (text) => {
-  if (!text) return null;
-  const iv = crypto.randomBytes(16);
-  const keyBuffer = Buffer.from(ENCRYPTION_KEY, 'hex');
-  const cipher = crypto.createCipheriv(ALGORITHM, keyBuffer, iv);
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  return iv.toString('hex') + ':' + encrypted;
-};
-
-const decrypt = (text) => {
-  if (!text) return null;
-  try {
-    const parts = text.split(':');
-    if (parts.length !== 2) return null;
-    const iv = Buffer.from(parts[0], 'hex');
-    const encryptedText = parts[1];
-    const keyBuffer = Buffer.from(ENCRYPTION_KEY, 'hex');
-    const decipher = crypto.createDecipheriv(ALGORITHM, keyBuffer, iv);
-    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  } catch (error) {
-    console.error('Decryption error:', error);
-    return null;
-  }
-};
-
-clientSchema.pre('save', async function (next) {
-  // Only encrypt password if it's modified and not already encrypted
-  if (this.isModified('emaraTaxAccount.password') && this.emaraTaxAccount?.password) {
-    // Check if password is already encrypted (encrypted strings have format iv:encrypted)
-    if (!this.emaraTaxAccount.password.includes(':')) {
-      this.emaraTaxAccount.password = encrypt(this.emaraTaxAccount.password);
-    }
-  }
-  next();
-});
-
-// Add method to decrypt password
-clientSchema.methods.getDecryptedPassword = function () {
-  if (!this.emaraTaxAccount?.password) return null;
-  return decrypt(this.emaraTaxAccount.password);
-};
 
 // Indexes for performance
 clientSchema.index({ 'businessInfo.trn': 1 });

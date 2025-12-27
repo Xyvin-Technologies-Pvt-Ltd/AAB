@@ -9,7 +9,10 @@ export const createPackage = async (packageData) => {
   }
 
   const packageDoc = await Package.create(packageData);
-  return packageDoc;
+  return await Package.findById(packageDoc._id)
+    .populate('clientId', 'name status')
+    .populate('services', 'name')
+    .populate('activities', 'name');
 };
 
 export const getPackages = async (filters = {}) => {
@@ -38,6 +41,8 @@ export const getPackages = async (filters = {}) => {
   const [packages, total] = await Promise.all([
     Package.find(query)
       .populate('clientId', 'name status')
+      .populate('services', 'name')
+      .populate('activities', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -56,7 +61,10 @@ export const getPackages = async (filters = {}) => {
 };
 
 export const getPackageById = async (packageId) => {
-  const packageDoc = await Package.findById(packageId).populate('clientId', 'name status');
+  const packageDoc = await Package.findById(packageId)
+    .populate('clientId', 'name status')
+    .populate('services', 'name')
+    .populate('activities', 'name');
   if (!packageDoc) {
     throw new Error('Package not found');
   }
@@ -75,7 +83,10 @@ export const updatePackage = async (packageId, updateData) => {
   const packageDoc = await Package.findByIdAndUpdate(packageId, updateData, {
     new: true,
     runValidators: true,
-  }).populate('clientId', 'name status');
+  })
+    .populate('clientId', 'name status')
+    .populate('services', 'name')
+    .populate('activities', 'name');
 
   if (!packageDoc) {
     throw new Error('Package not found');

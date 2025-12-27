@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
 import { clientsApi } from "@/api/clients";
 import { packagesApi } from "@/api/packages";
+import { servicesApi } from "@/api/services";
+import { activitiesApi } from "@/api/activities";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/ui/tabs";
@@ -18,6 +20,9 @@ import {
   Shield,
   Calendar,
   Receipt,
+  Edit2,
+  Save,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
@@ -35,6 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
+import { MultiSelect } from "@/ui/multi-select";
 
 export const ClientDetails = () => {
   const { id } = useParams();
@@ -44,10 +50,31 @@ export const ClientDetails = () => {
   const [showPackageForm, setShowPackageForm] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedActivities, setSelectedActivities] = useState([]);
+  const [stillActive, setStillActive] = useState(true);
+  const [packageType, setPackageType] = useState("RECURRING");
+  const [isEditingContact, setIsEditingContact] = useState(false);
+  const [contactFormData, setContactFormData] = useState({
+    name: "",
+    contactPerson: "",
+    email: "",
+    phone: "",
+    status: "ACTIVE",
+  });
 
-  const { data: clientData, isLoading: clientLoading } = useQuery({
+  const {
+    data: clientData,
+    isLoading: clientLoading,
+    isFetching: clientFetching,
+    isError: clientError,
+    isPending,
+  } = useQuery({
     queryKey: ["client", id],
     queryFn: () => clientsApi.getById(id),
+    enabled: !!id,
+    retry: 1,
+    retryDelay: 1000,
   });
 
   const { data: packagesData, isLoading: packagesLoading } = useQuery({
@@ -55,8 +82,163 @@ export const ClientDetails = () => {
     queryFn: () => packagesApi.getAll({ clientId: id, limit: 100 }),
   });
 
+  const { data: servicesData } = useQuery({
+    queryKey: ["services"],
+    queryFn: () => servicesApi.getAll({ limit: 100 }),
+  });
+
+  const { data: activitiesData } = useQuery({
+    queryKey: ["activities"],
+    queryFn: () => activitiesApi.getAll({ limit: 100 }),
+  });
+
   const client = clientData?.data;
   const packages = packagesData?.data?.packages || [];
+  const services = servicesData?.data?.services || servicesData?.data || [];
+  const activities =
+    activitiesData?.data?.activities || activitiesData?.data || [];
+
+  // Helper function to calculate VAT submission cycle months
+  const getVATCycleMonths = (client) => {
+    if (!client?.businessInfo) return null;
+
+    // Use tax periods if available
+    if (
+      client.businessInfo.vatTaxPeriods &&
+      client.businessInfo.vatTaxPeriods.length > 0
+    ) {
+      const periods = client.businessInfo.vatTaxPeriods;
+      const sortedPeriods = [...periods].sort(
+        (a, b) => new Date(a.startDate) - new Date(b.startDate)
+      );
+
+      // Extract months from periods
+      const months = sortedPeriods.map((period) => {
+        const startDate = new Date(period.startDate);
+        return startDate.getMonth(); // 0-11
+      });
+
+      // Get unique months and sort
+      const uniqueMonths = [...new Set(months)].sort((a, b) => a - b);
+
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      return uniqueMonths.map((month) => monthNames[month]).join(" • ");
+    }
+
+    // Fallback to cycle-based calculation
+    if (client.businessInfo.vatReturnCycle === "MONTHLY") {
+      return "Jan • Feb • Mar • Apr • May • Jun • Jul • Aug • Sep • Oct • Nov • Dec";
+    } else if (client.businessInfo.vatReturnCycle === "QUARTERLY") {
+      // Determine starting month from first period if available, otherwise default to Jan
+      let startMonth = 0; // January by default
+
+      if (
+        client.businessInfo.vatTaxPeriods &&
+        client.businessInfo.vatTaxPeriods.length > 0
+      ) {
+        const firstPeriod = client.businessInfo.vatTaxPeriods[0];
+        const startDate = new Date(firstPeriod.startDate);
+        startMonth = startDate.getMonth();
+      }
+
+      // Quarterly cycles: Jan-Apr-Jul-Oct, Feb-May-Aug-Nov, or Mar-Jun-Sep-Dec
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      if (startMonth === 0) {
+        return "Jan • Apr • Jul • Oct";
+      } else if (startMonth === 1) {
+        return "Feb • May • Aug • Nov";
+      } else if (startMonth === 2) {
+        return "Mar • Jun • Sep • Dec";
+      } else {
+        // Default to Jan-Apr-Jul-Oct
+        return "Jan • Apr • Jul • Oct";
+      }
+    }
+
+    return null;
+  };
+
+  const vatCycleMonths = client ? getVATCycleMonths(client) : null;
+
+  // Initialize contact form data when client loads
+  useEffect(() => {
+    if (client && !isEditingContact) {
+      setContactFormData({
+        name: client.name || "",
+        contactPerson: client.contactPerson || "",
+        email: client.email || "",
+        phone: client.phone || "",
+        status: client.status || "ACTIVE",
+      });
+    }
+  }, [client, isEditingContact]);
+
+  const updateClientMutation = useMutation({
+    mutationFn: (data) => clientsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client", id] });
+      setIsEditingContact(false);
+      toast({
+        title: "Success",
+        description: "Contact information updated successfully",
+        type: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message ||
+          "Failed to update contact information",
+        type: "error",
+      });
+    },
+  });
+
+  const handleContactSave = () => {
+    updateClientMutation.mutate(contactFormData);
+  };
+
+  const handleContactCancel = () => {
+    if (client) {
+      setContactFormData({
+        name: client.name || "",
+        contactPerson: client.contactPerson || "",
+        email: client.email || "",
+        phone: client.phone || "",
+        status: client.status || "ACTIVE",
+      });
+    }
+    setIsEditingContact(false);
+  };
 
   // Calculate next submission dates for this client
   const calculateNextVATSubmissionDate = (client) => {
@@ -323,20 +505,53 @@ export const ClientDetails = () => {
 
   const resetPackageForm = () => {
     setEditingPackage(null);
+    setSelectedServices([]);
+    setSelectedActivities([]);
+    setStillActive(true);
+    setPackageType("RECURRING");
+  };
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!showPackageForm) {
+      resetPackageForm();
+    }
+  }, [showPackageForm]);
+
+  const handleEditPackage = (pkg) => {
+    setEditingPackage(pkg);
+    setSelectedServices(
+      pkg.services?.map((s) => (typeof s === "object" ? s._id : s)) || []
+    );
+    setSelectedActivities(
+      pkg.activities?.map((a) => (typeof a === "object" ? a._id : a)) || []
+    );
+    setStillActive(!pkg.endDate); // If no endDate, package is still active
+    setPackageType(pkg.type || "RECURRING");
+    setShowPackageForm(true);
   };
 
   const handlePackageSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const type = formData.get("type");
     const data = {
       clientId: id,
       name: formData.get("name"),
-      type: formData.get("type"),
-      billingFrequency: formData.get("billingFrequency") || undefined,
+      type: type,
+      billingFrequency:
+        type === "RECURRING"
+          ? formData.get("billingFrequency") || undefined
+          : undefined,
       contractValue: parseFloat(formData.get("contractValue")),
       startDate: formData.get("startDate"),
-      endDate: formData.get("endDate") || undefined,
+      endDate:
+        editingPackage && !stillActive
+          ? formData.get("endDate") || undefined
+          : undefined,
       status: formData.get("status"),
+      services: selectedServices,
+      activities: selectedActivities,
     };
 
     if (editingPackage) {
@@ -346,7 +561,7 @@ export const ClientDetails = () => {
     }
   };
 
-  if (clientLoading) {
+  if (clientLoading || clientFetching || isPending) {
     return (
       <AppLayout>
         <div className="text-center py-12">Loading...</div>
@@ -354,7 +569,7 @@ export const ClientDetails = () => {
     );
   }
 
-  if (!client) {
+  if (clientError || !client) {
     return (
       <AppLayout>
         <div className="text-center py-12">
@@ -421,42 +636,160 @@ export const ClientDetails = () => {
               {/* Contact Person Details */}
               <Card>
                 <div className="p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                    Contact Information
-                  </h3>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Contact Information
+                    </h3>
+                    {!isEditingContact ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingContact(true)}
+                        title="Edit contact information"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleContactSave}
+                          disabled={updateClientMutation.isPending}
+                          title="Save"
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleContactCancel}
+                          title="Cancel"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <div>
-                        <p className="text-xs text-gray-500">Contact Person</p>
-                        <p className="text-sm font-medium">
-                          {client.contactPerson || "-"}
+                        <p className="text-xs text-gray-500 mb-1">
+                          Client Name
                         </p>
+                        {isEditingContact ? (
+                          <input
+                            type="text"
+                            value={contactFormData.name}
+                            onChange={(e) =>
+                              setContactFormData({
+                                ...contactFormData,
+                                name: e.target.value,
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="Client name"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium">
+                            {client.name || "-"}
+                          </p>
+                        )}
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Email</p>
-                        <p className="text-sm font-medium">
-                          {client.email || "-"}
+                        <p className="text-xs text-gray-500 mb-1">
+                          Contact Person
                         </p>
+                        {isEditingContact ? (
+                          <input
+                            type="text"
+                            value={contactFormData.contactPerson}
+                            onChange={(e) =>
+                              setContactFormData({
+                                ...contactFormData,
+                                contactPerson: e.target.value,
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="Contact person"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium">
+                            {client.contactPerson || "-"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Email</p>
+                        {isEditingContact ? (
+                          <input
+                            type="email"
+                            value={contactFormData.email}
+                            onChange={(e) =>
+                              setContactFormData({
+                                ...contactFormData,
+                                email: e.target.value,
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="Email address"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium">
+                            {client.email || "-"}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-2">
                       <div>
-                        <p className="text-xs text-gray-500">Phone</p>
-                        <p className="text-sm font-medium">
-                          {client.phone || "-"}
-                        </p>
+                        <p className="text-xs text-gray-500 mb-1">Phone</p>
+                        {isEditingContact ? (
+                          <input
+                            type="tel"
+                            value={contactFormData.phone}
+                            onChange={(e) =>
+                              setContactFormData({
+                                ...contactFormData,
+                                phone: e.target.value,
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="Phone number"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium">
+                            {client.phone || "-"}
+                          </p>
+                        )}
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Status</p>
-                        <span
-                          className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                            client.status === "ACTIVE"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {client.status}
-                        </span>
+                        <p className="text-xs text-gray-500 mb-1">Status</p>
+                        {isEditingContact ? (
+                          <select
+                            value={contactFormData.status}
+                            onChange={(e) =>
+                              setContactFormData({
+                                ...contactFormData,
+                                status: e.target.value,
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          >
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="INACTIVE">INACTIVE</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                              client.status === "ACTIVE"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {client.status}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -494,7 +827,7 @@ export const ClientDetails = () => {
                           {formatDateDDMMYYYY(nextVATSubmission.submissionDate)}
                         </p>
                         {nextVATSubmission.period && (
-                          <p className="text-xs text-gray-500 mb-2">
+                          <p className="text-xs text-gray-500 mb-1">
                             Period:{" "}
                             {formatDateDDMMYYYY(
                               nextVATSubmission.period.startDate
@@ -503,6 +836,12 @@ export const ClientDetails = () => {
                             {formatDateDDMMYYYY(
                               nextVATSubmission.period.endDate
                             )}
+                          </p>
+                        )}
+                        {vatCycleMonths && (
+                          <p className="text-xs text-gray-500 mb-2">
+                            <span className="font-medium">Cycle:</span>{" "}
+                            {vatCycleMonths}
                           </p>
                         )}
                         <Badge
@@ -604,10 +943,7 @@ export const ClientDetails = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                  setEditingPackage(pkg);
-                                  setShowPackageForm(true);
-                                }}
+                                onClick={() => handleEditPackage(pkg)}
                                 title="Edit package"
                               >
                                 <Edit className="h-3 w-3" />
@@ -627,7 +963,7 @@ export const ClientDetails = () => {
                               </Button>
                             </div>
                           </div>
-                          <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="grid grid-cols-3 gap-2 text-xs mb-2">
                             <div>
                               <span className="text-gray-500">Type</span>
                               <p className="font-medium">{pkg.type}</p>
@@ -635,7 +971,7 @@ export const ClientDetails = () => {
                             <div>
                               <span className="text-gray-500">Value</span>
                               <p className="font-medium">
-                                ${pkg.contractValue?.toFixed(2)}
+                                AED {pkg.contractValue?.toFixed(2)}
                               </p>
                             </div>
                             <div>
@@ -651,6 +987,52 @@ export const ClientDetails = () => {
                               </span>
                             </div>
                           </div>
+                          {pkg.services && pkg.services.length > 0 && (
+                            <div className="mb-2">
+                              <span className="text-xs text-gray-500">
+                                Services:{" "}
+                              </span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {pkg.services.map((service) => (
+                                  <span
+                                    key={
+                                      typeof service === "object"
+                                        ? service._id
+                                        : service
+                                    }
+                                    className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded"
+                                  >
+                                    {typeof service === "object"
+                                      ? service.name
+                                      : service}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {pkg.activities && pkg.activities.length > 0 && (
+                            <div>
+                              <span className="text-xs text-gray-500">
+                                Activities:{" "}
+                              </span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {pkg.activities.map((activity) => (
+                                  <span
+                                    key={
+                                      typeof activity === "object"
+                                        ? activity._id
+                                        : activity
+                                    }
+                                    className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs rounded"
+                                  >
+                                    {typeof activity === "object"
+                                      ? activity.name
+                                      : activity}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </Card>
                     ))}
@@ -737,35 +1119,63 @@ export const ClientDetails = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="type"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Type *
-                  </label>
-                  <select
-                    id="type"
-                    name="type"
-                    required
-                    defaultValue={editingPackage?.type}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="RECURRING">Recurring</option>
-                    <option value="ONE_TIME">One Time</option>
-                  </select>
-                </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Services
+                </label>
+                <MultiSelect
+                  options={services}
+                  selected={selectedServices}
+                  onChange={setSelectedServices}
+                  placeholder="Select services..."
+                  searchPlaceholder="Search services..."
+                  emptyMessage="No services found"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Activities
+                </label>
+                <MultiSelect
+                  options={activities}
+                  selected={selectedActivities}
+                  onChange={setSelectedActivities}
+                  placeholder="Select activities..."
+                  searchPlaceholder="Search activities..."
+                  emptyMessage="No activities found"
+                />
+              </div>
+              <div className="space-y-2">
+                <label
+                  htmlFor="type"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Type *
+                </label>
+                <select
+                  id="type"
+                  name="type"
+                  required
+                  value={packageType}
+                  onChange={(e) => setPackageType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="RECURRING">Recurring</option>
+                  <option value="ONE_TIME">One Time</option>
+                </select>
+              </div>
+              {packageType === "RECURRING" && (
                 <div className="space-y-2">
                   <label
                     htmlFor="billingFrequency"
                     className="text-sm font-medium text-gray-700"
                   >
-                    Billing Frequency
+                    Billing Frequency *
                   </label>
                   <select
                     id="billingFrequency"
                     name="billingFrequency"
+                    required={packageType === "RECURRING"}
                     defaultValue={editingPackage?.billingFrequency}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
@@ -775,13 +1185,13 @@ export const ClientDetails = () => {
                     <option value="YEARLY">Yearly</option>
                   </select>
                 </div>
-              </div>
+              )}
               <div className="space-y-2">
                 <label
                   htmlFor="contractValue"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Contract Value *
+                  Contract Value (AED) *
                 </label>
                 <input
                   id="contractValue"
@@ -791,53 +1201,74 @@ export const ClientDetails = () => {
                   required
                   defaultValue={editingPackage?.contractValue}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0.00"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="startDate"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Start Date *
-                  </label>
-                  <input
-                    id="startDate"
-                    name="startDate"
-                    type="date"
-                    required
-                    defaultValue={
-                      editingPackage?.startDate
-                        ? new Date(editingPackage.startDate)
-                            .toISOString()
-                            .split("T")[0]
-                        : ""
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="endDate"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    End Date
-                  </label>
-                  <input
-                    id="endDate"
-                    name="endDate"
-                    type="date"
-                    defaultValue={
-                      editingPackage?.endDate
-                        ? new Date(editingPackage.endDate)
-                            .toISOString()
-                            .split("T")[0]
-                        : ""
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+              <div className="space-y-2">
+                <label
+                  htmlFor="startDate"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Start Date *
+                </label>
+                <input
+                  id="startDate"
+                  name="startDate"
+                  type="date"
+                  required
+                  defaultValue={
+                    editingPackage?.startDate
+                      ? new Date(editingPackage.startDate)
+                          .toISOString()
+                          .split("T")[0]
+                      : ""
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
+              {editingPackage && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="stillActive"
+                      checked={stillActive}
+                      onChange={(e) => setStillActive(e.target.checked)}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    />
+                    <label
+                      htmlFor="stillActive"
+                      className="text-sm font-medium text-gray-700 cursor-pointer"
+                    >
+                      Still Active
+                    </label>
+                  </div>
+                  {!stillActive && (
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="endDate"
+                        className="text-sm font-medium text-gray-700"
+                      >
+                        End Date *
+                      </label>
+                      <input
+                        id="endDate"
+                        name="endDate"
+                        type="date"
+                        required={!stillActive}
+                        defaultValue={
+                          editingPackage?.endDate
+                            ? new Date(editingPackage.endDate)
+                                .toISOString()
+                                .split("T")[0]
+                            : ""
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
               <div className="space-y-2">
                 <label
                   htmlFor="status"

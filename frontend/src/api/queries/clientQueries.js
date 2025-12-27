@@ -21,7 +21,7 @@ export const useDocumentUpload = () => {
       queryClient.invalidateQueries({ queryKey: ['client', variables.clientId] });
       toast({
         title: 'Success',
-        description: 'Document uploaded successfully',
+        description: 'Document uploaded and processed successfully',
         type: 'success',
       });
     },

@@ -4,6 +4,68 @@ import { Button } from '@/ui/button';
 import { Badge } from '@/ui/badge';
 import { useBusinessInfoUpdate } from '@/api/queries/clientQueries';
 
+// Helper function to calculate VAT submission cycle months
+const getVATCycleMonths = (businessInfo) => {
+  if (!businessInfo) return null;
+
+  // Use tax periods if available
+  if (businessInfo.vatTaxPeriods && businessInfo.vatTaxPeriods.length > 0) {
+    const periods = businessInfo.vatTaxPeriods;
+    const sortedPeriods = [...periods].sort(
+      (a, b) => new Date(a.startDate) - new Date(b.startDate)
+    );
+
+    // Extract months from periods
+    const months = sortedPeriods.map((period) => {
+      const startDate = new Date(period.startDate);
+      return startDate.getMonth(); // 0-11
+    });
+
+    // Get unique months and sort
+    const uniqueMonths = [...new Set(months)].sort((a, b) => a - b);
+
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+
+    return uniqueMonths.map((month) => monthNames[month]).join(' • ');
+  }
+
+  // Fallback to cycle-based calculation
+  if (businessInfo.vatReturnCycle === 'MONTHLY') {
+    return 'Jan • Feb • Mar • Apr • May • Jun • Jul • Aug • Sep • Oct • Nov • Dec';
+  } else if (businessInfo.vatReturnCycle === 'QUARTERLY') {
+    // Determine starting month from first period if available, otherwise default to Jan
+    let startMonth = 0; // January by default
+    
+    if (businessInfo.vatTaxPeriods && businessInfo.vatTaxPeriods.length > 0) {
+      const firstPeriod = businessInfo.vatTaxPeriods[0];
+      const startDate = new Date(firstPeriod.startDate);
+      startMonth = startDate.getMonth();
+    }
+
+    // Quarterly cycles: Jan-Apr-Jul-Oct, Feb-May-Aug-Nov, or Mar-Jun-Sep-Dec
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+
+    if (startMonth === 0) {
+      return 'Jan • Apr • Jul • Oct';
+    } else if (startMonth === 1) {
+      return 'Feb • May • Aug • Nov';
+    } else if (startMonth === 2) {
+      return 'Mar • Jun • Sep • Dec';
+    } else {
+      // Default to Jan-Apr-Jul-Oct
+      return 'Jan • Apr • Jul • Oct';
+    }
+  }
+
+  return null;
+};
+
 export const BusinessInfoForm = ({ clientId, client, businessInfo, aiExtractedFields = [], verifiedFields = [] }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,6 +82,8 @@ export const BusinessInfoForm = ({ clientId, client, businessInfo, aiExtractedFi
     licenseExpiryDate: businessInfo?.licenseExpiryDate || '',
     remarks: businessInfo?.remarks || '',
   });
+
+  const vatCycleMonths = getVATCycleMonths(businessInfo);
 
   const updateMutation = useBusinessInfoUpdate();
 
@@ -171,7 +235,15 @@ export const BusinessInfoForm = ({ clientId, client, businessInfo, aiExtractedFi
         <FieldWrapper field="emirate" label="Emirate" />
         <FieldWrapper field="trn" label="TRN" />
         <FieldWrapper field="ctrn" label="CTRN" />
-        <FieldWrapper field="vatReturnCycle" label="VAT Return Cycle" type="select" />
+        <div className="space-y-1">
+          <FieldWrapper field="vatReturnCycle" label="VAT Return Cycle" type="select" />
+          {!isEditing && vatCycleMonths && (
+            <div className="px-2 py-1 text-sm bg-gray-50 rounded text-gray-600">
+              <span className="text-xs text-gray-500">Cycle months: </span>
+              {vatCycleMonths}
+            </div>
+          )}
+        </div>
         <FieldWrapper field="corporateTaxDueDate" label="Corporate Tax Due Date" type="date" />
         <FieldWrapper field="licenseNumber" label="License Number" />
         <FieldWrapper field="licenseStartDate" label="License Start Date" type="date" />

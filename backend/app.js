@@ -26,7 +26,7 @@ app.use(
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    max: 1000, // limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP, please try again later.',
 });
 app.use('/api/', limiter);
@@ -61,6 +61,8 @@ import taskRoutes from './modules/task/task.route.js';
 import timeEntryRoutes from './modules/timeEntry/timeEntry.route.js';
 import analyticsRoutes from './modules/analytics/analytics.route.js';
 import documentsRoutes from './modules/documents/documents.route.js';
+import serviceRoutes from './modules/service/service.route.js';
+import activityRoutes from './modules/activity/activity.route.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
@@ -70,6 +72,8 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/time-entries', timeEntryRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/documents', documentsRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/activities', activityRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -42,6 +42,18 @@ const packageSchema = new mongoose.Schema(
       enum: ['ACTIVE', 'INACTIVE', 'COMPLETED'],
       default: 'ACTIVE',
     },
+    services: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Service',
+      },
+    ],
+    activities: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Activity',
+      },
+    ],
   },
   {
     timestamps: true,

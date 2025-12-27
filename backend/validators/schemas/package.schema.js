@@ -24,6 +24,8 @@ export const createPackageSchema = Joi.object({
   }),
   endDate: Joi.date().allow(null),
   status: Joi.string().valid('ACTIVE', 'INACTIVE', 'COMPLETED').default('ACTIVE'),
+  services: Joi.array().items(Joi.string().hex().length(24)).default([]),
+  activities: Joi.array().items(Joi.string().hex().length(24)).default([]),
 });
 
 export const updatePackageSchema = Joi.object({
@@ -35,5 +37,7 @@ export const updatePackageSchema = Joi.object({
   startDate: Joi.date(),
   endDate: Joi.date().allow(null),
   status: Joi.string().valid('ACTIVE', 'INACTIVE', 'COMPLETED'),
+  services: Joi.array().items(Joi.string().hex().length(24)),
+  activities: Joi.array().items(Joi.string().hex().length(24)),
 });
 

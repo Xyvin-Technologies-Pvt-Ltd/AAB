@@ -14,6 +14,7 @@ import { TimeEntries } from './pages/TimeEntries';
 import { Analytics } from './pages/Analytics';
 import { Calendar } from './pages/Calendar';
 import { Alerts } from './pages/Alerts';
+import { Settings } from './pages/Settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -116,6 +117,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Alerts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               }
             />

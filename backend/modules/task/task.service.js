@@ -62,6 +62,8 @@ export const getTasks = async (filters = {}) => {
       .populate('clientId', 'name')
       .populate('packageId', 'name type')
       .populate('assignedTo', 'name email')
+      .populate('services', 'name')
+      .populate('activities', 'name')
       .populate('reporter', 'email')
       .populate('comments.author', 'email')
       .sort({ order: 1, createdAt: -1 })
@@ -86,6 +88,8 @@ export const getTaskById = async (taskId) => {
     .populate('clientId', 'name')
     .populate('packageId', 'name type')
     .populate('assignedTo', 'name email')
+    .populate('services', 'name')
+    .populate('activities', 'name')
     .populate('reporter', 'email')
     .populate('comments.author', 'email')
     .populate('attachments.uploadedBy', 'email');
@@ -123,6 +127,8 @@ export const updateTask = async (taskId, updateData) => {
     .populate('clientId', 'name')
     .populate('packageId', 'name type')
     .populate('assignedTo', 'name email')
+    .populate('services', 'name')
+    .populate('activities', 'name')
     .populate('reporter', 'email')
     .populate('comments.author', 'email')
     .populate('attachments.uploadedBy', 'email');
@@ -151,6 +157,8 @@ export const updateTaskOrder = async (taskId, order) => {
     .populate('clientId', 'name')
     .populate('packageId', 'name type')
     .populate('assignedTo', 'name email')
+    .populate('services', 'name')
+    .populate('activities', 'name')
     .populate('reporter', 'email')
     .populate('comments.author', 'email')
     .populate('attachments.uploadedBy', 'email');
@@ -226,6 +234,8 @@ export const addComment = async (taskId, commentData, userId) => {
     .populate('clientId', 'name')
     .populate('packageId', 'name type')
     .populate('assignedTo', 'name email')
+    .populate('services', 'name')
+    .populate('activities', 'name')
     .populate('reporter', 'email')
     .populate('comments.author', 'email')
     .populate('attachments.uploadedBy', 'email');
@@ -258,6 +268,8 @@ export const deleteComment = async (taskId, commentId, userId) => {
     .populate('clientId', 'name')
     .populate('packageId', 'name type')
     .populate('assignedTo', 'name email')
+    .populate('services', 'name')
+    .populate('activities', 'name')
     .populate('reporter', 'email')
     .populate('comments.author', 'email')
     .populate('attachments.uploadedBy', 'email');
@@ -284,6 +296,8 @@ export const addAttachment = async (taskId, fileData, userId) => {
     .populate('clientId', 'name')
     .populate('packageId', 'name type')
     .populate('assignedTo', 'name email')
+    .populate('services', 'name')
+    .populate('activities', 'name')
     .populate('reporter', 'email')
     .populate('comments.author', 'email')
     .populate('attachments.uploadedBy', 'email');
@@ -320,6 +334,8 @@ export const deleteAttachment = async (taskId, attachmentId, userId) => {
     .populate('clientId', 'name')
     .populate('packageId', 'name type')
     .populate('assignedTo', 'name email')
+    .populate('services', 'name')
+    .populate('activities', 'name')
     .populate('reporter', 'email')
     .populate('comments.author', 'email')
     .populate('attachments.uploadedBy', 'email');

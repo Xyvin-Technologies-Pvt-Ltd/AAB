@@ -31,7 +31,7 @@ export const TaskCard = ({
 
   return (
     <div
-      className={`bg-white rounded-lg border-2 p-4 shadow-sm hover:shadow-md transition-shadow ${
+      className={`bg-white rounded-lg border-2 p-2 shadow-sm hover:shadow-md transition-shadow ${
         isOverdue ? "border-red-300" : priorityColors[priority]
       } ${dragHandleProps ? "cursor-move" : ""}`}
       {...(dragHandleProps || {})}
@@ -47,102 +47,123 @@ export const TaskCard = ({
         }
       }}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2">
-        <h3 className="font-semibold text-sm text-gray-900 flex-1 line-clamp-2">
+      {/* Header with Priority */}
+      <div className="flex items-start justify-between mb-1.5">
+        <h3 className="font-semibold text-xs text-gray-900 flex-1 line-clamp-2 leading-tight">
           {task.name}
         </h3>
-        <div className="flex items-center gap-1 ml-2">
-          <span className="text-xs" title={priority}>
-            {priorityIcons[priority]}
-          </span>
+        <span className="text-xs ml-1 flex-shrink-0" title={priority}>
+          {priorityIcons[priority]}
+        </span>
+      </div>
+
+      {/* Client & Package - Single Line */}
+      {(task.clientId?.name || task.packageId?.name) && (
+        <div className="text-[10px] text-gray-500 mb-1.5 truncate">
+          {task.clientId?.name && <span className="font-medium">{task.clientId.name}</span>}
+          {task.clientId?.name && task.packageId?.name && <span className="mx-1">•</span>}
+          {task.packageId?.name && <span>{task.packageId.name}</span>}
         </div>
-      </div>
+      )}
 
-      {/* Client & Package */}
-      <div className="text-xs text-gray-600 mb-2 space-y-1">
-        {task.clientId?.name && (
-          <div className="flex items-center gap-1">
-            <span className="font-medium">Client:</span>
-            <span>{task.clientId.name}</span>
-          </div>
-        )}
-        {task.packageId?.name && (
-          <div className="flex items-center gap-1">
-            <span className="font-medium">Package:</span>
-            <span>{task.packageId.name}</span>
-          </div>
-        )}
-      </div>
+      {/* Services & Activities - Compact Badges */}
+      {(task.services?.length > 0 || task.activities?.length > 0) && (
+        <div className="flex flex-wrap gap-0.5 mb-1.5">
+          {task.services?.slice(0, 2).map((service, idx) => (
+            <span
+              key={service._id || service || idx}
+              className="inline-block px-1 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] leading-tight"
+            >
+              {service.name || service}
+            </span>
+          ))}
+          {task.activities?.slice(0, 2).map((activity, idx) => (
+            <span
+              key={activity._id || activity || idx}
+              className="inline-block px-1 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] leading-tight"
+            >
+              {activity.name || activity}
+            </span>
+          ))}
+          {((task.services?.length || 0) + (task.activities?.length || 0) > 4) && (
+            <span className="text-[10px] text-gray-500 px-1">
+              +{((task.services?.length || 0) + (task.activities?.length || 0) - 4)}
+            </span>
+          )}
+        </div>
+      )}
 
-      {/* Assignees */}
-      {task.assignedTo && (
-        <div className="flex items-center gap-2 mb-2 text-xs text-gray-600 flex-wrap">
-          <User className="h-3 w-3 flex-shrink-0" />
-          <div className="flex flex-wrap gap-1">
-            {Array.isArray(task.assignedTo) ? (
+      {/* 3-Column Grid: Assignee | Due Date | Actions */}
+      <div className="grid grid-cols-3 gap-1.5 items-center mt-1.5 pt-1.5 border-t border-gray-100">
+        {/* Assignee */}
+        <div className="flex items-center gap-1 min-w-0">
+          <User className="h-2.5 w-2.5 text-gray-400 flex-shrink-0" />
+          <div className="text-[10px] text-gray-600 truncate min-w-0">
+            {task.assignedTo && Array.isArray(task.assignedTo) ? (
               task.assignedTo.length > 0 ? (
-                <>
-                  {task.assignedTo.slice(0, 2).map((emp, idx) => (
-                    <span key={emp._id || emp || idx}>
-                      {emp.name || emp.email || emp}
-                      {idx < Math.min(task.assignedTo.length, 2) - 1 && ','}
-                    </span>
-                  ))}
-                  {task.assignedTo.length > 2 && (
-                    <span className="text-gray-500">+{task.assignedTo.length - 2} more</span>
-                  )}
-                </>
-              ) : null
+                <span className="truncate">
+                  {task.assignedTo[0]?.name || task.assignedTo[0]?.email || task.assignedTo[0]}
+                  {task.assignedTo.length > 1 && ` +${task.assignedTo.length - 1}`}
+                </span>
+              ) : (
+                <span className="text-gray-400">-</span>
+              )
+            ) : task.assignedTo ? (
+              <span className="truncate">
+                {task.assignedTo.name || task.assignedTo.email || task.assignedTo}
+              </span>
             ) : (
-              <span>{task.assignedTo.name || task.assignedTo.email || task.assignedTo}</span>
+              <span className="text-gray-400">-</span>
             )}
           </div>
         </div>
-      )}
 
-      {/* Due Date */}
-      {task.dueDate && (
-        <div
-          className={`flex items-center gap-2 mb-3 text-xs ${
-            isOverdue ? "text-red-600 font-semibold" : "text-gray-600"
-          }`}
-        >
-          <Calendar className="h-3 w-3" />
-          <span>{format(new Date(task.dueDate), "MMM dd, yyyy")}</span>
-          {isOverdue && <AlertCircle className="h-3 w-3 text-red-600" />}
+        {/* Due Date */}
+        <div className="flex items-center gap-1 min-w-0">
+          <Calendar className={`h-2.5 w-2.5 flex-shrink-0 ${
+            isOverdue ? "text-red-500" : "text-gray-400"
+          }`} />
+          <div className="text-[10px] min-w-0">
+            {task.dueDate ? (
+              <span className={`truncate ${
+                isOverdue ? "text-red-600 font-semibold" : "text-gray-600"
+              }`}>
+                {format(new Date(task.dueDate), "MMM dd")}
+              </span>
+            ) : (
+              <span className="text-gray-400">-</span>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Actions */}
-      <div
-        className="flex items-center gap-2 pt-2 border-t border-gray-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(task);
-          }}
-          className="h-7 px-2 text-xs"
+        {/* Actions */}
+        <div
+          className="flex items-center justify-end gap-1"
+          onClick={(e) => e.stopPropagation()}
         >
-          <Pencil className="h-3 w-3 mr-1" />
-          Edit
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(task._id);
-          }}
-          className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
-        >
-          <Trash2 className="h-3 w-3 mr-1" />
-          Delete
-        </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(task);
+            }}
+            className="h-5 px-1.5 text-[10px] hover:bg-gray-100"
+          >
+            <Pencil className="h-2.5 w-2.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task._id);
+            }}
+            className="h-5 px-1.5 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-2.5 w-2.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

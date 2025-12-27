@@ -17,13 +17,12 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
 
   // Fetch credentials using React Query for proper caching and refetching
   const { data: credentialsData, isLoading: isLoadingCredentials } = useQuery({
-    queryKey: ['client', clientId, 'emaratax-credentials'],
+    queryKey: ['client', clientId, 'emaraTaxCredentials'],
     queryFn: async () => {
-      const response = await clientsApi.getById(clientId, { showCredentials: 'true' });
+      const response = await clientsApi.getById(clientId);
       return response?.data?.emaraTaxAccount || null;
     },
     enabled: !!clientId,
-    staleTime: 0, // Always refetch to get latest credentials
   });
 
   // Update formData when credentials are loaded
@@ -39,8 +38,8 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
   const updateMutation = useMutation({
     mutationFn: (data) => clientsApi.updateEmaraTaxCredentials(clientId, data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client', clientId, 'emaraTaxCredentials'] });
       queryClient.invalidateQueries({ queryKey: ['client', clientId] });
-      queryClient.invalidateQueries({ queryKey: ['client', clientId, 'emaratax-credentials'] });
       setIsEditing(false);
       setFormData({ username: formData.username, password: '' });
       toast({
@@ -94,7 +93,7 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
     if (isLoadingCredentials) {
       return 'Loading...';
     }
-    // Show decrypted password if it exists, otherwise show '-'
+    // Show password if it exists, otherwise show '-'
     if (credentialsData?.password !== undefined && credentialsData?.password !== null) {
       return credentialsData.password;
     }

@@ -12,6 +12,7 @@ import {
   X,
   LogOut,
   Bell,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { useUIStore } from '@/store/uiStore';
@@ -26,6 +27,7 @@ const menuItems = [
   { path: '/employees', label: 'Employees', icon: UserCog },
   { path: '/time-entries', label: 'Time Entries', icon: Clock },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export const Sidebar = () => {
