@@ -6,8 +6,15 @@ import { activitiesApi } from '@/api/activities';
 import { Button } from '@/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/ui/tabs';
 import { Card } from '@/ui/card';
-import { Edit, Trash2, Search } from 'lucide-react';
+import { Edit, Trash2, Search, MoreVertical } from 'lucide-react';
 import { LoaderWithText } from '@/components/Loader';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/ui/dropdown-menu';
 
 const ServicesTab = () => {
   const [showForm, setShowForm] = useState(false);
@@ -157,27 +164,42 @@ const ServicesTab = () => {
                     <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                       {service.name}
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(service)}
-                          title="Edit service"
-                          className="h-7 w-7"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(service._id)}
-                          title="Delete service"
-                          className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                    <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(service);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Edit className="h-3.5 w-3.5 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(service._id);
+                            }}
+                            className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}
@@ -347,27 +369,42 @@ const ActivitiesTab = () => {
                     <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                       {activity.name}
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(activity)}
-                          title="Edit activity"
-                          className="h-7 w-7"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(activity._id)}
-                          title="Delete activity"
-                          className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                    <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(activity);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Edit className="h-3.5 w-3.5 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(activity._id);
+                            }}
+                            className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}

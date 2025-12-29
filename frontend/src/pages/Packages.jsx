@@ -5,6 +5,7 @@ import { Card } from '@/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { LoaderWithText } from '@/components/Loader';
+import { Avatar } from '@/components/Avatar';
 
 export const Packages = () => {
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ export const Packages = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Name
                     </th>
                     <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
@@ -65,7 +68,7 @@ export const Packages = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {packages.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-2 py-8 text-center">
+                      <td colSpan="7" className="px-2 py-8 text-center">
                         <p className="text-xs text-gray-500">No packages found</p>
                       </td>
                     </tr>
@@ -76,6 +79,12 @@ export const Packages = () => {
                         className="hover:bg-gray-50 transition-colors cursor-pointer"
                         onClick={() => handleRowClick(pkg)}
                       >
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          <Avatar
+                            name={pkg.name}
+                            size="sm"
+                          />
+                        </td>
                         <td className="px-2 py-1.5 whitespace-nowrap">
                           <div className="text-xs font-medium text-gray-900">{pkg.name}</div>
                         </td>

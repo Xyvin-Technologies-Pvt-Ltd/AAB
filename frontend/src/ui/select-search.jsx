@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, ChevronDown, Check } from 'lucide-react';
+import { X, ChevronDown, Check, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const SelectSearch = ({
@@ -12,6 +12,8 @@ export const SelectSearch = ({
   isLoading = false,
   disabled = false,
   className,
+  onAddNew,
+  addNewLabel = 'Add New',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,7 +123,24 @@ export const SelectSearch = ({
             {isLoading ? (
               <div className="p-3 text-sm text-gray-500 text-center">Loading...</div>
             ) : filteredOptions.length === 0 ? (
-              <div className="p-3 text-sm text-gray-500 text-center">{emptyMessage}</div>
+              <div className="p-1">
+                <div className="p-3 text-sm text-gray-500 text-center">{emptyMessage}</div>
+                {onAddNew && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddNew();
+                      setIsOpen(false);
+                      setSearchTerm('');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded cursor-pointer border-t border-gray-200"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>{addNewLabel}</span>
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="p-1">
                 {filteredOptions.map((option) => {

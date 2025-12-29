@@ -7,10 +7,18 @@ import {
   Play,
   Pause,
   Check,
+  MoreVertical,
 } from "lucide-react";
 import { Button } from "@/ui/button";
 import { Avatar } from "@/components/Avatar";
 import { format } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 
 const priorityColors = {
   URGENT: "bg-red-100 text-red-800 border-red-200",
@@ -275,30 +283,41 @@ export const TaskCard = ({
               <Play className="h-2.5 w-2.5" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(task);
-            }}
-            className="h-5 px-1 text-[10px] hover:bg-gray-100"
-            title="Edit"
-          >
-            <Pencil className="h-2.5 w-2.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(task._id);
-            }}
-            className="h-5 px-1 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
-            title="Delete"
-          >
-            <Trash2 className="h-2.5 w-2.5" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-1 text-[10px] hover:bg-gray-100"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-2.5 w-2.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-32">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task);
+                }}
+                className="cursor-pointer"
+              >
+                <Pencil className="h-3 w-3 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task._id);
+                }}
+                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
+                <Trash2 className="h-3 w-3 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

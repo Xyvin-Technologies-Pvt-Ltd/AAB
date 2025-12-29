@@ -14,24 +14,56 @@ import {
   DialogTitle,
 } from '@/ui/dialog';
 import { Card } from '@/ui/card';
-import { Plus, Search, Edit, Trash2, Eye, FileText, Upload } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, FileText, Upload, MoreVertical, ArrowUpDown, ArrowUp, ArrowDown, Filter } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/ui/dropdown-menu';
 import { ClientBulkUpload } from '@/components/ClientBulkUpload';
+import { ClientFilterDrawer } from '@/components/ClientFilterDrawer';
 import { useToast } from '@/hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { LoaderWithText } from '@/components/Loader';
+import { Avatar } from '@/components/Avatar';
 
 export const Clients = () => {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  const [sortField, setSortField] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
+  const [filters, setFilters] = useState({
+    search: '',
+    vatMonths: [],
+    packageId: '',
+    status: '',
+  });
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['clients', search],
-    queryFn: () => clientsApi.getAll({ search, limit: 100 }),
+    queryKey: ['clients', filters],
+    queryFn: () => {
+      const params = {
+        search: filters.search || undefined,
+        status: filters.status || undefined,
+        packageId: filters.packageId || undefined,
+        limit: 100,
+      };
+      
+      // Handle vatMonths array - send as comma-separated string or multiple params
+      if (filters.vatMonths && filters.vatMonths.length > 0) {
+        params.vatMonths = filters.vatMonths.join(',');
+      }
+      
+      return clientsApi.getAll(params);
+    },
   });
 
   const { data: packagesData } = useQuery({
@@ -136,7 +168,96 @@ export const Clients = () => {
     }
   };
 
-  const clients = data?.data?.clients || [];
+  // Helper function to truncate text
+  const truncateText = (text, maxLength = 30) => {
+    if (!text) return '-';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  // Helper function to format VAT cycle months
+  const formatVATCycle = (client) => {
+    if (!client.businessInfo?.vatTaxPeriods || client.businessInfo.vatTaxPeriods.length === 0) {
+      return '-';
+    }
+    
+    const months = [];
+    client.businessInfo.vatTaxPeriods.forEach((period) => {
+      const startDate = new Date(period.startDate);
+      const monthName = startDate.toLocaleString('default', { month: 'short' });
+      if (!months.includes(monthName)) {
+        months.push(monthName);
+      }
+    });
+    
+    return months.join(', ') || '-';
+  };
+
+  // Sorting function
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Get sort icon
+  const getSortIcon = (field) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 text-gray-400" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1 text-indigo-600" />
+      : <ArrowDown className="h-3 w-3 ml-1 text-indigo-600" />;
+  };
+
+  let clients = data?.data?.clients || [];
+
+  // Apply sorting
+  if (sortField) {
+    clients = [...clients].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortField) {
+        case 'name':
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
+          break;
+        case 'contactPerson':
+          aValue = (a.contactPerson || '').toLowerCase();
+          bValue = (b.contactPerson || '').toLowerCase();
+          break;
+        case 'email':
+          aValue = (a.email || '').toLowerCase();
+          bValue = (b.email || '').toLowerCase();
+          break;
+        case 'phone':
+          aValue = (a.phone || '').toLowerCase();
+          bValue = (b.phone || '').toLowerCase();
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        case 'vatCycle':
+          aValue = formatVATCycle(a);
+          bValue = formatVATCycle(b);
+          break;
+        case 'documents':
+          aValue = a.documents?.length || 0;
+          bValue = b.documents?.length || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
 
   return (
     <AppLayout>
@@ -167,18 +288,32 @@ export const Clients = () => {
           </div>
         </div>
 
-        {/* Search */}
+        {/* Search and Filter */}
         <Card>
           <div className="p-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search clients..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search clients..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setFilters({ ...filters, search: e.target.value });
+                  }}
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilterDrawer(true)}
+                className="border-gray-300"
+              >
+                <Filter className="h-3.5 w-3.5 mr-1.5" />
+                Filters
+              </Button>
             </div>
           </div>
         </Card>
@@ -197,25 +332,72 @@ export const Clients = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                      Name
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                      Contact Person
+                    <th 
+                      className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center">
+                        Name
+                        {getSortIcon('name')}
+                      </div>
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                      Email
+                    <th 
+                      className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('contactPerson')}
+                    >
+                      <div className="flex items-center">
+                        Contact Person
+                        {getSortIcon('contactPerson')}
+                      </div>
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                      Phone
+                    <th 
+                      className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('email')}
+                    >
+                      <div className="flex items-center">
+                        Email
+                        {getSortIcon('email')}
+                      </div>
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                      Documents
+                    <th 
+                      className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('phone')}
+                    >
+                      <div className="flex items-center">
+                        Phone
+                        {getSortIcon('phone')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('vatCycle')}
+                    >
+                      <div className="flex items-center">
+                        VAT Cycle
+                        {getSortIcon('vatCycle')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('documents')}
+                    >
+                      <div className="flex items-center">
+                        Documents
+                        {getSortIcon('documents')}
+                      </div>
                     </th>
                     <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Packages
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                      Status
+                    <th 
+                      className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {getSortIcon('status')}
+                      </div>
                     </th>
                     <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Actions
@@ -225,7 +407,7 @@ export const Clients = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {clients.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-2 py-8 text-center">
+                      <td colSpan="10" className="px-2 py-8 text-center">
                         <p className="text-xs text-gray-500">No clients found</p>
                       </td>
                     </tr>
@@ -235,50 +417,85 @@ export const Clients = () => {
                       return (
                         <tr
                           key={client._id}
-                          className="hover:bg-gray-50 transition-colors cursor-pointer"
-                          onClick={() => navigate(`/clients/${client._id}`)}
+                          className="hover:bg-gray-50 transition-colors"
                         >
-                          <td className="px-2 py-1.5 whitespace-nowrap">
-                            <div className="text-xs font-medium text-gray-900">{client.name}</div>
+                          <td className="px-2 py-1.5">
+                            <Avatar
+                              name={client.name}
+                              size="sm"
+                            />
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">
-                            <div className="text-xs text-gray-600">{client.contactPerson || '-'}</div>
+                          <td className="px-2 py-1.5">
+                            <div 
+                              className="text-xs font-medium text-gray-900 cursor-pointer hover:text-indigo-600"
+                              onClick={() => navigate(`/clients/${client._id}`)}
+                              title={client.name}
+                            >
+                              {truncateText(client.name, 25)}
+                            </div>
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">
-                            <div className="text-xs text-gray-600">{client.email || '-'}</div>
+                          <td className="px-2 py-1.5">
+                            <div 
+                              className="text-xs text-gray-600"
+                              title={client.contactPerson || ''}
+                            >
+                              {truncateText(client.contactPerson, 20)}
+                            </div>
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">
-                            <div className="text-xs text-gray-600">{client.phone || '-'}</div>
+                          <td className="px-2 py-1.5">
+                            <div 
+                              className="text-xs text-gray-600"
+                              title={client.email || ''}
+                            >
+                              {truncateText(client.email, 25)}
+                            </div>
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">
+                          <td className="px-2 py-1.5">
+                            <div 
+                              className="text-xs text-gray-600"
+                              title={client.phone || ''}
+                            >
+                              {truncateText(client.phone, 15)}
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <div 
+                              className="text-xs text-gray-600"
+                              title={formatVATCycle(client)}
+                            >
+                              {truncateText(formatVATCycle(client), 20)}
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5">
                             <div className="flex items-center gap-1">
                               <FileText className="h-3 w-3 text-gray-400" />
                               <span className="text-xs text-gray-600">{client.documents?.length || 0}</span>
                             </div>
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">
+                          <td className="px-2 py-1.5">
                             <div className="flex flex-wrap gap-1">
                               {clientPackages.length === 0 ? (
                                 <span className="text-xs text-gray-400">-</span>
                               ) : (
-                                clientPackages.slice(0, 3).map((pkg) => (
+                                clientPackages.slice(0, 2).map((pkg) => (
                                   <Badge
                                     key={pkg._id}
                                     variant="outline"
                                     className="text-[10px] px-1.5 py-0.5"
+                                    title={pkg.name}
                                   >
-                                    {pkg.name}
+                                    {truncateText(pkg.name, 10)}
                                   </Badge>
                                 ))
                               )}
-                              {clientPackages.length > 3 && (
+                              {clientPackages.length > 2 && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
-                                  +{clientPackages.length - 3}
+                                  +{clientPackages.length - 2}
                                 </Badge>
                               )}
                             </div>
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">
+                          <td className="px-2 py-1.5">
                             <span
                               className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full ${
                                 client.status === 'ACTIVE'
@@ -289,40 +506,52 @@ export const Clients = () => {
                               {client.status}
                             </span>
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap text-right text-xs font-medium" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => navigate(`/clients/${client._id}`)}
-                                className="h-7 w-7 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                                title="View Details"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEdit(client);
-                                }}
-                                className="h-7 w-7 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(client._id);
-                                }}
-                                className="h-7 w-7 text-red-600 hover:text-red-800 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
+                          <td className="px-2 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/clients/${client._id}`);
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  <Eye className="h-3.5 w-3.5 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(client);
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  <Edit className="h-3.5 w-3.5 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(client._id);
+                                  }}
+                                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                         </tr>
                       );
@@ -439,6 +668,18 @@ export const Clients = () => {
 
         {/* Bulk Upload Dialog */}
         <ClientBulkUpload open={showBulkUpload} onOpenChange={setShowBulkUpload} />
+
+        {/* Filter Drawer */}
+        <ClientFilterDrawer
+          open={showFilterDrawer}
+          onOpenChange={setShowFilterDrawer}
+          filters={filters}
+          onFilterChange={(newFilters) => {
+            setFilters(newFilters);
+            setSearch(newFilters.search || '');
+          }}
+          packages={packages}
+        />
       </div>
     </AppLayout>
   );

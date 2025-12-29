@@ -12,7 +12,7 @@ import { TimeFilterDrawer } from "@/components/TimeFilterDrawer";
 import { Button } from "@/ui/button";
 import { Card } from "@/ui/card";
 import { SelectSearch } from "@/ui/select-search";
-import { Play, Pause, Square, Filter, Table2, Grid, ChevronDown, Edit2, Trash2 } from "lucide-react";
+import { Play, Pause, Square, Filter, Table2, Grid, ChevronDown, Edit2, Trash2, MoreVertical } from "lucide-react";
 import {
   format,
   startOfWeek,
@@ -31,6 +31,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 
 export const TimeEntries = () => {
   const [timerMode, setTimerMode] = useState("task"); // 'task' or 'misc'
@@ -1033,29 +1040,45 @@ export const TimeEntries = () => {
                                 )}
                               </>
                             )}
-                            {/* Edit button - only show if entry is not running */}
-                            {runningTimer?._id !== entry._id && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEdit(entry)}
-                                className="h-7 w-7 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                                title="Edit"
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                            {/* Delete button */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(entry._id)}
-                              disabled={deleteMutation.isPending}
-                              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {/* Actions menu - Edit/Delete */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-32">
+                                {runningTimer?._id !== entry._id && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEdit(entry);
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                )}
+                                {runningTimer?._id !== entry._id && <DropdownMenuSeparator />}
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(entry._id);
+                                  }}
+                                  disabled={deleteMutation.isPending}
+                                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </td>
                       </tr>

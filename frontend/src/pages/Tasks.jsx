@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
 import { tasksApi } from "@/api/tasks";
@@ -40,12 +40,20 @@ import {
   AlertCircle,
   Pencil,
   Trash2,
+  MoreVertical,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useTimer } from "@/hooks/useTimer";
 import { format } from "date-fns";
 import { Play, Pause, Check } from "lucide-react";
 import { LoaderWithText } from "@/components/Loader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 
 export const Tasks = () => {
   const [showForm, setShowForm] = useState(false);
@@ -60,6 +68,13 @@ export const Tasks = () => {
   const [viewMode, setViewMode] = useState("kanban"); // 'kanban' or 'table'
   const [selectedTask, setSelectedTask] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [showClientForm, setShowClientForm] = useState(false);
+  const [showPackageForm, setShowPackageForm] = useState(false);
+  const [packageType, setPackageType] = useState("RECURRING");
+  const [packageSelectedServices, setPackageSelectedServices] = useState([]);
+  const [packageSelectedActivities, setPackageSelectedActivities] = useState([]);
+  const [templatePackageId, setTemplatePackageId] = useState("");
+  const packageFormRef = useRef(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -106,11 +121,19 @@ export const Tasks = () => {
   const { data: servicesData } = useQuery({
     queryKey: ["services"],
     queryFn: () => servicesApi.getAll({ limit: 100 }),
+    enabled: true,
   });
 
   const { data: activitiesData } = useQuery({
     queryKey: ["activities"],
     queryFn: () => activitiesApi.getAll({ limit: 100 }),
+    enabled: true,
+  });
+
+  // Fetch all packages for template dropdown
+  const { data: allPackagesData } = useQuery({
+    queryKey: ["packages", "all"],
+    queryFn: () => packagesApi.getAll({ limit: 1000 }),
   });
 
   // Extract data from queries
@@ -125,8 +148,27 @@ export const Tasks = () => {
   const packageActivityIds = selectedPackage?.activities?.map((a) => (typeof a === 'object' ? a._id : a)) || [];
 
   // Filter services and activities based on selected package
-  const availableServices = servicesData?.data?.services || [];
-  const availableActivities = activitiesData?.data?.activities || [];
+  // Use same pattern as ClientDetails.jsx which works correctly
+  const availableServices = servicesData?.data?.services || servicesData?.data || [];
+  const availableActivities = activitiesData?.data?.activities || activitiesData?.data || [];
+  
+  // Debug: Log services data to help diagnose the issue
+  useEffect(() => {
+    if (showPackageForm) {
+      console.log('Package Form Open - Services Data:', {
+        servicesData,
+        availableServices,
+        servicesDataStructure: servicesData?.data,
+        servicesCount: availableServices.length
+      });
+      console.log('Package Form Open - Activities Data:', {
+        activitiesData,
+        availableActivities,
+        activitiesDataStructure: activitiesData?.data,
+        activitiesCount: availableActivities.length
+      });
+    }
+  }, [showPackageForm, servicesData, activitiesData, availableServices, availableActivities]);
   const filteredServices = selectedPackageId
     ? availableServices.filter((s) => packageServiceIds.includes(s._id))
     : availableServices;
@@ -203,6 +245,59 @@ export const Tasks = () => {
     },
   });
 
+  const createClientMutation = useMutation({
+    mutationFn: clientsApi.create,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      setShowClientForm(false);
+      // Select the newly created client
+      if (data?.data?._id) {
+        setSelectedClientId(data.data._id);
+      }
+      toast({
+        title: "Success",
+        description: "Client created successfully",
+        type: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to create client",
+        type: "destructive",
+      });
+    },
+  });
+
+  const createPackageMutation = useMutation({
+    mutationFn: packagesApi.create,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["packages"] });
+      setShowPackageForm(false);
+      // Reset package form state
+      setPackageType("RECURRING");
+      setPackageSelectedServices([]);
+      setPackageSelectedActivities([]);
+      setTemplatePackageId("");
+      // Select the newly created package
+      if (data?.data?._id) {
+        setSelectedPackageId(data.data._id);
+      }
+      toast({
+        title: "Success",
+        description: "Package created successfully",
+        type: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to create package",
+        type: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setEditingTask(null);
     setSelectedClientId("");
@@ -210,6 +305,93 @@ export const Tasks = () => {
     setSelectedEmployees([]);
     setSelectedServices([]);
     setSelectedActivities([]);
+  };
+
+  const handleCreateClient = () => {
+    setShowClientForm(true);
+  };
+
+  const handleCreatePackage = () => {
+    if (!selectedClientId) {
+      toast({
+        title: "Error",
+        description: "Please select a client first",
+        type: "destructive",
+      });
+      return;
+    }
+    setShowPackageForm(true);
+  };
+
+  const handleClientSubmit = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {
+      name: formData.get("name"),
+      contactPerson: formData.get("contactPerson"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
+      status: formData.get("status") || "ACTIVE",
+    };
+    createClientMutation.mutate(data);
+  };
+
+  const handlePackageSubmit = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {
+      clientId: selectedClientId,
+      name: formData.get("name"),
+      type: packageType,
+      billingFrequency:
+        packageType === "RECURRING"
+          ? formData.get("billingFrequency") || undefined
+          : undefined,
+      contractValue: parseFloat(formData.get("contractValue")),
+      startDate: formData.get("startDate"),
+      status: formData.get("status") || "ACTIVE",
+      services: packageSelectedServices,
+      activities: packageSelectedActivities,
+    };
+    createPackageMutation.mutate(data);
+  };
+
+  const handleTemplatePackageSelect = (packageId) => {
+    if (!packageId) {
+      setTemplatePackageId("");
+      return;
+    }
+
+    const allPackages = allPackagesData?.data?.packages || [];
+    const templatePackage = allPackages.find((pkg) => pkg._id === packageId);
+    if (!templatePackage) return;
+
+    setTemplatePackageId(packageId);
+
+    // Auto-fill form fields
+    setPackageType(templatePackage.type || "RECURRING");
+    setPackageSelectedServices(
+      templatePackage.services?.map((s) => (typeof s === "object" ? s._id : s)) || []
+    );
+    setPackageSelectedActivities(
+      templatePackage.activities?.map((a) => (typeof a === "object" ? a._id : a)) || []
+    );
+
+    // Set form field values using the form reference
+    if (packageFormRef.current) {
+      const form = packageFormRef.current;
+      const nameInput = form.querySelector('[name="name"]');
+      const contractValueInput = form.querySelector('[name="contractValue"]');
+      const startDateInput = form.querySelector('[name="startDate"]');
+      const billingFrequencySelect = form.querySelector('[name="billingFrequency"]');
+      const statusSelect = form.querySelector('[name="status"]');
+
+      if (nameInput) nameInput.value = templatePackage.name || "";
+      if (contractValueInput) contractValueInput.value = templatePackage.contractValue || "";
+      if (startDateInput) startDateInput.value = "";
+      if (billingFrequencySelect) billingFrequencySelect.value = templatePackage.billingFrequency || "";
+      if (statusSelect) statusSelect.value = templatePackage.status || "ACTIVE";
+    }
   };
 
   const handleEdit = (task) => {
@@ -571,6 +753,8 @@ export const Tasks = () => {
             <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                  </th>
                   <th
                     className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("name")}
@@ -640,7 +824,7 @@ export const Tasks = () => {
                 {sortedTasks.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="10"
+                      colSpan="11"
                       className="px-3 py-8 text-center text-xs text-gray-500"
                     >
                       No tasks found
@@ -670,6 +854,12 @@ export const Tasks = () => {
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() => handleTaskClick(task)}
                       >
+                        <td className="px-3 py-2">
+                          <Avatar
+                            name={task.name}
+                            size="sm"
+                          />
+                        </td>
                         <td className="px-3 py-2">
                           <div className="text-xs font-medium text-gray-900 truncate max-w-[200px]">
                             {task.name}
@@ -877,30 +1067,42 @@ export const Tasks = () => {
                             })()}
                           </div>
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-right">
-                          <div
-                            className="flex items-center justify-end gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(task)}
-                              className="h-6 w-6 p-0"
-                              title="Edit"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(task._id)}
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                        <td className="px-3 py-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-32">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(task);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Pencil className="h-3 w-3 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(task._id);
+                                }}
+                                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                              >
+                                <Trash2 className="h-3 w-3 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     );
@@ -968,6 +1170,8 @@ export const Tasks = () => {
                       placeholder="Search and select client..."
                       searchPlaceholder="Search clients..."
                       emptyMessage="No clients found"
+                      onAddNew={handleCreateClient}
+                      addNewLabel="Add Client"
                     />
                   </div>
                   <div className="space-y-2">
@@ -990,6 +1194,38 @@ export const Tasks = () => {
                       searchPlaceholder="Search packages..."
                       emptyMessage="No packages found"
                       disabled={!selectedClientId && !editingTask}
+                      onAddNew={selectedClientId ? handleCreatePackage : undefined}
+                      addNewLabel="Add Package"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Services
+                    </label>
+                    <MultiSelect
+                      options={filteredServices}
+                      selected={selectedServices}
+                      onChange={setSelectedServices}
+                      placeholder="Select services..."
+                      searchPlaceholder="Search services..."
+                      emptyMessage="No services found"
+                      disabled={!selectedPackageId && !editingTask}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Activities
+                    </label>
+                    <MultiSelect
+                      options={filteredActivities}
+                      selected={selectedActivities}
+                      onChange={setSelectedActivities}
+                      placeholder="Select activities..."
+                      searchPlaceholder="Search activities..."
+                      emptyMessage="No activities found"
+                      disabled={!selectedPackageId && !editingTask}
                     />
                   </div>
                 </div>
@@ -1030,36 +1266,6 @@ export const Tasks = () => {
                     defaultValue={editingTask?.description}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Services
-                    </label>
-                    <MultiSelect
-                      options={filteredServices}
-                      selected={selectedServices}
-                      onChange={setSelectedServices}
-                      placeholder="Select services..."
-                      searchPlaceholder="Search services..."
-                      emptyMessage="No services found"
-                      disabled={!selectedPackageId && !editingTask}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Activities
-                    </label>
-                    <MultiSelect
-                      options={filteredActivities}
-                      selected={selectedActivities}
-                      onChange={setSelectedActivities}
-                      placeholder="Select activities..."
-                      searchPlaceholder="Search activities..."
-                      emptyMessage="No activities found"
-                      disabled={!selectedPackageId && !editingTask}
-                    />
-                  </div>
                 </div>
                 {editingTask && (
                   <div className="space-y-2">
@@ -1160,6 +1366,286 @@ export const Tasks = () => {
                     : editingTask
                     ? "Update"
                     : "Create"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Client Creation Dialog */}
+        <Dialog open={showClientForm} onOpenChange={setShowClientForm}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Client</DialogTitle>
+              <DialogDescription>
+                Fill in the details to create a new client.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleClientSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="clientName" className="text-sm font-medium text-gray-700">
+                  Name *
+                </label>
+                <input
+                  id="clientName"
+                  name="name"
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="contactPerson" className="text-sm font-medium text-gray-700">
+                  Contact Person
+                </label>
+                <input
+                  id="contactPerson"
+                  name="contactPerson"
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="clientEmail" className="text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <input
+                  id="clientEmail"
+                  name="email"
+                  type="email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="clientPhone" className="text-sm font-medium text-gray-700">
+                  Phone
+                </label>
+                <input
+                  id="clientPhone"
+                  name="phone"
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="clientStatus" className="text-sm font-medium text-gray-700">
+                  Status
+                </label>
+                <select
+                  id="clientStatus"
+                  name="status"
+                  defaultValue="ACTIVE"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowClientForm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createClientMutation.isPending}
+                >
+                  {createClientMutation.isPending ? "Creating..." : "Create"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Package Creation Dialog */}
+        <Dialog open={showPackageForm} onOpenChange={setShowPackageForm}>
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Package</DialogTitle>
+              <DialogDescription>
+                Fill in the details to create a new package for this client.
+              </DialogDescription>
+            </DialogHeader>
+            <form ref={packageFormRef} onSubmit={handlePackageSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label
+                  htmlFor="templatePackage"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Copy from Existing Package (Optional)
+                </label>
+                <select
+                  id="templatePackage"
+                  value={templatePackageId}
+                  onChange={(e) => handleTemplatePackageSelect(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select a package to copy...</option>
+                  {(allPackagesData?.data?.packages || []).map((pkg) => (
+                    <option key={pkg._id} value={pkg._id}>
+                      {pkg.name} {pkg.clientId?.name ? `(${pkg.clientId.name})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="packageName"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Package Name *
+                  </label>
+                  <input
+                    id="packageName"
+                    name="name"
+                    type="text"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="packageType"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Type *
+                  </label>
+                  <select
+                    id="packageType"
+                    name="type"
+                    required
+                    value={packageType}
+                    onChange={(e) => setPackageType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="RECURRING">Recurring</option>
+                    <option value="ONE_TIME">One Time</option>
+                  </select>
+                </div>
+                {packageType === "RECURRING" && (
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="billingFrequency"
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      Billing Frequency *
+                    </label>
+                    <select
+                      id="billingFrequency"
+                      name="billingFrequency"
+                      required={packageType === "RECURRING"}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select</option>
+                      <option value="MONTHLY">Monthly</option>
+                      <option value="QUARTERLY">Quarterly</option>
+                      <option value="YEARLY">Yearly</option>
+                    </select>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <label
+                    htmlFor="contractValue"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Contract Value (AED) *
+                  </label>
+                  <input
+                    id="contractValue"
+                    name="contractValue"
+                    type="number"
+                    step="0.01"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="startDate"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Start Date *
+                  </label>
+                  <input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="packageStatus"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Status
+                  </label>
+                  <select
+                    id="packageStatus"
+                    name="status"
+                    defaultValue="ACTIVE"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="COMPLETED">Completed</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Services
+                  </label>
+                  <MultiSelect
+                    options={availableServices}
+                    selected={packageSelectedServices}
+                    onChange={setPackageSelectedServices}
+                    placeholder="Select services..."
+                    searchPlaceholder="Search services..."
+                    emptyMessage="No services found"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Activities
+                  </label>
+                  <MultiSelect
+                    options={availableActivities}
+                    selected={packageSelectedActivities}
+                    onChange={setPackageSelectedActivities}
+                    placeholder="Select activities..."
+                    searchPlaceholder="Search activities..."
+                    emptyMessage="No activities found"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                  <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowPackageForm(false);
+                    setPackageType("RECURRING");
+                    setPackageSelectedServices([]);
+                    setPackageSelectedActivities([]);
+                    setTemplatePackageId("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createPackageMutation.isPending}
+                >
+                  {createPackageMutation.isPending ? "Creating..." : "Create"}
                 </Button>
               </DialogFooter>
             </form>

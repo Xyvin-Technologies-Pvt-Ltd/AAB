@@ -11,6 +11,7 @@ import { MonthlyTrendChart } from '@/components/charts/MonthlyTrendChart';
 import { CostRevenueChart } from '@/components/charts/CostRevenueChart';
 import { ArrowLeft, Filter, X } from 'lucide-react';
 import { LoaderWithText } from '@/components/Loader';
+import { Avatar } from '@/components/Avatar';
 
 export const PackageAnalytics = () => {
   const { packageId } = useParams();
@@ -253,6 +254,7 @@ export const PackageAnalytics = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase"></th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Employee</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Hours</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Cost</th>
@@ -262,6 +264,12 @@ export const PackageAnalytics = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {analytics.employeeBreakdown.map((emp) => (
                       <tr key={emp.employeeId}>
+                        <td className="px-3 py-2 text-sm">
+                          <Avatar
+                            name={emp.name}
+                            size="sm"
+                          />
+                        </td>
                         <td className="px-3 py-2 text-sm">{emp.name}</td>
                         <td className="px-3 py-2 text-sm">{emp.hours} hrs</td>
                         <td className="px-3 py-2 text-sm">{formatCurrency(emp.cost)}</td>
@@ -282,6 +290,7 @@ export const PackageAnalytics = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase"></th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Task</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Hours</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Cost</th>
@@ -290,6 +299,12 @@ export const PackageAnalytics = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {analytics.taskBreakdown.map((task) => (
                       <tr key={task.taskId}>
+                        <td className="px-3 py-2 text-sm">
+                          <Avatar
+                            name={task.name}
+                            size="sm"
+                          />
+                        </td>
                         <td className="px-3 py-2 text-sm">{task.name}</td>
                         <td className="px-3 py-2 text-sm">{task.hours} hrs</td>
                         <td className="px-3 py-2 text-sm">{formatCurrency(task.cost)}</td>

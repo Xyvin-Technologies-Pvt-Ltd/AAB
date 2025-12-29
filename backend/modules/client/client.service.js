@@ -25,7 +25,7 @@ export const createClient = async (clientData) => {
 };
 
 export const getClients = async (filters = {}) => {
-  const { search, status, page = 1, limit = 10 } = filters;
+  const { search, status, vatMonths, packageId, page = 1, limit = 10 } = filters;
 
   const query = {};
 
@@ -41,12 +41,84 @@ export const getClients = async (filters = {}) => {
     query.status = status;
   }
 
-  const skip = (page - 1) * limit;
+  // If packageId is provided, we need to filter clients that have this package
+  let clientIdsWithPackage = null;
+  if (packageId) {
+    const packages = await Package.find({ _id: packageId }).select('clientId');
+    clientIdsWithPackage = packages.map((pkg) => {
+      const clientId = typeof pkg.clientId === 'object' ? pkg.clientId._id : pkg.clientId;
+      return clientId;
+    });
+    
+    if (clientIdsWithPackage.length > 0) {
+      query._id = { $in: clientIdsWithPackage };
+    } else {
+      // No clients found with this package, return empty result
+      query._id = { $in: [] };
+    }
+  }
 
-  const [clients, total] = await Promise.all([
-    Client.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
-    Client.countDocuments(query),
-  ]);
+  // Get all clients matching basic filters (without pagination first)
+  let allClients = await Client.find(query).sort({ createdAt: -1 });
+
+  // Filter by VAT months if provided
+  if (vatMonths && Array.isArray(vatMonths) && vatMonths.length > 0) {
+    const monthNumbers = vatMonths
+      .map((m) => {
+        const parsed = parseInt(m, 10);
+        return isNaN(parsed) ? null : parsed;
+      })
+      .filter((m) => m !== null && m >= 0 && m <= 11);
+    
+    if (monthNumbers.length > 0) {
+      allClients = allClients.filter((client) => {
+        // Skip clients without business info or VAT tax periods
+        if (!client.businessInfo?.vatTaxPeriods || !Array.isArray(client.businessInfo.vatTaxPeriods) || client.businessInfo.vatTaxPeriods.length === 0) {
+          return false;
+        }
+
+        // Get unique months from VAT tax periods
+        const clientMonths = new Set();
+        client.businessInfo.vatTaxPeriods.forEach((period) => {
+          if (period && period.startDate) {
+            try {
+              const startDate = period.startDate instanceof Date 
+                ? period.startDate 
+                : new Date(period.startDate);
+              
+              // Check if date is valid
+              if (!isNaN(startDate.getTime())) {
+                const month = startDate.getMonth(); // 0-11
+                clientMonths.add(month);
+              }
+            } catch (error) {
+              // Skip invalid dates
+              logger.warn('Invalid date in VAT tax period', {
+                clientId: client._id,
+                period,
+                error: error.message,
+              });
+            }
+          }
+        });
+
+        // Check if any of the selected months match the client's VAT months
+        if (clientMonths.size === 0) {
+          return false;
+        }
+
+        const hasMatchingMonth = monthNumbers.some((month) => clientMonths.has(month));
+        return hasMatchingMonth;
+      });
+    }
+  }
+
+  // Calculate total after all filters
+  const total = allClients.length;
+
+  // Apply pagination after filtering
+  const skip = (page - 1) * limit;
+  const clients = allClients.slice(skip, skip + limit);
 
   return {
     clients,
@@ -81,10 +153,20 @@ export const updateClient = async (clientId, updateData) => {
 };
 
 export const deleteClient = async (clientId) => {
-  const client = await Client.findByIdAndDelete(clientId);
+  const client = await Client.findById(clientId);
   if (!client) {
     throw new Error('Client not found');
   }
+
+  // Delete all packages associated with this client
+  const deletedPackages = await Package.deleteMany({ clientId });
+  logger.info('Deleted packages for client', {
+    clientId,
+    deletedCount: deletedPackages.deletedCount,
+  });
+
+  // Delete the client
+  await Client.findByIdAndDelete(clientId);
   return client;
 };
 

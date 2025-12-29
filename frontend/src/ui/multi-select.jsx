@@ -10,6 +10,7 @@ export const MultiSelect = ({
   searchPlaceholder = 'Search...',
   emptyMessage = 'No items found',
   isLoading = false,
+  disabled = false,
   className,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -72,12 +73,14 @@ export const MultiSelect = ({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
         className={cn(
           'w-full min-h-[40px] px-3 py-2 text-sm border border-gray-300 rounded-lg',
           'bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500',
           'flex items-center justify-between gap-2',
-          isOpen && 'border-indigo-500 ring-2 ring-indigo-500'
+          isOpen && 'border-indigo-500 ring-2 ring-indigo-500',
+          disabled && 'bg-gray-100 cursor-not-allowed opacity-60'
         )}
       >
         <div className="flex-1 flex flex-wrap gap-1.5 items-center min-h-[24px]">

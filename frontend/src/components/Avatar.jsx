@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, getInitials, getAvatarColor } from '@/lib/utils';
 
 export const Avatar = ({ 
   src, 
@@ -8,17 +8,6 @@ export const Avatar = ({
   className 
 }) => {
   const [imageError, setImageError] = useState(false);
-
-  // Generate initials from name
-  const getInitials = (name) => {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) {
-      return parts[0].charAt(0).toUpperCase();
-    }
-    // Get first letter of first and last name
-    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-  };
 
   const sizeClasses = {
     xs: 'h-5 w-5 text-[10px]',
@@ -30,12 +19,14 @@ export const Avatar = ({
 
   const initials = getInitials(name);
   const showImage = src && !imageError;
+  const bgColor = getAvatarColor(initials);
 
   return (
     <div
       className={cn(
-        'rounded-full flex items-center justify-center font-semibold text-white bg-indigo-600 flex-shrink-0 overflow-hidden',
+        'rounded-full flex items-center justify-center font-semibold text-white flex-shrink-0 overflow-hidden',
         sizeClasses[size],
+        bgColor,
         className
       )}
     >

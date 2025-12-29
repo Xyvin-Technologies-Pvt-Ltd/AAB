@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Edit2, Trash2, User, FileText, Eye, Link } from "lucide-react";
+import { Edit2, Trash2, User, FileText, Eye, Link, MoreVertical } from "lucide-react";
 import { Button } from "@/ui/button";
 import {
   Dialog,
@@ -12,6 +12,13 @@ import {
   useDeletePartner,
   useDeleteManager,
 } from "@/api/queries/clientQueries";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 
 export const PartnersManagers = ({
   clientId,
@@ -195,31 +202,44 @@ export const PartnersManagers = ({
                           />
                         </div>
                       </td>
-                      <td className="px-2 py-2 align-middle">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(partner, "PARTNER")}
-                            className="h-7 w-7"
-                            title="Edit"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm(`Delete ${partner.name}?`)) {
-                                handleDelete(partner._id, "PARTNER");
-                              }
-                            }}
-                            className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                      <td className="px-2 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-32">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(partner, "PARTNER");
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Edit2 className="h-3.5 w-3.5 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete ${partner.name}?`)) {
+                                  handleDelete(partner._id, "PARTNER");
+                                }
+                              }}
+                              className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   );
@@ -299,31 +319,44 @@ export const PartnersManagers = ({
                           />
                         </div>
                       </td>
-                      <td className="px-2 py-2 align-middle">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(manager, "MANAGER")}
-                            className="h-7 w-7"
-                            title="Edit"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm(`Delete ${manager.name}?`)) {
-                                handleDelete(manager._id, "MANAGER");
-                              }
-                            }}
-                            className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                      <td className="px-2 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-32">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(manager, "MANAGER");
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Edit2 className="h-3.5 w-3.5 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete ${manager.name}?`)) {
+                                  handleDelete(manager._id, "MANAGER");
+                                }
+                              }}
+                              className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   );

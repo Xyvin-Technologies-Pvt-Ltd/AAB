@@ -13,9 +13,21 @@ export const createClient = async (req, res, next) => {
 
 export const getClients = async (req, res, next) => {
   try {
+    // Handle vatMonths as array (can be comma-separated string or array)
+    let vatMonths = [];
+    if (req.query.vatMonths) {
+      if (Array.isArray(req.query.vatMonths)) {
+        vatMonths = req.query.vatMonths;
+      } else if (typeof req.query.vatMonths === 'string') {
+        vatMonths = req.query.vatMonths.split(',').filter((m) => m.trim() !== '');
+      }
+    }
+
     const filters = {
       search: req.query.search,
       status: req.query.status,
+      vatMonths: vatMonths.length > 0 ? vatMonths : undefined,
+      packageId: req.query.packageId,
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,
     };

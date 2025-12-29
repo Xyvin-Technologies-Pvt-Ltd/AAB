@@ -6,6 +6,7 @@ import { analyticsApi } from "@/api/analytics";
 import { formatCurrency } from "@/utils/currencyFormat";
 import { Badge } from "@/ui/badge";
 import { LoaderWithText } from "@/components/Loader";
+import { Avatar } from "@/components/Avatar";
 
 export const Analytics = () => {
   const [activeTab, setActiveTab] = useState("packages");
@@ -91,6 +92,8 @@ export const Analytics = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
                             Package
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
@@ -140,6 +143,12 @@ export const Analytics = () => {
                               }
                               className="hover:bg-gray-50 cursor-pointer transition-colors"
                             >
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <Avatar
+                                  name={pkg.packageName}
+                                  size="sm"
+                                />
+                              </td>
                               <td className="px-3 py-2 whitespace-nowrap">
                                 <div className="text-xs font-medium text-gray-900">
                                   {pkg.packageName}
@@ -212,6 +221,8 @@ export const Analytics = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
                             Client
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
@@ -254,6 +265,12 @@ export const Analytics = () => {
                               }
                               className="hover:bg-gray-50 cursor-pointer transition-colors"
                             >
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <Avatar
+                                  name={client.clientName}
+                                  size="sm"
+                                />
+                              </td>
                               <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {client.clientName}
                               </td>
@@ -310,6 +327,8 @@ export const Analytics = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
                             Employee
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
@@ -341,6 +360,12 @@ export const Analytics = () => {
                               }
                               className="hover:bg-gray-50 cursor-pointer transition-colors"
                             >
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <Avatar
+                                  name={emp.employeeName}
+                                  size="sm"
+                                />
+                              </td>
                               <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                                 {emp.employeeName}
                               </td>

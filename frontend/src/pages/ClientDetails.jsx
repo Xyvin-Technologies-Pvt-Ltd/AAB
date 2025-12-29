@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
@@ -23,6 +23,7 @@ import {
   Edit2,
   Save,
   X,
+  MoreVertical,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
@@ -42,6 +43,12 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { MultiSelect } from "@/ui/multi-select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 
 export const ClientDetails = () => {
   const { id } = useParams();
@@ -55,6 +62,8 @@ export const ClientDetails = () => {
   const [selectedActivities, setSelectedActivities] = useState([]);
   const [stillActive, setStillActive] = useState(true);
   const [packageType, setPackageType] = useState("RECURRING");
+  const [templatePackageId, setTemplatePackageId] = useState("");
+  const packageFormRef = useRef(null);
   const [isEditingContact, setIsEditingContact] = useState(false);
   const [contactFormData, setContactFormData] = useState({
     name: "",
@@ -92,6 +101,14 @@ export const ClientDetails = () => {
     queryKey: ["activities"],
     queryFn: () => activitiesApi.getAll({ limit: 100 }),
   });
+
+  // Fetch all packages for template dropdown
+  const { data: allPackagesData } = useQuery({
+    queryKey: ["packages", "all"],
+    queryFn: () => packagesApi.getAll({ limit: 1000 }),
+  });
+
+  const allPackages = allPackagesData?.data?.packages || [];
 
   const client = clientData?.data;
   const packages = packagesData?.data?.packages || [];
@@ -537,6 +554,52 @@ export const ClientDetails = () => {
     setSelectedActivities([]);
     setStillActive(true);
     setPackageType("RECURRING");
+    setTemplatePackageId("");
+  };
+
+  const handleTemplatePackageSelect = (packageId) => {
+    if (!packageId) {
+      setTemplatePackageId("");
+      return;
+    }
+
+    const templatePackage = allPackages.find((pkg) => pkg._id === packageId);
+    if (!templatePackage) return;
+
+    setTemplatePackageId(packageId);
+
+    // Auto-fill form fields
+    setPackageType(templatePackage.type || "RECURRING");
+    setSelectedServices(
+      templatePackage.services?.map((s) =>
+        typeof s === "object" ? s._id : s
+      ) || []
+    );
+    setSelectedActivities(
+      templatePackage.activities?.map((a) =>
+        typeof a === "object" ? a._id : a
+      ) || []
+    );
+
+    // Set form field values using the form reference
+    if (packageFormRef.current) {
+      const form = packageFormRef.current;
+      const nameInput = form.querySelector('[name="name"]');
+      const contractValueInput = form.querySelector('[name="contractValue"]');
+      const startDateInput = form.querySelector('[name="startDate"]');
+      const billingFrequencySelect = form.querySelector(
+        '[name="billingFrequency"]'
+      );
+      const statusSelect = form.querySelector('[name="status"]');
+
+      if (nameInput) nameInput.value = "";
+      if (contractValueInput)
+        contractValueInput.value = templatePackage.contractValue || "";
+      if (startDateInput) startDateInput.value = "";
+      if (billingFrequencySelect)
+        billingFrequencySelect.value = templatePackage.billingFrequency || "";
+      if (statusSelect) statusSelect.value = templatePackage.status || "ACTIVE";
+    }
   };
 
   // Reset form when dialog closes
@@ -1103,20 +1166,35 @@ export const ClientDetails = () => {
                               className="px-2 py-1.5 whitespace-nowrap text-right"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (confirm("Delete this package?")) {
-                                    deletePackageMutation.mutate(pkg._id);
-                                  }
-                                }}
-                                className="h-6 w-6 text-red-600 hover:text-red-800 hover:bg-red-50"
-                                title="Delete package"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="w-32"
+                                >
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm("Delete this package?")) {
+                                        deletePackageMutation.mutate(pkg._id);
+                                      }
+                                    }}
+                                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </td>
                           </tr>
                         ))}
@@ -1190,7 +1268,37 @@ export const ClientDetails = () => {
                   : "Fill in the details to create a new package for this client."}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handlePackageSubmit} className="space-y-4">
+            <form
+              ref={packageFormRef}
+              onSubmit={handlePackageSubmit}
+              className="space-y-4"
+            >
+              {!editingPackage && (
+                <div className="space-y-2">
+                  <label
+                    htmlFor="templatePackage"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Copy from Existing Package (Optional)
+                  </label>
+                  <select
+                    id="templatePackage"
+                    value={templatePackageId}
+                    onChange={(e) =>
+                      handleTemplatePackageSelect(e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select a package to copy...</option>
+                    {allPackages.map((pkg) => (
+                      <option key={pkg._id} value={pkg._id}>
+                        {pkg.name}{" "}
+                        {pkg.clientId?.name ? `(${pkg.clientId.name})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label
@@ -1342,8 +1450,15 @@ export const ClientDetails = () => {
                   <select
                     id="status"
                     name="status"
-                    defaultValue={editingPackage?.status || "ACTIVE"}
+                    defaultValue={
+                      editingPackage?.status ||
+                      (templatePackageId
+                        ? allPackages.find((p) => p._id === templatePackageId)
+                            ?.status
+                        : "ACTIVE")
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    key={`status-${templatePackageId}`}
                   >
                     <option value="ACTIVE">Active</option>
                     <option value="INACTIVE">Inactive</option>

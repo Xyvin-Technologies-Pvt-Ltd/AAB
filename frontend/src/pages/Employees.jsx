@@ -14,10 +14,17 @@ import {
 } from "@/ui/dialog";
 import { FileUpload } from "@/components/FileUpload";
 import { Avatar } from "@/components/Avatar";
-import { Plus, Pencil, Trash2, Eye, FileText, Upload, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Upload, X, MoreVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 import { LoaderWithText } from "@/components/Loader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 
 export const Employees = () => {
   const [showForm, setShowForm] = useState(false);
@@ -263,6 +270,8 @@ export const Employees = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                       Name
                     </th>
                     <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
@@ -292,7 +301,7 @@ export const Employees = () => {
                   {employees.length === 0 ? (
                     <tr>
                       <td
-                        colSpan="8"
+                        colSpan="9"
                         className="px-2 py-8 text-center text-xs text-gray-500"
                       >
                         No employees found
@@ -306,12 +315,14 @@ export const Employees = () => {
                         onClick={() => navigate(`/employees/${employee._id}`)}
                       >
                         <td className="px-2 py-1.5 whitespace-nowrap">
+                          <Avatar
+                            src={employee.profilePicture?.url}
+                            name={employee.name}
+                            size="sm"
+                          />
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <Avatar
-                              src={employee.profilePicture?.url}
-                              name={employee.name}
-                              size="sm"
-                            />
                             <span className="text-xs font-medium text-gray-900">{employee.name}</span>
                           </div>
                         </td>
@@ -350,40 +361,51 @@ export const Employees = () => {
                           className="px-2 py-1.5 whitespace-nowrap text-right text-xs font-medium"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                navigate(`/employees/${employee._id}`)
-                              }
-                              className="h-7 w-7 text-indigo-600 hover:text-indigo-800"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(employee);
-                              }}
-                              className="h-7 w-7 text-indigo-600 hover:text-indigo-800"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(employee._id);
-                              }}
-                              className="h-7 w-7 text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/employees/${employee._id}`);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Eye className="h-3.5 w-3.5 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(employee);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(employee._id);
+                                }}
+                                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     ))

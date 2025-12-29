@@ -11,6 +11,7 @@ import { Button } from '@/ui/button';
 import { MonthlyTrendChart } from '@/components/charts/MonthlyTrendChart';
 import { ArrowLeft, Filter, X } from 'lucide-react';
 import { LoaderWithText } from '@/components/Loader';
+import { Avatar } from '@/components/Avatar';
 
 export const ClientAnalytics = () => {
   const { clientId } = useParams();
@@ -233,6 +234,7 @@ export const ClientAnalytics = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase"></th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Package</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Type</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Revenue</th>
@@ -248,6 +250,12 @@ export const ClientAnalytics = () => {
                         onClick={() => navigate(`/analytics/package/${pkg.packageId}`)}
                         className="hover:bg-gray-50 cursor-pointer transition-colors"
                       >
+                        <td className="px-3 py-2 text-sm">
+                          <Avatar
+                            name={pkg.name}
+                            size="sm"
+                          />
+                        </td>
                         <td className="px-3 py-2 text-sm font-medium">{pkg.name}</td>
                         <td className="px-3 py-2 text-sm">
                           <Badge variant={pkg.type === 'RECURRING' ? 'default' : 'secondary'} className="text-xs">
