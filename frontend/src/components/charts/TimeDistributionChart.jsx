@@ -1,6 +1,21 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+const COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+];
 
 export const TimeDistributionChart = ({ data }) => {
   if (!data || data.length === 0) {
@@ -20,30 +35,37 @@ export const TimeDistributionChart = ({ data }) => {
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percentage }) => `${name}: ${percentage.toFixed(1)}%`}
+            label={({ name, percentage }) =>
+              `${name}: ${percentage.toFixed(1)}%`
+            }
             outerRadius={120}
             fill="#8884d8"
             dataKey="hours"
             paddingAngle={2}
           >
             {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              <Cell
+                key={`cell-${index}`}
+                fill={COLORS[index % COLORS.length]}
+              />
             ))}
           </Pie>
-          <Tooltip 
+          <Tooltip
             formatter={(value, name, props) => [
-              `${value.toFixed(1)} hrs (${props.payload.percentage.toFixed(1)}%)`,
-              name
+              `${value.toFixed(1)} hrs (${props.payload.percentage.toFixed(
+                1
+              )}%)`,
+              name,
             ]}
-            contentStyle={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              padding: '8px 12px'
+            contentStyle={{
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              border: "1px solid #e5e7eb",
+              borderRadius: "8px",
+              padding: "8px 12px",
             }}
           />
-          <Legend 
-            wrapperStyle={{ paddingTop: '20px' }}
+          <Legend
+            wrapperStyle={{ paddingTop: "20px" }}
             formatter={(value) => value}
           />
         </PieChart>
@@ -51,4 +73,3 @@ export const TimeDistributionChart = ({ data }) => {
     </div>
   );
 };
-

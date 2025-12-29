@@ -1,4 +1,13 @@
-import { Pencil, Trash2, User, Calendar, AlertCircle, Play, Pause, Check } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  User,
+  Calendar,
+  AlertCircle,
+  Play,
+  Pause,
+  Check,
+} from "lucide-react";
 import { Button } from "@/ui/button";
 import { Avatar } from "@/components/Avatar";
 import { format } from "date-fns";
@@ -38,17 +47,18 @@ export const TaskCard = ({
     task.status !== "DONE";
   const taskIdStr = task._id?.toString() || task._id;
   const runningTimerIdStr = runningTimerId?.toString() || runningTimerId;
-  const isThisTaskRunning = runningTimerIdStr && taskIdStr && runningTimerIdStr === taskIdStr;
+  const isThisTaskRunning =
+    runningTimerIdStr && taskIdStr && runningTimerIdStr === taskIdStr;
 
   return (
     <div
       className={`bg-white rounded-lg border-2 p-2 shadow-sm hover:shadow-md transition-shadow relative ${
-        isThisTaskRunning && isTimerRunning 
-          ? "border-emerald-400 animate-heartbeat" 
-          : isThisTaskRunning 
-          ? "border-emerald-300" 
-          : isOverdue 
-          ? "border-red-300" 
+        isThisTaskRunning && isTimerRunning
+          ? "border-emerald-400 animate-heartbeat"
+          : isThisTaskRunning
+          ? "border-emerald-300"
+          : isOverdue
+          ? "border-red-300"
           : priorityColors[priority]
       } ${dragHandleProps ? "cursor-move" : ""}`}
       {...(dragHandleProps || {})}
@@ -68,9 +78,13 @@ export const TaskCard = ({
       <div className="flex items-start justify-between mb-1.5">
         <div className="flex items-center gap-1 flex-1 min-w-0">
           {isThisTaskRunning && (
-            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              isTimerRunning ? 'bg-emerald-500 animate-heartbeatDot' : 'bg-amber-500'
-            }`} />
+            <div
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                isTimerRunning
+                  ? "bg-emerald-500 animate-heartbeatDot"
+                  : "bg-amber-500"
+              }`}
+            />
           )}
           <h3 className="font-semibold text-xs text-gray-900 line-clamp-2 leading-tight">
             {task.name}
@@ -84,8 +98,12 @@ export const TaskCard = ({
       {/* Client & Package - Single Line */}
       {(task.clientId?.name || task.packageId?.name) && (
         <div className="text-[10px] text-gray-500 mb-1.5 truncate">
-          {task.clientId?.name && <span className="font-medium">{task.clientId.name}</span>}
-          {task.clientId?.name && task.packageId?.name && <span className="mx-1">•</span>}
+          {task.clientId?.name && (
+            <span className="font-medium">{task.clientId.name}</span>
+          )}
+          {task.clientId?.name && task.packageId?.name && (
+            <span className="mx-1">•</span>
+          )}
           {task.packageId?.name && <span>{task.packageId.name}</span>}
         </div>
       )}
@@ -109,9 +127,13 @@ export const TaskCard = ({
               {activity.name || activity}
             </span>
           ))}
-          {((task.services?.length || 0) + (task.activities?.length || 0) > 4) && (
+          {(task.services?.length || 0) + (task.activities?.length || 0) >
+            4 && (
             <span className="text-[10px] text-gray-500 px-1">
-              +{((task.services?.length || 0) + (task.activities?.length || 0) - 4)}
+              +
+              {(task.services?.length || 0) +
+                (task.activities?.length || 0) -
+                4}
             </span>
           )}
         </div>
@@ -126,13 +148,18 @@ export const TaskCard = ({
               <>
                 <Avatar
                   src={task.assignedTo[0]?.profilePicture?.url}
-                  name={task.assignedTo[0]?.name || task.assignedTo[0]?.email || ''}
+                  name={
+                    task.assignedTo[0]?.name || task.assignedTo[0]?.email || ""
+                  }
                   size="xs"
                 />
                 <div className="text-[10px] text-gray-600 truncate min-w-0">
                   <span className="truncate">
-                    {task.assignedTo[0]?.name || task.assignedTo[0]?.email || task.assignedTo[0]}
-                    {task.assignedTo.length > 1 && ` +${task.assignedTo.length - 1}`}
+                    {task.assignedTo[0]?.name ||
+                      task.assignedTo[0]?.email ||
+                      task.assignedTo[0]}
+                    {task.assignedTo.length > 1 &&
+                      ` +${task.assignedTo.length - 1}`}
                   </span>
                 </div>
               </>
@@ -146,12 +173,14 @@ export const TaskCard = ({
             <>
               <Avatar
                 src={task.assignedTo.profilePicture?.url}
-                name={task.assignedTo.name || task.assignedTo.email || ''}
+                name={task.assignedTo.name || task.assignedTo.email || ""}
                 size="xs"
               />
               <div className="text-[10px] text-gray-600 truncate min-w-0">
                 <span className="truncate">
-                  {task.assignedTo.name || task.assignedTo.email || task.assignedTo}
+                  {task.assignedTo.name ||
+                    task.assignedTo.email ||
+                    task.assignedTo}
                 </span>
               </div>
             </>
@@ -165,14 +194,18 @@ export const TaskCard = ({
 
         {/* Due Date */}
         <div className="flex items-center gap-1 min-w-0">
-          <Calendar className={`h-2.5 w-2.5 flex-shrink-0 ${
-            isOverdue ? "text-red-500" : "text-gray-400"
-          }`} />
+          <Calendar
+            className={`h-2.5 w-2.5 flex-shrink-0 ${
+              isOverdue ? "text-red-500" : "text-gray-400"
+            }`}
+          />
           <div className="text-[10px] min-w-0">
             {task.dueDate ? (
-              <span className={`truncate ${
-                isOverdue ? "text-red-600 font-semibold" : "text-gray-600"
-              }`}>
+              <span
+                className={`truncate ${
+                  isOverdue ? "text-red-600 font-semibold" : "text-gray-600"
+                }`}
+              >
                 {format(new Date(task.dueDate), "MMM dd")}
               </span>
             ) : (

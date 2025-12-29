@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/ui/button';
-import { X } from 'lucide-react';
-import { Badge } from '@/ui/badge';
+import { useState, useEffect } from "react";
+import { Button } from "@/ui/button";
+import { X } from "lucide-react";
+import { Badge } from "@/ui/badge";
 
 export const AnalyticsFilterDrawer = ({
   open,
@@ -25,13 +25,13 @@ export const AnalyticsFilterDrawer = ({
 
   const handleClear = () => {
     const clearedFilters = {
-      clientId: '',
-      employeeId: '',
-      packageId: '',
-      packageType: '',
-      billingFrequency: '',
-      startDate: '',
-      endDate: '',
+      clientId: "",
+      employeeId: "",
+      packageId: "",
+      packageType: "",
+      billingFrequency: "",
+      startDate: "",
+      endDate: "",
     };
     setLocalFilters(clearedFilters);
     onFilterChange(clearedFilters);
@@ -40,12 +40,12 @@ export const AnalyticsFilterDrawer = ({
   const handleFilterChange = (key, value) => {
     const newFilters = { ...localFilters, [key]: value };
     // If client changes, clear package filter
-    if (key === 'clientId') {
-      newFilters.packageId = '';
+    if (key === "clientId") {
+      newFilters.packageId = "";
     }
     // If package type changes to ONE_TIME, clear billing frequency
-    if (key === 'packageType' && value === 'ONE_TIME') {
-      newFilters.billingFrequency = '';
+    if (key === "packageType" && value === "ONE_TIME") {
+      newFilters.billingFrequency = "";
     }
     setLocalFilters(newFilters);
   };
@@ -66,23 +66,29 @@ export const AnalyticsFilterDrawer = ({
   const filteredPackages = localFilters.clientId
     ? packages.filter(
         (pkg) =>
-          pkg.clientId?._id === localFilters.clientId || pkg.clientId === localFilters.clientId
+          pkg.clientId?._id === localFilters.clientId ||
+          pkg.clientId === localFilters.clientId
       )
     : packages;
 
   return (
     <div
       className={`fixed inset-y-0 right-0 z-50 w-full sm:max-w-sm bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${
-        open ? 'translate-x-0' : 'translate-x-full'
+        open ? "translate-x-0" : "translate-x-full"
       }`}
     >
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-gray-900">Filter Analytics</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Filter Analytics
+            </h2>
             {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="bg-indigo-100 text-indigo-800">
+              <Badge
+                variant="secondary"
+                className="bg-indigo-100 text-indigo-800"
+              >
                 {activeFilterCount}
               </Badge>
             )}
@@ -98,10 +104,12 @@ export const AnalyticsFilterDrawer = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Client</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Client
+            </label>
             <select
-              value={localFilters.clientId || ''}
-              onChange={(e) => handleFilterChange('clientId', e.target.value)}
+              value={localFilters.clientId || ""}
+              onChange={(e) => handleFilterChange("clientId", e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="">All Clients</option>
@@ -114,10 +122,12 @@ export const AnalyticsFilterDrawer = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Employee</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Employee
+            </label>
             <select
-              value={localFilters.employeeId || ''}
-              onChange={(e) => handleFilterChange('employeeId', e.target.value)}
+              value={localFilters.employeeId || ""}
+              onChange={(e) => handleFilterChange("employeeId", e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="">All Employees</option>
@@ -131,10 +141,14 @@ export const AnalyticsFilterDrawer = ({
 
           {localFilters.clientId && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Package</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Package
+              </label>
               <select
-                value={localFilters.packageId || ''}
-                onChange={(e) => handleFilterChange('packageId', e.target.value)}
+                value={localFilters.packageId || ""}
+                onChange={(e) =>
+                  handleFilterChange("packageId", e.target.value)
+                }
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="">All Packages</option>
@@ -148,10 +162,14 @@ export const AnalyticsFilterDrawer = ({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Package Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Package Type
+            </label>
             <select
-              value={localFilters.packageType || ''}
-              onChange={(e) => handleFilterChange('packageType', e.target.value)}
+              value={localFilters.packageType || ""}
+              onChange={(e) =>
+                handleFilterChange("packageType", e.target.value)
+              }
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="">All Types</option>
@@ -160,14 +178,16 @@ export const AnalyticsFilterDrawer = ({
             </select>
           </div>
 
-          {localFilters.packageType === 'RECURRING' && (
+          {localFilters.packageType === "RECURRING" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Billing Frequency
               </label>
               <select
-                value={localFilters.billingFrequency || ''}
-                onChange={(e) => handleFilterChange('billingFrequency', e.target.value)}
+                value={localFilters.billingFrequency || ""}
+                onChange={(e) =>
+                  handleFilterChange("billingFrequency", e.target.value)
+                }
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="">All Frequencies</option>
@@ -179,21 +199,25 @@ export const AnalyticsFilterDrawer = ({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Start Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Start Date
+            </label>
             <input
               type="date"
-              value={localFilters.startDate || ''}
-              onChange={(e) => handleFilterChange('startDate', e.target.value)}
+              value={localFilters.startDate || ""}
+              onChange={(e) => handleFilterChange("startDate", e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">End Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              End Date
+            </label>
             <input
               type="date"
-              value={localFilters.endDate || ''}
-              onChange={(e) => handleFilterChange('endDate', e.target.value)}
+              value={localFilters.endDate || ""}
+              onChange={(e) => handleFilterChange("endDate", e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
@@ -212,4 +236,3 @@ export const AnalyticsFilterDrawer = ({
     </div>
   );
 };
-
