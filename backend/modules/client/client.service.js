@@ -1,4 +1,9 @@
 import Client from './client.model.js';
+import { parseCSV, normalizeCSVRow } from '../../helpers/csvParser.js';
+import { parseVATReturnMonth } from '../../helpers/vatMonthParser.js';
+import { bulkCreateClientSchema } from '../../validators/schemas/client.schema.js';
+import Package from '../package/package.model.js';
+import logger from '../../helpers/logger.js';
 
 /**
  * Format date to dd/mm/yyyy format
@@ -1170,5 +1175,194 @@ export const getCalendarEvents = async (startDate, endDate, clientId = null) => 
 
   // Sort events by date
   return events.sort((a, b) => a.start - b.start);
+};
+
+/**
+ * Bulk create clients from CSV file
+ * @param {Buffer} fileBuffer - CSV file buffer
+ * @returns {Object} Summary with success, failed, skipped counts and errors
+ */
+export const bulkCreateClientsFromCSV = async (fileBuffer) => {
+  const results = {
+    success: 0,
+    failed: 0,
+    skipped: 0,
+    errors: [],
+  };
+
+  try {
+    // Parse CSV file
+    const csvRows = parseCSV(fileBuffer);
+
+    if (!csvRows || csvRows.length === 0) {
+      throw new Error('CSV file is empty or invalid');
+    }
+
+    // Process each row
+    for (let index = 0; index < csvRows.length; index++) {
+      const row = csvRows[index];
+      const rowNumber = index + 2; // +2 because row 1 is header, and arrays are 0-indexed
+
+      try {
+        // Normalize CSV row
+        const normalizedRow = normalizeCSVRow(row);
+
+        // Extract and map CSV columns to client data
+        const clientName = normalizedRow['Client Name'] || normalizedRow['client name'] || normalizedRow['ClientName'] || '';
+        
+        if (!clientName) {
+          results.failed++;
+          results.errors.push({
+            row: rowNumber,
+            clientName: 'N/A',
+            error: 'Client Name is required',
+          });
+          continue;
+        }
+
+        // Check if client already exists
+        const existingClient = await Client.findOne({ name: clientName.trim() });
+        if (existingClient) {
+          results.skipped++;
+          results.errors.push({
+            row: rowNumber,
+            clientName,
+            error: 'Client already exists (skipped)',
+          });
+          continue;
+        }
+
+        // Map CSV fields to client data
+        const status = normalizedRow['Status'] || normalizedRow['status'] || '';
+        const normalizedStatus = status.toLowerCase().trim();
+        let clientStatus = 'ACTIVE';
+        if (normalizedStatus === 'not active' || normalizedStatus === 'inactive') {
+          clientStatus = 'INACTIVE';
+        }
+
+        const emaraTaxUsername = normalizedRow['Emara Tax User Name'] || 
+                                 normalizedRow['emara tax user name'] || 
+                                 normalizedRow['EmaraTaxUserName'] || 
+                                 normalizedRow['EmaraTax User Name'] || '';
+        
+        const emaraTaxPassword = normalizedRow['Password'] || 
+                                 normalizedRow['password'] || '';
+
+        const vatReturnMonth = normalizedRow['VAT Return Month'] || 
+                              normalizedRow['vat return month'] || 
+                              normalizedRow['VATReturnMonth'] || '';
+
+        const packageName = normalizedRow['Package name'] || 
+                           normalizedRow['Package Name'] || 
+                           normalizedRow['package name'] || 
+                           normalizedRow['PackageName'] || '';
+
+        // Parse VAT return month
+        const vatData = parseVATReturnMonth(vatReturnMonth);
+
+        // Build client data object
+        const clientData = {
+          name: clientName.trim(),
+          status: clientStatus,
+          emaraTaxAccount: {
+            username: emaraTaxUsername.trim() || null,
+            password: emaraTaxPassword || null,
+          },
+          businessInfo: {
+            vatReturnCycle: vatData.vatReturnCycle,
+            vatTaxPeriods: vatData.vatTaxPeriods,
+          },
+        };
+
+        // Validate client data with relaxed schema
+        const { error: validationError, value: validatedData } = bulkCreateClientSchema.validate(clientData, {
+          abortEarly: false,
+          stripUnknown: true,
+        });
+
+        if (validationError) {
+          results.failed++;
+          results.errors.push({
+            row: rowNumber,
+            clientName,
+            error: `Validation error: ${validationError.details.map((d) => d.message).join(', ')}`,
+          });
+          continue;
+        }
+
+        // Create client (bypass unique constraint check by using findOne first)
+        let client;
+        try {
+          client = await Client.create(validatedData);
+        } catch (createError) {
+          // Handle duplicate key error
+          if (createError.code === 11000 || createError.message.includes('duplicate')) {
+            results.skipped++;
+            results.errors.push({
+              row: rowNumber,
+              clientName,
+              error: 'Client already exists (skipped)',
+            });
+            continue;
+          }
+          throw createError;
+        }
+
+        // Create package if package name is provided
+        if (packageName && packageName.trim()) {
+          try {
+            // Check if package with same name already exists for this client
+            const existingPackage = await Package.findOne({
+              clientId: client._id,
+              name: packageName.trim(),
+            });
+
+            if (!existingPackage) {
+              // Create new package
+              await Package.create({
+                clientId: client._id,
+                name: packageName.trim(),
+                type: 'RECURRING',
+                billingFrequency: 'MONTHLY',
+                contractValue: 0,
+                startDate: new Date(),
+                status: 'ACTIVE',
+              });
+            }
+          } catch (packageError) {
+            // Log package creation error but don't fail the client creation
+            logger.warn('Failed to create package for client', {
+              clientId: client._id,
+              clientName,
+              packageName,
+              error: packageError.message,
+            });
+          }
+        }
+
+        results.success++;
+      } catch (rowError) {
+        results.failed++;
+        results.errors.push({
+          row: rowNumber,
+          clientName: normalizedRow['Client Name'] || normalizedRow['client name'] || 'Unknown',
+          error: rowError.message || 'Unknown error',
+        });
+        logger.error('Error processing CSV row', {
+          row: rowNumber,
+          error: rowError.message,
+          stack: rowError.stack,
+        });
+      }
+    }
+
+    return results;
+  } catch (error) {
+    logger.error('Bulk CSV upload failed', {
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
 };
 

@@ -12,9 +12,12 @@ const fileFilter = (req, file, cb) => {
         'image/jpeg',
         'image/jpg',
         'image/png',
+        'text/csv',
+        'application/vnd.ms-excel',
+        'text/plain',
     ];
 
-    const allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.csv'];
 
     const fileExtension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
 
@@ -33,6 +36,18 @@ export const upload = multer({
         fileSize: 10 * 1024 * 1024, // 10MB limit
     },
 });
+
+// Multer configuration for CSV bulk uploads (larger file size)
+export const uploadCSV = multer({
+    storage,
+    fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB limit for CSV
+    },
+});
+
+// Middleware for CSV file upload
+export const uploadCSVSingle = uploadCSV.single('file');
 
 // Middleware for single file upload
 export const uploadSingle = upload.single('file');

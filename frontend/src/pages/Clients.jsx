@@ -14,7 +14,8 @@ import {
   DialogTitle,
 } from '@/ui/dialog';
 import { Card } from '@/ui/card';
-import { Plus, Search, Edit, Trash2, Eye, FileText } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, FileText, Upload } from 'lucide-react';
+import { ClientBulkUpload } from '@/components/ClientBulkUpload';
 import { useToast } from '@/hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { LoaderWithText } from '@/components/Loader';
@@ -22,6 +23,7 @@ import { LoaderWithText } from '@/components/Loader';
 export const Clients = () => {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -144,14 +146,25 @@ export const Clients = () => {
             <h1 className="text-xl font-bold text-gray-900">Clients</h1>
             <p className="text-xs text-gray-600 mt-0.5">Manage your client relationships</p>
           </div>
-          <Button
-            onClick={() => setShowForm(true)}
-            size="sm"
-            className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Add Client
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowBulkUpload(true)}
+              size="sm"
+              variant="outline"
+              className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+            >
+              <Upload className="h-3.5 w-3.5 mr-1.5" />
+              Bulk Upload
+            </Button>
+            <Button
+              onClick={() => setShowForm(true)}
+              size="sm"
+              className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Add Client
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -423,6 +436,9 @@ export const Clients = () => {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Bulk Upload Dialog */}
+        <ClientBulkUpload open={showBulkUpload} onOpenChange={setShowBulkUpload} />
       </div>
     </AppLayout>
   );

@@ -614,3 +614,38 @@ export const getCalendarEvents = async (req, res, next) => {
   }
 };
 
+export const bulkUploadClients = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No CSV file uploaded' });
+    }
+
+    // Check if file is CSV
+    const fileExtension = req.file.originalname.toLowerCase().substring(
+      req.file.originalname.lastIndexOf('.')
+    );
+    if (fileExtension !== '.csv') {
+      return res.status(400).json({ message: 'Invalid file type. Please upload a CSV file.' });
+    }
+
+    // Process CSV file
+    const results = await clientService.bulkCreateClientsFromCSV(req.file.buffer);
+
+    logger.info('Bulk CSV upload completed', {
+      success: results.success,
+      failed: results.failed,
+      skipped: results.skipped,
+      uploadedBy: req.user._id,
+    });
+
+    return successResponse(res, 200, 'Bulk upload completed', results);
+  } catch (error) {
+    logger.error('Bulk CSV upload error', {
+      error: error.message,
+      stack: error.stack,
+      uploadedBy: req.user._id,
+    });
+    next(error);
+  }
+};
+

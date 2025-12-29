@@ -28,7 +28,6 @@ import { useToast } from "@/hooks/useToast";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
 import { BusinessInfoForm } from "@/components/BusinessInfoForm";
 import { PartnersManagers } from "@/components/PartnersManagers";
-import { CompactAlerts } from "@/components/CompactAlerts";
 import { EmaraTaxCredentials } from "@/components/EmaraTaxCredentials";
 import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 import { Badge } from "@/ui/badge";
@@ -944,201 +943,188 @@ export const ClientDetails = () => {
               </Card>
             )}
 
-            {/* Alerts & Packages Side by Side */}
-            <div className="grid grid-cols-1 lg:grid-cols gap-3">
-              {/* Alerts */}
-              <div>
-                <CompactAlerts clientId={id} />
+            {/* Packages Section */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h2 className="text-base font-bold text-gray-900">Packages</h2>
+                <Button size="sm" onClick={() => setShowPackageForm(true)}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add
+                </Button>
               </div>
 
-              {/* Packages Section */}
-              <div className="space-y-2 lg:col-span-2">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-base font-bold text-gray-900">
-                    Packages
-                  </h2>
-                  <Button size="sm" onClick={() => setShowPackageForm(true)}>
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add
-                  </Button>
-                </div>
-
-                {packagesLoading ? (
-                  <Card>
-                    <div className="p-4 text-center text-sm text-gray-500">
-                      Loading packages...
-                    </div>
-                  </Card>
-                ) : packages.length === 0 ? (
-                  <Card>
-                    <div className="p-4 text-center">
-                      <p className="text-sm text-gray-500">No packages found</p>
-                    </div>
-                  </Card>
-                ) : (
-                  <Card>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                              Type
-                            </th>
-                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                              Value
-                            </th>
-                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                              Services
-                            </th>
-                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                              Activities
-                            </th>
-                            <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-900 uppercase tracking-wider"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {packages.map((pkg) => (
-                            <tr
-                              key={pkg._id}
-                              className="hover:bg-gray-50 transition-colors cursor-pointer"
-                              onClick={() => handleEditPackage(pkg)}
-                            >
-                              <td className="px-2 py-1.5 whitespace-nowrap">
-                                <div className="text-xs font-medium text-gray-900">
-                                  {pkg.name}
-                                </div>
-                              </td>
-                              <td className="px-2 py-1.5 whitespace-nowrap">
-                                <div className="text-xs text-gray-600">
-                                  {pkg.type}
-                                </div>
-                              </td>
-                              <td className="px-2 py-1.5 whitespace-nowrap">
-                                <div className="text-xs text-gray-600">
-                                  AED {pkg.contractValue?.toFixed(2)}
-                                </div>
-                              </td>
-                              <td className="px-2 py-1.5 whitespace-nowrap">
-                                <span
-                                  className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full ${
-                                    pkg.status === "ACTIVE"
-                                      ? "bg-green-100 text-green-800"
-                                      : pkg.status === "COMPLETED"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-gray-100 text-gray-800"
-                                  }`}
-                                >
-                                  {pkg.status}
-                                </span>
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <div className="flex flex-wrap gap-1">
-                                  {pkg.services && pkg.services.length > 0 ? (
-                                    <>
-                                      {pkg.services
-                                        .slice(0, 2)
-                                        .map((service) => (
-                                          <Badge
-                                            key={
-                                              typeof service === "object"
-                                                ? service._id
-                                                : service
-                                            }
-                                            variant="outline"
-                                            className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
-                                          >
-                                            {typeof service === "object"
-                                              ? service.name
-                                              : service}
-                                          </Badge>
-                                        ))}
-                                      {pkg.services.length > 2 && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-[10px] px-1.5 py-0.5"
-                                        >
-                                          +{pkg.services.length - 2}
-                                        </Badge>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">
-                                      -
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <div className="flex flex-wrap gap-1">
-                                  {pkg.activities &&
-                                  pkg.activities.length > 0 ? (
-                                    <>
-                                      {pkg.activities
-                                        .slice(0, 2)
-                                        .map((activity) => (
-                                          <Badge
-                                            key={
-                                              typeof activity === "object"
-                                                ? activity._id
-                                                : activity
-                                            }
-                                            variant="outline"
-                                            className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-700 border-purple-200"
-                                          >
-                                            {typeof activity === "object"
-                                              ? activity.name
-                                              : activity}
-                                          </Badge>
-                                        ))}
-                                      {pkg.activities.length > 2 && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-[10px] px-1.5 py-0.5"
-                                        >
-                                          +{pkg.activities.length - 2}
-                                        </Badge>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">
-                                      -
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td
-                                className="px-2 py-1.5 whitespace-nowrap text-right"
-                                onClick={(e) => e.stopPropagation()}
+              {packagesLoading ? (
+                <Card>
+                  <div className="p-4 text-center text-sm text-gray-500">
+                    Loading packages...
+                  </div>
+                </Card>
+              ) : packages.length === 0 ? (
+                <Card>
+                  <div className="p-4 text-center">
+                    <p className="text-sm text-gray-500">No packages found</p>
+                  </div>
+                </Card>
+              ) : (
+                <Card>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                            Type
+                          </th>
+                          <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                            Value
+                          </th>
+                          <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                            Services
+                          </th>
+                          <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                            Activities
+                          </th>
+                          <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-900 uppercase tracking-wider"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {packages.map((pkg) => (
+                          <tr
+                            key={pkg._id}
+                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                            onClick={() => handleEditPackage(pkg)}
+                          >
+                            <td className="px-2 py-1.5 whitespace-nowrap">
+                              <div className="text-xs font-medium text-gray-900">
+                                {pkg.name}
+                              </div>
+                            </td>
+                            <td className="px-2 py-1.5 whitespace-nowrap">
+                              <div className="text-xs text-gray-600">
+                                {pkg.type}
+                              </div>
+                            </td>
+                            <td className="px-2 py-1.5 whitespace-nowrap">
+                              <div className="text-xs text-gray-600">
+                                AED {pkg.contractValue?.toFixed(2)}
+                              </div>
+                            </td>
+                            <td className="px-2 py-1.5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                                  pkg.status === "ACTIVE"
+                                    ? "bg-green-100 text-green-800"
+                                    : pkg.status === "COMPLETED"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
                               >
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (confirm("Delete this package?")) {
-                                      deletePackageMutation.mutate(pkg._id);
-                                    }
-                                  }}
-                                  className="h-6 w-6 text-red-600 hover:text-red-800 hover:bg-red-50"
-                                  title="Delete package"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Card>
-                )}
-              </div>
+                                {pkg.status}
+                              </span>
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <div className="flex flex-wrap gap-1">
+                                {pkg.services && pkg.services.length > 0 ? (
+                                  <>
+                                    {pkg.services.slice(0, 2).map((service) => (
+                                      <Badge
+                                        key={
+                                          typeof service === "object"
+                                            ? service._id
+                                            : service
+                                        }
+                                        variant="outline"
+                                        className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
+                                      >
+                                        {typeof service === "object"
+                                          ? service.name
+                                          : service}
+                                      </Badge>
+                                    ))}
+                                    {pkg.services.length > 2 && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] px-1.5 py-0.5"
+                                      >
+                                        +{pkg.services.length - 2}
+                                      </Badge>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-gray-400">
+                                    -
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <div className="flex flex-wrap gap-1">
+                                {pkg.activities && pkg.activities.length > 0 ? (
+                                  <>
+                                    {pkg.activities
+                                      .slice(0, 2)
+                                      .map((activity) => (
+                                        <Badge
+                                          key={
+                                            typeof activity === "object"
+                                              ? activity._id
+                                              : activity
+                                          }
+                                          variant="outline"
+                                          className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-700 border-purple-200"
+                                        >
+                                          {typeof activity === "object"
+                                            ? activity.name
+                                            : activity}
+                                        </Badge>
+                                      ))}
+                                    {pkg.activities.length > 2 && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] px-1.5 py-0.5"
+                                      >
+                                        +{pkg.activities.length - 2}
+                                      </Badge>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-gray-400">
+                                    -
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td
+                              className="px-2 py-1.5 whitespace-nowrap text-right"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm("Delete this package?")) {
+                                    deletePackageMutation.mutate(pkg._id);
+                                  }
+                                }}
+                                className="h-6 w-6 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                title="Delete package"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
             </div>
           </TabsContent>
 

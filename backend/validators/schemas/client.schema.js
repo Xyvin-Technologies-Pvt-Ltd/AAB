@@ -140,3 +140,47 @@ export const emaraTaxCredentialsSchema = Joi.object({
   password: Joi.string().allow('', null),
 });
 
+// Relaxed validation schema for bulk CSV upload
+export const bulkCreateClientSchema = Joi.object({
+  name: Joi.string().trim().required().messages({
+    'any.required': 'Client name is required',
+  }),
+  contactPerson: Joi.string().trim().allow('', null).optional(),
+  email: Joi.string().trim().allow('', null).optional(),
+  phone: Joi.string().trim().allow('', null).optional(),
+  status: Joi.string().valid('ACTIVE', 'INACTIVE').default('ACTIVE').optional(),
+  emaraTaxAccount: Joi.object({
+    username: Joi.string().trim().allow('', null).optional(),
+    password: Joi.string().allow('', null).optional(),
+  }).optional(),
+  businessInfo: Joi.object({
+    address: Joi.string().trim().allow('', null).optional(),
+    emirate: Joi.string().trim().allow('', null).optional(),
+    trn: Joi.string().trim().allow('', null).optional(),
+    ctrn: Joi.string().trim().allow('', null).optional(),
+    vatReturnCycle: Joi.string().valid('MONTHLY', 'QUARTERLY', 'OTHER', null).allow(null).optional(),
+    vatTaxPeriods: Joi.array()
+      .items(
+        Joi.object({
+          startDate: Joi.date().required(),
+          endDate: Joi.date().required(),
+        })
+      )
+      .optional(),
+    corporateTaxDueDate: Joi.date().allow(null).optional(),
+    licenseNumber: Joi.string().trim().allow('', null).optional(),
+    licenseStartDate: Joi.date().allow(null).optional(),
+    licenseExpiryDate: Joi.date().allow(null).optional(),
+    turnover: Joi.array()
+      .items(
+        Joi.object({
+          year: Joi.number().integer().min(2000).max(2100).required(),
+          amount: Joi.number().min(0).required(),
+          currency: Joi.string().default('AED'),
+        })
+      )
+      .optional(),
+    remarks: Joi.string().trim().allow('', null).optional(),
+  }).optional(),
+}).unknown(true); // Allow unknown fields for flexibility
+

@@ -1,7 +1,7 @@
 import express from 'express';
 import { validate } from '../../middlewares/validator.js';
 import { authenticate, authorize } from '../../middlewares/auth.js';
-import { uploadSingle } from '../../middlewares/upload.js';
+import { uploadSingle, uploadCSVSingle } from '../../middlewares/upload.js';
 import * as clientController from './client.controller.js';
 import {
   createClientSchema,
@@ -22,6 +22,9 @@ router.use(authenticate);
 // All routes accessible to both ADMIN and EMPLOYEE
 router.post('/', validate(createClientSchema), clientController.createClient);
 router.get('/', clientController.getClients);
+
+// Bulk upload route (must be before /:id route to avoid route conflicts)
+router.post('/bulk-upload', uploadCSVSingle, clientController.bulkUploadClients);
 
 // Compliance routes (must be before /:id route to avoid route conflicts)
 router.get('/alerts/all', clientController.getAllAlerts);

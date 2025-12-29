@@ -135,5 +135,24 @@ export const clientsApi = {
     const response = await api.get('/clients/calendar-events', { params });
     return response.data;
   },
+
+  bulkUploadClients: async (file, onUploadProgress) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/clients/bulk-upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: onUploadProgress
+        ? (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            onUploadProgress(percentCompleted);
+          }
+        : undefined,
+    });
+    return response.data;
+  },
 };
 
