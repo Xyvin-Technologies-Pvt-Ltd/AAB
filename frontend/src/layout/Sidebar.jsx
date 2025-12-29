@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -11,20 +11,20 @@ import {
   X,
   Bell,
   Settings,
-} from 'lucide-react';
-import { Button } from '@/ui/button';
-import { useUIStore } from '@/store/uiStore';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { Button } from "@/ui/button";
+import { useUIStore } from "@/store/uiStore";
+import { cn } from "@/lib/utils";
 
 const menuItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/clients', label: 'Clients', icon: Users },
-  { path: '/alerts', label: 'Alerts', icon: Bell },
-  { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-  { path: '/calendar', label: 'Calendar', icon: Calendar },
-  { path: '/employees', label: 'Employees', icon: UserCog },
-  { path: '/time-entries', label: 'Time Entries', icon: Clock },
-  { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/clients", label: "Clients", icon: Users },
+  { path: "/alerts", label: "Alerts", icon: Bell },
+  { path: "/tasks", label: "Tasks", icon: CheckSquare },
+  { path: "/calendar", label: "Calendar", icon: Calendar },
+  { path: "/employees", label: "Employees", icon: UserCog },
+  { path: "/time-entries", label: "Time Entries", icon: Clock },
+  { path: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 export const Sidebar = () => {
@@ -44,9 +44,9 @@ export const Sidebar = () => {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-screen bg-gradient-to-b from-indigo-900 via-indigo-800 to-indigo-900 text-white transition-transform duration-300 ease-in-out lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-          'w-64 lg:w-64'
+          "fixed top-0 left-0 z-50 h-screen bg-gradient-to-b from-indigo-900 via-indigo-800 to-indigo-900 text-white transition-transform duration-300 ease-in-out lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "w-64 lg:w-64"
         )}
       >
         <div className="flex flex-col h-full">
@@ -82,13 +82,18 @@ export const Sidebar = () => {
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    'flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200',
+                    "flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200",
                     isActive
-                      ? 'bg-white text-indigo-900 shadow-lg'
-                      : 'text-indigo-100 hover:bg-indigo-700 hover:text-white'
+                      ? "bg-white text-indigo-900 shadow-lg"
+                      : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                   )}
                 >
-                  <Icon className={cn('h-5 w-5', isActive ? 'text-indigo-600' : 'text-indigo-300')} />
+                  <Icon
+                    className={cn(
+                      "h-5 w-5",
+                      isActive ? "text-indigo-600" : "text-indigo-300"
+                    )}
+                  />
                   <span className="font-medium">{item.label}</span>
                 </Link>
               );
@@ -101,13 +106,20 @@ export const Sidebar = () => {
               to="/settings"
               onClick={() => setSidebarOpen(false)}
               className={cn(
-                'flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200',
-                location.pathname === '/settings'
-                  ? 'bg-white text-indigo-900 shadow-lg'
-                  : 'text-indigo-100 hover:bg-indigo-700 hover:text-white'
+                "flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200",
+                location.pathname === "/settings"
+                  ? "bg-white text-indigo-900 shadow-lg"
+                  : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
               )}
             >
-              <Settings className={cn('h-5 w-5', location.pathname === '/settings' ? 'text-indigo-600' : 'text-indigo-300')} />
+              <Settings
+                className={cn(
+                  "h-5 w-5",
+                  location.pathname === "/settings"
+                    ? "text-indigo-600"
+                    : "text-indigo-300"
+                )}
+              />
               <span className="font-medium">Settings</span>
             </Link>
           </div>
@@ -131,4 +143,3 @@ export const SidebarToggle = () => {
     </Button>
   );
 };
-

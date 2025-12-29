@@ -77,29 +77,43 @@ export const uploadDocument = async (req, res, next) => {
   }
 };
 
+export const updateDocumentAssignment = async (req, res, next) => {
+  try {
+    const { documentId } = req.params;
+    const { personId } = req.body;
+
+    const client = await clientService.updateDocumentAssignment(
+      req.params.id,
+      documentId,
+      personId
+    );
+
+    logger.info('Document assignment updated', {
+      clientId: req.params.id,
+      documentId,
+      personId,
+      updatedBy: req.user._id,
+    });
+
+    return successResponse(res, 200, 'Document assignment updated successfully', client);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteDocument = async (req, res, next) => {
   try {
-    const { client, document } = await clientService.removeDocument(
+    // S3 deletion is handled in the service layer
+    const { client } = await clientService.removeDocument(
       req.params.id,
       req.params.documentId
     );
 
-    // Delete from S3 (only if key exists)
-    if (document.key) {
-      try {
-        const { deleteFile } = await import('../../helpers/s3Storage.js');
-        await deleteFile(document.key);
-      } catch (s3Error) {
-        // Log S3 deletion error but don't fail the request
-        // Document is already removed from MongoDB
-        logger.error('Failed to delete file from S3', {
-          clientId: req.params.id,
-          documentId: req.params.documentId,
-          key: document.key,
-          error: s3Error.message,
-        });
-      }
-    }
+    logger.info('Document deleted', {
+      clientId: req.params.id,
+      documentId: req.params.documentId,
+      deletedBy: req.user._id,
+    });
 
     return successResponse(res, 200, 'Document deleted successfully', client);
   } catch (error) {
@@ -231,43 +245,6 @@ const processDocumentHelper = async (clientId, documentId) => {
     // Refresh client data after business info update
     let updatedClient = await clientService.getClientById(clientId);
 
-    // Handle partner/manager extraction from business documents
-    if (
-      ['TRADE_LICENSE', 'VAT_CERTIFICATE', 'CORPORATE_TAX_CERTIFICATE'].includes(
-        document.category
-      )
-    ) {
-      // Extract manager name if available
-      if (updates._managerName) {
-        const existingManager = updatedClient.managers.find(
-          (m) => m.name.toLowerCase() === updates._managerName.toLowerCase()
-        );
-        if (!existingManager) {
-          await clientService.addPerson(clientId, {
-            name: updates._managerName,
-            role: 'MANAGER',
-          });
-          updatedClient = await clientService.getClientById(clientId);
-        }
-      }
-
-      // Extract partners if available
-      if (updates._partners && Array.isArray(updates._partners)) {
-        for (const partnerName of updates._partners) {
-          const existingPartner = updatedClient.partners.find(
-            (p) => p.name.toLowerCase() === partnerName.toLowerCase()
-          );
-          if (!existingPartner) {
-            await clientService.addPerson(clientId, {
-              name: partnerName,
-              role: 'PARTNER',
-            });
-          }
-        }
-        updatedClient = await clientService.getClientById(clientId);
-      }
-    }
-
     // Handle person-specific documents (Emirates ID, Passport)
     if (
       document.category.includes('EMIRATES_ID') ||
@@ -276,138 +253,47 @@ const processDocumentHelper = async (clientId, documentId) => {
       const personUpdates = mapExtractedDataToPerson(document.category, extractedData);
       updatedClient.documents.id(documentId).extractedData = { ...extractedData, personUpdates };
 
-      const extractedName = extractedData.name?.value;
-      if (extractedName) {
+      // If document is assigned to a person, update that person's data
+      // No automatic name matching - only update if assignedToPerson is set
+      if (document.assignedToPerson) {
         const isManager = document.category.includes('MANAGER');
         const isPartner = document.category.includes('PARTNER');
         const personArray = isManager ? updatedClient.managers : isPartner ? updatedClient.partners : null;
 
         if (personArray) {
-          const normalizeName = (name) => {
-            return name
-              .trim()
-              .toLowerCase()
-              .replace(/\s+/g, ' ')
-              .split(' ')
-              .filter(word => word.length > 0);
-          };
-
-          const wordsMatch = (word1, word2) => {
-            const w1 = word1.toLowerCase();
-            const w2 = word2.toLowerCase();
-
-            if (w1 === w2) return true;
-
-            if (w1.includes(w2) || w2.includes(w1)) {
-              const minLength = Math.min(w1.length, w2.length);
-              if (minLength >= 4) {
-                return true;
-              }
+          const person = personArray.id(document.assignedToPerson);
+          if (person) {
+            // Update person with extracted data
+            if (personUpdates.name) {
+              person.name = personUpdates.name;
             }
 
-            if (w1.length >= 5 && w2.length >= 5) {
-              let matches = 0;
-              const maxLen = Math.max(w1.length, w2.length);
-              for (let i = 0; i < Math.min(w1.length, w2.length); i++) {
-                if (w1[i] === w2[i]) matches++;
-              }
-              if (matches / maxLen >= 0.8) return true;
-            }
-
-            return false;
-          };
-
-          const checkNameMatch = (name1, name2) => {
-            if (!name1 || !name2) return false;
-
-            if (name1.trim().toLowerCase() === name2.trim().toLowerCase()) {
-              return true;
-            }
-
-            const words1 = normalizeName(name1);
-            const words2 = normalizeName(name2);
-
-            const sortedWords1 = [...words1].sort();
-            const sortedWords2 = [...words2].sort();
-
-            if (sortedWords1.length === sortedWords2.length) {
-              const sortedMatch = sortedWords1.every((word, idx) =>
-                wordsMatch(word, sortedWords2[idx])
-              );
-              if (sortedMatch) return true;
-            }
-
-            const shorterWords = words1.length <= words2.length ? words1 : words2;
-            const longerWords = words1.length > words2.length ? words1 : words2;
-
-            const allWordsMatch = shorterWords.every(shortWord =>
-              longerWords.some(longWord => wordsMatch(shortWord, longWord))
-            );
-
-            if (allWordsMatch) return true;
-
-            const getKeyWords = (words) => {
-              if (words.length === 0) return [];
-              if (words.length === 1) return words;
-              return [words[0], words[words.length - 1]];
-            };
-
-            const keyWords1 = getKeyWords(words1);
-            const keyWords2 = getKeyWords(words2);
-
-            const keyWordsMatch = keyWords1.length > 0 && keyWords2.length > 0 &&
-              keyWords1.some(kw1 => keyWords2.some(kw2 => wordsMatch(kw1, kw2)));
-
-            return keyWordsMatch;
-          };
-
-          const matchingPerson = personArray.find(
-            (person) => person.name && checkNameMatch(extractedName, person.name)
-          );
-
-          if (matchingPerson) {
             if (document.category.includes('EMIRATES_ID')) {
-              if (extractedData.idNumber?.value) {
-                matchingPerson.emiratesId.number = extractedData.idNumber.value;
-              }
-              if (extractedData.issueDate?.value) {
-                matchingPerson.emiratesId.issueDate = new Date(extractedData.issueDate.value);
-              }
-              if (extractedData.expiryDate?.value) {
-                matchingPerson.emiratesId.expiryDate = new Date(extractedData.expiryDate.value);
-              }
+              person.emiratesId = {
+                number: personUpdates['emiratesId.number'] || person.emiratesId?.number || null,
+                issueDate: personUpdates['emiratesId.issueDate'] || person.emiratesId?.issueDate || null,
+                expiryDate: personUpdates['emiratesId.expiryDate'] || person.emiratesId?.expiryDate || null,
+                verified: person.emiratesId?.verified || false,
+              };
             }
 
             if (document.category.includes('PASSPORT')) {
-              if (extractedData.passportNumber?.value) {
-                matchingPerson.passport.number = extractedData.passportNumber.value;
-              }
-              if (extractedData.issueDate?.value) {
-                matchingPerson.passport.issueDate = new Date(extractedData.issueDate.value);
-              }
-              if (extractedData.expiryDate?.value) {
-                matchingPerson.passport.expiryDate = new Date(extractedData.expiryDate.value);
-              }
+              person.passport = {
+                number: personUpdates['passport.number'] || person.passport?.number || null,
+                issueDate: personUpdates['passport.issueDate'] || person.passport?.issueDate || null,
+                expiryDate: personUpdates['passport.expiryDate'] || person.passport?.expiryDate || null,
+                verified: person.passport?.verified || false,
+              };
             }
 
-            matchingPerson.updatedAt = new Date();
+            person.updatedAt = new Date();
 
-            logger.info('Copied extracted data to person record', {
+            logger.info('Updated person record with extracted data', {
               clientId,
               documentId,
               documentCategory: document.category,
-              personName: extractedName,
+              personId: person._id,
               role: isManager ? 'MANAGER' : 'PARTNER',
-              personId: matchingPerson._id,
-            });
-          } else {
-            logger.warn('No matching person found for extracted name', {
-              clientId,
-              documentId,
-              documentCategory: document.category,
-              extractedName,
-              role: isManager ? 'MANAGER' : 'PARTNER',
-              availablePersons: personArray.map((p) => p.name),
             });
           }
         }
@@ -499,8 +385,8 @@ export const uploadDocumentByType = async (req, res, next) => {
     // For person documents, find by category and personId; for company documents, find by category only
     const uploadedDocument = personId
       ? client.documents.find(
-          (doc) => doc.category === category && doc.assignedToPerson?.toString() === personId.toString()
-        )
+        (doc) => doc.category === category && doc.assignedToPerson?.toString() === personId.toString()
+      )
       : client.documents.find((doc) => doc.category === category && !doc.assignedToPerson);
     if (uploadedDocument) {
       // Automatically process the document
@@ -528,7 +414,7 @@ export const processDocument = async (req, res, next) => {
   try {
     const { documentId } = req.params;
     const updatedClient = await processDocumentHelper(req.params.id, documentId);
-    
+
     return successResponse(res, 200, 'Document processed successfully', updatedClient);
   } catch (error) {
     if (error.message === 'Client not found' || error.message === 'Document not found') {

@@ -4,9 +4,9 @@ import { authenticate, authorize } from '../../middlewares/auth.js';
 import { uploadProfilePicture } from '../../middlewares/upload.js';
 import * as authController from './auth.controller.js';
 import {
-  registerSchema,
-  loginSchema,
-  changePasswordSchema,
+    registerSchema,
+    loginSchema,
+    changePasswordSchema,
 } from '../../validators/schemas/auth.schema.js';
 
 const router = express.Router();
@@ -18,16 +18,16 @@ router.post('/login', validate(loginSchema), authController.login);
 // Protected routes
 router.get('/me', authenticate, authController.getMe);
 router.post(
-  '/change-password',
-  authenticate,
-  validate(changePasswordSchema),
-  authController.changePassword
+    '/change-password',
+    authenticate,
+    validate(changePasswordSchema),
+    authController.changePassword
 );
 router.put(
-  '/account-details',
-  authenticate,
-  uploadProfilePicture,
-  authController.updateAccountDetails
+    '/account-details',
+    authenticate,
+    uploadProfilePicture,
+    authController.updateAccountDetails
 );
 
 export default router;

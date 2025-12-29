@@ -112,6 +112,8 @@ export const personSchema = Joi.object({
     expiryDate: Joi.date().allow(null),
     verified: Joi.boolean().default(false),
   }).optional(),
+  // For managers: link to partner if they are the same person
+  linkedPartnerId: Joi.string().trim().allow('', null).optional(),
 });
 
 export const updatePersonSchema = Joi.object({
@@ -129,6 +131,8 @@ export const updatePersonSchema = Joi.object({
     expiryDate: Joi.date().allow(null),
     verified: Joi.boolean(),
   }).optional(),
+  // For managers: link to partner if they are the same person
+  linkedPartnerId: Joi.string().trim().allow('', null).optional(),
 });
 
 export const emaraTaxCredentialsSchema = Joi.object({

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,16 +6,16 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/ui/dialog';
-import { Button } from '@/ui/button';
-import { authApi } from '@/api/auth';
-import { useToast } from '@/hooks/useToast';
+} from "@/ui/dialog";
+import { Button } from "@/ui/button";
+import { authApi } from "@/api/auth";
+import { useToast } from "@/hooks/useToast";
 
 export const PasswordChangeDialog = ({ open, onOpenChange }) => {
   const [formData, setFormData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -25,23 +25,24 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
     const newErrors = {};
 
     if (!formData.currentPassword) {
-      newErrors.currentPassword = 'Current password is required';
+      newErrors.currentPassword = "Current password is required";
     }
 
     if (!formData.newPassword) {
-      newErrors.newPassword = 'New password is required';
+      newErrors.newPassword = "New password is required";
     } else if (formData.newPassword.length < 6) {
-      newErrors.newPassword = 'Password must be at least 6 characters';
+      newErrors.newPassword = "Password must be at least 6 characters";
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your new password';
+      newErrors.confirmPassword = "Please confirm your new password";
     } else if (formData.newPassword !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
     if (formData.currentPassword === formData.newPassword) {
-      newErrors.newPassword = 'New password must be different from current password';
+      newErrors.newPassword =
+        "New password must be different from current password";
     }
 
     setErrors(newErrors);
@@ -63,23 +64,24 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
       });
 
       toast({
-        title: 'Success',
-        description: 'Password changed successfully',
-        variant: 'success',
+        title: "Success",
+        description: "Password changed successfully",
+        variant: "success",
       });
 
       setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
       });
       setErrors({});
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to change password',
-        variant: 'error',
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to change password",
+        variant: "error",
       });
     } finally {
       setIsLoading(false);
@@ -105,16 +107,19 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="currentPassword" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="currentPassword"
+              className="text-sm font-medium text-gray-700"
+            >
               Current Password
             </label>
             <input
               id="currentPassword"
               type="password"
               value={formData.currentPassword}
-              onChange={(e) => handleChange('currentPassword', e.target.value)}
+              onChange={(e) => handleChange("currentPassword", e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.currentPassword ? 'border-red-500' : 'border-gray-300'
+                errors.currentPassword ? "border-red-500" : "border-gray-300"
               }`}
               disabled={isLoading}
             />
@@ -124,16 +129,19 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="newPassword" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="newPassword"
+              className="text-sm font-medium text-gray-700"
+            >
               New Password
             </label>
             <input
               id="newPassword"
               type="password"
               value={formData.newPassword}
-              onChange={(e) => handleChange('newPassword', e.target.value)}
+              onChange={(e) => handleChange("newPassword", e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.newPassword ? 'border-red-500' : 'border-gray-300'
+                errors.newPassword ? "border-red-500" : "border-gray-300"
               }`}
               disabled={isLoading}
             />
@@ -143,16 +151,19 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="confirmPassword"
+              className="text-sm font-medium text-gray-700"
+            >
               Confirm New Password
             </label>
             <input
               id="confirmPassword"
               type="password"
               value={formData.confirmPassword}
-              onChange={(e) => handleChange('confirmPassword', e.target.value)}
+              onChange={(e) => handleChange("confirmPassword", e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                errors.confirmPassword ? "border-red-500" : "border-gray-300"
               }`}
               disabled={isLoading}
             />
@@ -171,7 +182,7 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Changing...' : 'Change Password'}
+              {isLoading ? "Changing..." : "Change Password"}
             </Button>
           </DialogFooter>
         </form>
@@ -179,4 +190,3 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
     </Dialog>
   );
 };
-

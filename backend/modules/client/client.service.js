@@ -105,130 +105,18 @@ export const removeDocument = async (clientId, documentId) => {
     throw new Error('Document not found');
   }
 
-  // Store document info before removal
-  const documentCategory = document.category;
-  const extractedData = document.extractedData;
-  const extractedName = extractedData?.name?.value;
-
-  // Helper function to normalize names for comparison
-  const normalizeName = (name) => {
-    if (!name) return [];
-    return name
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ')
-      .split(' ')
-      .filter(word => word.length > 0);
-  };
-
-  // Check if two words are similar
-  const wordsMatch = (word1, word2) => {
-    const w1 = word1.toLowerCase();
-    const w2 = word2.toLowerCase();
-
-    if (w1 === w2) return true;
-
-    if (w1.includes(w2) || w2.includes(w1)) {
-      const minLength = Math.min(w1.length, w2.length);
-      if (minLength >= 4) return true;
-    }
-
-    if (w1.length >= 5 && w2.length >= 5) {
-      let matches = 0;
-      const maxLen = Math.max(w1.length, w2.length);
-      for (let i = 0; i < Math.min(w1.length, w2.length); i++) {
-        if (w1[i] === w2[i]) matches++;
-      }
-      if (matches / maxLen >= 0.8) return true;
-    }
-
-    return false;
-  };
-
-  // Check if two names match
-  const checkNameMatch = (name1, name2) => {
-    if (!name1 || !name2) return false;
-
-    if (name1.trim().toLowerCase() === name2.trim().toLowerCase()) {
-      return true;
-    }
-
-    const words1 = normalizeName(name1);
-    const words2 = normalizeName(name2);
-
-    const sortedWords1 = [...words1].sort();
-    const sortedWords2 = [...words2].sort();
-
-    if (sortedWords1.length === sortedWords2.length) {
-      const sortedMatch = sortedWords1.every((word, idx) =>
-        wordsMatch(word, sortedWords2[idx])
-      );
-      if (sortedMatch) return true;
-    }
-
-    const shorterWords = words1.length <= words2.length ? words1 : words2;
-    const longerWords = words1.length > words2.length ? words1 : words2;
-
-    const allWordsMatch = shorterWords.every(shortWord =>
-      longerWords.some(longWord => wordsMatch(shortWord, longWord))
-    );
-
-    if (allWordsMatch) return true;
-
-    const getKeyWords = (words) => {
-      if (words.length === 0) return [];
-      if (words.length === 1) return words;
-      return [words[0], words[words.length - 1]];
-    };
-
-    const keyWords1 = getKeyWords(words1);
-    const keyWords2 = getKeyWords(words2);
-
-    const keyWordsMatch = keyWords1.length > 0 && keyWords2.length > 0 &&
-      keyWords1.some(kw1 => keyWords2.some(kw2 => wordsMatch(kw1, kw2)));
-
-    return keyWordsMatch;
-  };
+  // Delete from S3 first
+  try {
+    const { deleteFile } = await import('../../helpers/s3Storage.js');
+    await deleteFile(document.key);
+  } catch (s3Error) {
+    // Log error but continue with DB deletion
+    console.error('S3 deletion failed:', s3Error);
+  }
 
   // Remove document from array
   client.documents.pull(documentId);
   await client.save();
-
-  // If this is a partner/manager document with extracted name, check if we should remove the person
-  const isPartnerDoc = documentCategory.includes('PARTNER');
-  const isManagerDoc = documentCategory.includes('MANAGER');
-
-  if ((isPartnerDoc || isManagerDoc) && extractedName) {
-    const personArray = isManagerDoc ? client.managers : client.partners;
-    
-    // Find the matching person
-    const matchingPerson = personArray.find(
-      (person) => person.name && checkNameMatch(extractedName, person.name)
-    );
-
-    if (matchingPerson) {
-      // Check if person has any other documents (excluding the one we just deleted)
-      const remainingDocuments = client.documents.filter(
-        (doc) => doc._id.toString() !== documentId.toString()
-      );
-
-      const hasOtherDocuments = remainingDocuments.some((doc) => {
-        if (!doc.extractedData?.name?.value) return false;
-        const docName = doc.extractedData.name.value;
-        return checkNameMatch(docName, matchingPerson.name);
-      });
-
-      // If no other documents match this person, remove them
-      if (!hasOtherDocuments) {
-        if (isPartnerDoc) {
-          client.partners.pull(matchingPerson._id);
-        } else if (isManagerDoc) {
-          client.managers.pull(matchingPerson._id);
-        }
-        await client.save();
-      }
-    }
-  }
 
   // Reload client to get updated state
   const updatedClient = await Client.findById(clientId);
@@ -272,6 +160,23 @@ export const uploadDocumentByType = async (clientId, category, documentData, upl
   }
 
   await client.save();
+  return client;
+};
+
+export const updateDocumentAssignment = async (clientId, documentId, personId) => {
+  const client = await Client.findById(clientId);
+  if (!client) {
+    throw new Error('Client not found');
+  }
+
+  const document = client.documents.id(documentId);
+  if (!document) {
+    throw new Error('Document not found');
+  }
+
+  document.assignedToPerson = personId || null;
+  await client.save();
+
   return client;
 };
 
@@ -437,9 +342,51 @@ export const removePerson = async (clientId, personId, role) => {
   }
 
   if (role === 'PARTNER') {
+    // Find all documents assigned to this partner
+    const partnerDocs = client.documents.filter(
+      doc => doc.assignedToPerson?.toString() === personId.toString()
+    );
+    
+    // Delete each document from S3
+    const { deleteFile } = await import('../../helpers/s3Storage.js');
+    for (const doc of partnerDocs) {
+      try {
+        await deleteFile(doc.key);
+      } catch (s3Error) {
+        console.error('S3 deletion failed for', doc.key, s3Error);
+      }
+      // Remove from documents array
+      client.documents.pull(doc._id);
+    }
+    
+    // Remove the partner
     client.partners.pull(personId);
+    
   } else if (role === 'MANAGER') {
-    client.managers.pull(personId);
+    const manager = client.managers.id(personId);
+    
+    // Check if manager is linked to a partner
+    if (manager && manager.linkedPartnerId) {
+      // Just remove the manager, don't touch documents (they belong to the partner)
+      client.managers.pull(personId);
+    } else {
+      // Standalone manager - delete their documents
+      const managerDocs = client.documents.filter(
+        doc => doc.assignedToPerson?.toString() === personId.toString()
+      );
+      
+      const { deleteFile } = await import('../../helpers/s3Storage.js');
+      for (const doc of managerDocs) {
+        try {
+          await deleteFile(doc.key);
+        } catch (s3Error) {
+          console.error('S3 deletion failed for', doc.key, s3Error);
+        }
+        client.documents.pull(doc._id);
+      }
+      
+      client.managers.pull(personId);
+    }
   } else {
     throw new Error('Invalid role');
   }

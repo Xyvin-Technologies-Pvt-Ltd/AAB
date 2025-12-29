@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Edit2, Trash2, User, FileText } from "lucide-react";
+import { Edit2, Trash2, User, FileText, Eye, Link } from "lucide-react";
 import { Button } from "@/ui/button";
 import {
   Dialog,
@@ -33,7 +33,34 @@ export const PartnersManagers = ({
   };
 
   // Get documents linked to a person
-  const getPersonDocuments = (personId, role) => {
+  const getPersonDocuments = (personId, role, person = null) => {
+    // For managers: check if they're linked to a partner
+    if (role === "MANAGER" && person?.linkedPartnerId) {
+      // Manager is linked to a partner - use partner's documents
+      const linkedPartner = partners.find(
+        (p) => p._id?.toString() === person.linkedPartnerId?.toString()
+      );
+      if (linkedPartner) {
+        return {
+          passport: documents.find(
+            (doc) =>
+              doc.category === "PASSPORT_PARTNER" &&
+              (!doc.assignedToPerson ||
+                doc.assignedToPerson?.toString() ===
+                  linkedPartner._id?.toString())
+          ),
+          emiratesId: documents.find(
+            (doc) =>
+              doc.category === "EMIRATES_ID_PARTNER" &&
+              (!doc.assignedToPerson ||
+                doc.assignedToPerson?.toString() ===
+                  linkedPartner._id?.toString())
+          ),
+        };
+      }
+    }
+
+    // Default: use person's own documents
     const passportCategory =
       role === "PARTNER" ? "PASSPORT_PARTNER" : "PASSPORT_MANAGER";
     const emiratesIdCategory =
@@ -74,7 +101,7 @@ export const PartnersManagers = ({
   };
 
   const personDocs = editingPerson
-    ? getPersonDocuments(editingPerson._id, editingRole)
+    ? getPersonDocuments(editingPerson._id, editingRole, editingPerson)
     : null;
 
   // Component to render document row with filename and action
@@ -230,7 +257,18 @@ export const PartnersManagers = ({
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {managers.map((manager) => {
-                  const personDocs = getPersonDocuments(manager._id, "MANAGER");
+                  const linkedPartner = manager.linkedPartnerId
+                    ? partners.find(
+                        (p) =>
+                          p._id?.toString() ===
+                          manager.linkedPartnerId?.toString()
+                      )
+                    : null;
+                  const personDocs = getPersonDocuments(
+                    manager._id,
+                    "MANAGER",
+                    manager
+                  );
                   return (
                     <tr key={manager._id} className="hover:bg-gray-50">
                       <td className="px-2 py-2 align-middle">
@@ -239,6 +277,12 @@ export const PartnersManagers = ({
                           <span className="text-xs font-medium text-gray-900">
                             {manager.name}
                           </span>
+                          {linkedPartner && (
+                            <Link
+                              className="h-3.5 w-3.5 text-blue-600"
+                              title="Linked to partner"
+                            />
+                          )}
                         </div>
                       </td>
                       <td className="px-2 py-2 align-middle">

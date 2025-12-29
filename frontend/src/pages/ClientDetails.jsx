@@ -32,11 +32,7 @@ import { CompactAlerts } from "@/components/CompactAlerts";
 import { EmaraTaxCredentials } from "@/components/EmaraTaxCredentials";
 import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 import { Badge } from "@/ui/badge";
-import {
-  useBusinessInfoUpdate,
-  useAddPartner,
-  useAddManager,
-} from "@/api/queries/clientQueries";
+import { useBusinessInfoUpdate } from "@/api/queries/clientQueries";
 import {
   Dialog,
   DialogContent,
@@ -222,8 +218,6 @@ export const ClientDetails = () => {
   });
 
   const businessInfoUpdateMutation = useBusinessInfoUpdate();
-  const addPartnerMutation = useAddPartner();
-  const addManagerMutation = useAddManager();
 
   const handleExtractedDataUpdate = async (document, extractedData) => {
     try {
@@ -240,39 +234,6 @@ export const ClientDetails = () => {
           clientId: id,
           data: extractedData.businessInfo,
         });
-      }
-
-      // Add partners if any
-      if (extractedData.partners && Array.isArray(extractedData.partners)) {
-        for (const partnerName of extractedData.partners) {
-          if (partnerName && partnerName.trim()) {
-            try {
-              await addPartnerMutation.mutateAsync({
-                clientId: id,
-                data: { name: partnerName.trim() },
-              });
-            } catch {
-              // Partner might already exist, continue
-              console.log("Partner might already exist:", partnerName);
-            }
-          }
-        }
-      }
-
-      // Add manager if exists
-      if (extractedData.managerName && extractedData.managerName.trim()) {
-        try {
-          await addManagerMutation.mutateAsync({
-            clientId: id,
-            data: { name: extractedData.managerName.trim() },
-          });
-        } catch {
-          // Manager might already exist, continue
-          console.log(
-            "Manager might already exist:",
-            extractedData.managerName
-          );
-        }
       }
 
       toast({
@@ -1200,9 +1161,7 @@ export const ClientDetails = () => {
           <TabsContent value="business-info" className="space-y-3">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">
-                  
-                </CardTitle>
+                <CardTitle className="text-base"></CardTitle>
               </CardHeader>
               <CardContent>
                 <BusinessInfoForm

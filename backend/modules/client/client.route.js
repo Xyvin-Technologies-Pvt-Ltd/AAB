@@ -46,6 +46,7 @@ router.patch(
   validate(verifyDocumentSchema),
   clientController.verifyDocument
 );
+router.patch('/:id/documents/:documentId/assign', clientController.updateDocumentAssignment);
 router.delete('/:id/documents/:documentId', clientController.deleteDocument);
 
 // Business information routes

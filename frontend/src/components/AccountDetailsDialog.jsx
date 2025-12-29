@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,19 +6,19 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/ui/dialog';
-import { Button } from '@/ui/button';
-import { Avatar } from '@/components/Avatar';
-import { authApi } from '@/api/auth';
-import { useToast } from '@/hooks/useToast';
-import { useAuthStore } from '@/store/authStore';
-import { Upload, X } from 'lucide-react';
+} from "@/ui/dialog";
+import { Button } from "@/ui/button";
+import { Avatar } from "@/components/Avatar";
+import { authApi } from "@/api/auth";
+import { useToast } from "@/hooks/useToast";
+import { useAuthStore } from "@/store/authStore";
+import { Upload, X } from "lucide-react";
 
 export const AccountDetailsDialog = ({ open, onOpenChange }) => {
   const { user, setUser } = useAuthStore();
   const [formData, setFormData] = useState({
-    name: '',
-    dateOfBirth: '',
+    name: "",
+    dateOfBirth: "",
   });
   const [profileImage, setProfileImage] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState(null);
@@ -30,13 +30,15 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
   useEffect(() => {
     if (open && user) {
       // Load user data - name and DOB might come from employee profile
-      const employeeName = user?.employeeId?.name || '';
-      const employeeDob = user?.employeeId?.dateOfBirth || '';
-      const profilePicture = user?.employeeId?.profilePicture?.url || '';
+      const employeeName = user?.employeeId?.name || "";
+      const employeeDob = user?.employeeId?.dateOfBirth || "";
+      const profilePicture = user?.employeeId?.profilePicture?.url || "";
 
       setFormData({
         name: employeeName,
-        dateOfBirth: employeeDob ? new Date(employeeDob).toISOString().split('T')[0] : '',
+        dateOfBirth: employeeDob
+          ? new Date(employeeDob).toISOString().split("T")[0]
+          : "",
       });
 
       const originalPicture = profilePicture || null;
@@ -51,10 +53,10 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         setErrors((prev) => ({
           ...prev,
-          image: 'Please select an image file',
+          image: "Please select an image file",
         }));
         return;
       }
@@ -63,7 +65,7 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
       if (file.size > 5 * 1024 * 1024) {
         setErrors((prev) => ({
           ...prev,
-          image: 'Image size must be less than 5MB',
+          image: "Image size must be less than 5MB",
         }));
         return;
       }
@@ -78,15 +80,15 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
     setProfileImage(null);
     setProfileImagePreview(originalProfilePicture);
     // Clear the file input
-    const fileInput = document.getElementById('profileImage');
-    if (fileInput) fileInput.value = '';
+    const fileInput = document.getElementById("profileImage");
+    if (fileInput) fileInput.value = "";
   };
 
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.name || formData.name.trim().length === 0) {
-      newErrors.name = 'Name is required';
+      newErrors.name = "Name is required";
     }
 
     setErrors(newErrors);
@@ -103,31 +105,32 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
     setIsLoading(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name.trim());
+      formDataToSend.append("name", formData.name.trim());
       if (formData.dateOfBirth) {
-        formDataToSend.append('dateOfBirth', formData.dateOfBirth);
+        formDataToSend.append("dateOfBirth", formData.dateOfBirth);
       }
       if (profileImage) {
-        formDataToSend.append('profileImage', profileImage);
+        formDataToSend.append("profileImage", profileImage);
       }
 
       const updatedUser = await authApi.updateAccountDetails(formDataToSend);
-      
+
       // Update user in store
       setUser(updatedUser.data);
 
       toast({
-        title: 'Success',
-        description: 'Account details updated successfully',
-        variant: 'success',
+        title: "Success",
+        description: "Account details updated successfully",
+        variant: "success",
       });
 
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to update account details',
-        variant: 'error',
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to update account details",
+        variant: "error",
       });
     } finally {
       setIsLoading(false);
@@ -147,17 +150,20 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
         <DialogHeader>
           <DialogTitle>Account Details</DialogTitle>
           <DialogDescription>
-            Update your account information including name, date of birth, and profile picture.
+            Update your account information including name, date of birth, and
+            profile picture.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Profile Picture */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Profile Picture</label>
+            <label className="text-sm font-medium text-gray-700">
+              Profile Picture
+            </label>
             <div className="flex items-center gap-4">
               <Avatar
-                name={formData.name || user?.email || 'User'}
+                name={formData.name || user?.email || "User"}
                 src={profileImagePreview}
                 size="lg"
               />
@@ -212,9 +218,9 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
               id="name"
               type="text"
               value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
+              onChange={(e) => handleChange("name", e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
+                errors.name ? "border-red-500" : "border-gray-300"
               }`}
               disabled={isLoading}
             />
@@ -225,17 +231,20 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
 
           {/* Date of Birth */}
           <div className="space-y-2">
-            <label htmlFor="dateOfBirth" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="dateOfBirth"
+              className="text-sm font-medium text-gray-700"
+            >
               Date of Birth
             </label>
             <input
               id="dateOfBirth"
               type="date"
               value={formData.dateOfBirth}
-              onChange={(e) => handleChange('dateOfBirth', e.target.value)}
+              onChange={(e) => handleChange("dateOfBirth", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               disabled={isLoading}
-              max={new Date().toISOString().split('T')[0]} // Prevent future dates
+              max={new Date().toISOString().split("T")[0]} // Prevent future dates
             />
           </div>
 
@@ -249,7 +258,7 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Updating...' : 'Update Details'}
+              {isLoading ? "Updating..." : "Update Details"}
             </Button>
           </DialogFooter>
         </form>
@@ -257,4 +266,3 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
     </Dialog>
   );
 };
-

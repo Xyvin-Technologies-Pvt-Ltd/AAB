@@ -1,18 +1,18 @@
-import { useState } from 'react';
-import { LogOut, User, Lock, ChevronDown } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
-import { Avatar } from '@/components/Avatar';
-import { SidebarToggle } from './Sidebar';
-import { TimeTracker } from '@/components/TimeTracker';
+import { useState } from "react";
+import { LogOut, User, Lock, ChevronDown } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import { Avatar } from "@/components/Avatar";
+import { SidebarToggle } from "./Sidebar";
+import { TimeTracker } from "@/components/TimeTracker";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/ui/dropdown-menu';
-import { PasswordChangeDialog } from '@/components/PasswordChangeDialog';
-import { AccountDetailsDialog } from '@/components/AccountDetailsDialog';
+} from "@/ui/dropdown-menu";
+import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
+import { AccountDetailsDialog } from "@/components/AccountDetailsDialog";
 
 export const TopBar = () => {
   const { user, logout } = useAuthStore();
@@ -21,10 +21,11 @@ export const TopBar = () => {
 
   const handleLogout = () => {
     logout();
-    window.location.href = '/login';
+    window.location.href = "/login";
   };
 
-  const displayName = user?.employeeId?.name || user?.email || user?.name || 'User';
+  const displayName =
+    user?.employeeId?.name || user?.email || user?.name || "User";
   const profilePictureUrl = user?.employeeId?.profilePicture?.url;
 
   return (
@@ -39,11 +40,7 @@ export const TopBar = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <Avatar
-                  name={displayName}
-                  src={profilePictureUrl}
-                  size="sm"
-                />
+                <Avatar name={displayName} src={profilePictureUrl} size="sm" />
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-medium text-gray-900">
                     {displayName}
@@ -94,4 +91,3 @@ export const TopBar = () => {
     </>
   );
 };
-

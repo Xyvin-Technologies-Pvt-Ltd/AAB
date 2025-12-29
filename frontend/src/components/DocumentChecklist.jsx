@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Upload,
   FileText,
@@ -12,9 +12,9 @@ import {
   Users,
   AlertCircle,
   CheckCircle,
+  Link,
 } from "lucide-react";
 import { Button } from "@/ui/button";
-import { Badge } from "@/ui/badge";
 import {
   useDocumentUpload,
   useDocumentVerify,
@@ -83,6 +83,14 @@ const DocumentCell = ({
   deleteMutation,
 }) => {
   if (!document) {
+    // If onUpload is null, don't show upload button (linked manager)
+    if (onUpload === null) {
+      return (
+        <div className="flex items-center justify-center">
+          <span className="text-xs text-gray-400">No document</span>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center justify-center">
         <Button
@@ -128,22 +136,25 @@ const DocumentCell = ({
         {getProcessingStatusIcon(document.processingStatus)}
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onReprocess}
-          disabled={reprocessingDocumentId === document._id}
-          title="Reprocess document"
-          className="h-7 w-7"
-        >
-          {reprocessingDocumentId === document._id ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
-          )}
-        </Button>
+        {onReprocess && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onReprocess}
+            disabled={reprocessingDocumentId === document._id}
+            title="Reprocess document"
+            className="h-7 w-7"
+          >
+            {reprocessingDocumentId === document._id ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        )}
         {document.processingStatus === "COMPLETED" &&
-          document.uploadStatus !== "VERIFIED" && (
+          document.uploadStatus !== "VERIFIED" &&
+          onVerify && (
             <Button
               variant="outline"
               size="sm"
@@ -162,20 +173,22 @@ const DocumentCell = ({
               )}
             </Button>
           )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-          disabled={deleteMutation.isPending}
-          className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-          title="Delete document"
-        >
-          {deleteMutation.isPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Trash2 className="h-3.5 w-3.5" />
-          )}
-        </Button>
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            disabled={deleteMutation.isPending}
+            className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+            title="Delete document"
+          >
+            {deleteMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -205,6 +218,8 @@ export const DocumentChecklist = ({
     name: "",
     documentType: "PASSPORT",
   });
+  const [isPartnerManager, setIsPartnerManager] = useState(false);
+  const [selectedPartnerId, setSelectedPartnerId] = useState(null);
   const [partnerFile, setPartnerFile] = useState(null);
   const [managerFile, setManagerFile] = useState(null);
   const [processingPartnerDocument, setProcessingPartnerDocument] =
@@ -487,10 +502,30 @@ export const DocumentChecklist = ({
       }
 
       // Create the partner
-      await addPartnerMutation.mutateAsync({
+      const partnerResponse = await addPartnerMutation.mutateAsync({
         clientId,
         data: partnerData,
       });
+
+      // Link the document to the newly created partner
+      if (processedDocument?._id && partnerResponse?.data?.partners) {
+        const newPartner = partnerResponse.data.partners.find(
+          (p) => p.name === extractedName.trim()
+        );
+        if (newPartner?._id) {
+          try {
+            const { clientsApi } = await import("@/api/clients");
+            await clientsApi.assignDocument(
+              clientId,
+              processedDocument._id,
+              newPartner._id
+            );
+          } catch (assignError) {
+            console.error("Failed to link document to partner:", assignError);
+            // Don't fail the whole operation, just log the error
+          }
+        }
+      }
 
       // Refetch to ensure sync
       await queryClient.invalidateQueries({ queryKey: ["client", clientId] });
@@ -522,7 +557,11 @@ export const DocumentChecklist = ({
 
   const handleAddManager = async () => {
     // If managerFormData has emiratesId or passport, it means it was copied from a partner
-    if (managerFormData.emiratesId || managerFormData.passport) {
+    if (
+      managerFormData.emiratesId ||
+      managerFormData.passport ||
+      (isPartnerManager && selectedPartnerId)
+    ) {
       // Handle copy from partner case
       if (!managerFormData.name || !managerFormData.name.trim()) {
         toast({
@@ -536,6 +575,11 @@ export const DocumentChecklist = ({
         const managerData = {
           name: managerFormData.name.trim(),
         };
+
+        // If linked to a partner, store the partner ID
+        if (isPartnerManager && selectedPartnerId) {
+          managerData.linkedPartnerId = selectedPartnerId;
+        }
 
         // Copy passport and emirates ID data if they exist (from partner)
         if (managerFormData.emiratesId) {
@@ -577,6 +621,8 @@ export const DocumentChecklist = ({
         });
         setManagerFormData({ name: "", documentType: "PASSPORT" });
         setManagerFile(null);
+        setIsPartnerManager(false);
+        setSelectedPartnerId(null);
         setShowManagerForm(false);
         setShowPartnerCopyDialog(false);
       } catch (error) {
@@ -673,6 +719,8 @@ export const DocumentChecklist = ({
         setProcessingManagerDocument(false);
         setShowManagerForm(false);
         setManagerFile(null);
+        setIsPartnerManager(false);
+        setSelectedPartnerId(null);
         setManagerFormData({ name: "", documentType: "PASSPORT" });
         return;
       }
@@ -715,16 +763,38 @@ export const DocumentChecklist = ({
       }
 
       // Create the manager
-      await addManagerMutation.mutateAsync({
+      const managerResponse = await addManagerMutation.mutateAsync({
         clientId,
         data: managerData,
       });
+
+      // Link the document to the newly created manager
+      if (processedDocument?._id && managerResponse?.data?.managers) {
+        const newManager = managerResponse.data.managers.find(
+          (m) => m.name === extractedName.trim()
+        );
+        if (newManager?._id) {
+          try {
+            const { clientsApi } = await import("@/api/clients");
+            await clientsApi.assignDocument(
+              clientId,
+              processedDocument._id,
+              newManager._id
+            );
+          } catch (assignError) {
+            console.error("Failed to link document to manager:", assignError);
+            // Don't fail the whole operation, just log the error
+          }
+        }
+      }
 
       // Refetch to ensure sync
       await queryClient.invalidateQueries({ queryKey: ["client", clientId] });
 
       setManagerFormData({ name: "", documentType: "PASSPORT" });
       setManagerFile(null);
+      setIsPartnerManager(false);
+      setSelectedPartnerId(null);
       setProcessingManagerDocument(false);
       setShowManagerForm(false);
       setShowPartnerCopyDialog(false);
@@ -750,6 +820,10 @@ export const DocumentChecklist = ({
   };
 
   const handleCopyFromPartner = (partner) => {
+    // Set up the new integrated flow
+    setIsPartnerManager(true);
+    setSelectedPartnerId(partner._id);
+
     // Copy partner data, ensuring dates are properly handled
     const copyEmiratesId = partner.emiratesId
       ? {
@@ -1107,11 +1181,9 @@ export const DocumentChecklist = ({
           <Button
             size="sm"
             onClick={() => {
-              if (partners.length > 0) {
-                setShowPartnerCopyDialog(true);
-              } else {
-                setShowManagerForm(true);
-              }
+              setIsPartnerManager(false);
+              setSelectedPartnerId(null);
+              setShowManagerForm(true);
             }}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -1140,6 +1212,48 @@ export const DocumentChecklist = ({
               </thead>
               <tbody className="divide-y">
                 {managers.map((manager) => {
+                  // Check if manager is linked to a partner
+                  const linkedPartner = manager.linkedPartnerId
+                    ? partners.find(
+                        (p) =>
+                          p._id?.toString() ===
+                          manager.linkedPartnerId?.toString()
+                      )
+                    : null;
+
+                  // If linked to partner, use partner's documents; otherwise use manager's documents
+                  const passportDoc = linkedPartner
+                    ? documents.find(
+                        (doc) =>
+                          doc.category === "PASSPORT_PARTNER" &&
+                          (!doc.assignedToPerson ||
+                            doc.assignedToPerson?.toString() ===
+                              linkedPartner._id?.toString())
+                      )
+                    : documents.find(
+                        (doc) =>
+                          doc.category === "PASSPORT_MANAGER" &&
+                          (!doc.assignedToPerson ||
+                            doc.assignedToPerson?.toString() ===
+                              manager._id?.toString())
+                      );
+
+                  const emiratesIdDoc = linkedPartner
+                    ? documents.find(
+                        (doc) =>
+                          doc.category === "EMIRATES_ID_PARTNER" &&
+                          (!doc.assignedToPerson ||
+                            doc.assignedToPerson?.toString() ===
+                              linkedPartner._id?.toString())
+                      )
+                    : documents.find(
+                        (doc) =>
+                          doc.category === "EMIRATES_ID_MANAGER" &&
+                          (!doc.assignedToPerson ||
+                            doc.assignedToPerson?.toString() ===
+                              manager._id?.toString())
+                      );
+
                   const passportKey = `PASSPORT_MANAGER_${manager._id}`;
                   const emiratesIdKey = `EMIRATES_ID_MANAGER_${manager._id}`;
                   const isUploadingPassport =
@@ -1149,21 +1263,6 @@ export const DocumentChecklist = ({
                     uploadingCategory === "EMIRATES_ID_MANAGER" &&
                     uploadingPersonId === manager._id;
 
-                  const passportDoc = documents.find(
-                    (doc) =>
-                      doc.category === "PASSPORT_MANAGER" &&
-                      (!doc.assignedToPerson ||
-                        doc.assignedToPerson?.toString() ===
-                          manager._id?.toString())
-                  );
-                  const emiratesIdDoc = documents.find(
-                    (doc) =>
-                      doc.category === "EMIRATES_ID_MANAGER" &&
-                      (!doc.assignedToPerson ||
-                        doc.assignedToPerson?.toString() ===
-                          manager._id?.toString())
-                  );
-
                   return (
                     <tr key={manager._id} className="hover:bg-gray-50">
                       <td className="px-4 py-2 align-middle">
@@ -1172,65 +1271,117 @@ export const DocumentChecklist = ({
                           <span className="text-xs font-medium text-gray-900">
                             {manager.name}
                           </span>
+                          {linkedPartner && (
+                            <Link
+                              className="h-3.5 w-3.5 text-blue-600"
+                              title="Linked to partner"
+                            />
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-2 align-middle">
-                        <input
-                          ref={(el) =>
-                            (fileInputRefs.current[passportKey] = el)
-                          }
-                          type="file"
-                          className="hidden"
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                          onChange={(e) =>
-                            handleFileChange(e, "PASSPORT_MANAGER", manager._id)
-                          }
-                        />
-                        <DocumentCell
-                          document={passportDoc}
-                          isUploading={isUploadingPassport}
-                          onUpload={() =>
-                            handleFileSelect("PASSPORT_MANAGER", manager._id)
-                          }
-                          onView={() => handleViewDocument(passportDoc)}
-                          onReprocess={() => handleReprocess(passportDoc)}
-                          onVerify={() => handleVerify(passportDoc._id)}
-                          onDelete={() => handleDelete(passportDoc._id)}
-                          reprocessingDocumentId={reprocessingDocumentId}
-                          verifyMutation={verifyMutation}
-                          deleteMutation={deleteMutation}
-                        />
+                        {linkedPartner ? (
+                          // Show partner's document (read-only, no upload)
+                          <DocumentCell
+                            document={passportDoc}
+                            isUploading={false}
+                            onUpload={null}
+                            onView={() => handleViewDocument(passportDoc)}
+                            onReprocess={() => handleReprocess(passportDoc)}
+                            onVerify={() => handleVerify(passportDoc?._id)}
+                            onDelete={null}
+                            reprocessingDocumentId={reprocessingDocumentId}
+                            verifyMutation={verifyMutation}
+                            deleteMutation={deleteMutation}
+                          />
+                        ) : (
+                          <>
+                            <input
+                              ref={(el) =>
+                                (fileInputRefs.current[passportKey] = el)
+                              }
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                              onChange={(e) =>
+                                handleFileChange(
+                                  e,
+                                  "PASSPORT_MANAGER",
+                                  manager._id
+                                )
+                              }
+                            />
+                            <DocumentCell
+                              document={passportDoc}
+                              isUploading={isUploadingPassport}
+                              onUpload={() =>
+                                handleFileSelect(
+                                  "PASSPORT_MANAGER",
+                                  manager._id
+                                )
+                              }
+                              onView={() => handleViewDocument(passportDoc)}
+                              onReprocess={() => handleReprocess(passportDoc)}
+                              onVerify={() => handleVerify(passportDoc?._id)}
+                              onDelete={() => handleDelete(passportDoc?._id)}
+                              reprocessingDocumentId={reprocessingDocumentId}
+                              verifyMutation={verifyMutation}
+                              deleteMutation={deleteMutation}
+                            />
+                          </>
+                        )}
                       </td>
                       <td className="px-4 py-2 align-middle">
-                        <input
-                          ref={(el) =>
-                            (fileInputRefs.current[emiratesIdKey] = el)
-                          }
-                          type="file"
-                          className="hidden"
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                          onChange={(e) =>
-                            handleFileChange(
-                              e,
-                              "EMIRATES_ID_MANAGER",
-                              manager._id
-                            )
-                          }
-                        />
-                        <DocumentCell
-                          document={emiratesIdDoc}
-                          isUploading={isUploadingEmiratesId}
-                          onUpload={() =>
-                            handleFileSelect("EMIRATES_ID_MANAGER", manager._id)
-                          }
-                          onView={() => handleViewDocument(emiratesIdDoc)}
-                          onReprocess={() => handleReprocess(emiratesIdDoc)}
-                          onVerify={() => handleVerify(emiratesIdDoc._id)}
-                          onDelete={() => handleDelete(emiratesIdDoc._id)}
-                          reprocessingDocumentId={reprocessingDocumentId}
-                          verifyMutation={verifyMutation}
-                          deleteMutation={deleteMutation}
-                        />
+                        {linkedPartner ? (
+                          // Show partner's document (read-only, no upload)
+                          <DocumentCell
+                            document={emiratesIdDoc}
+                            isUploading={false}
+                            onUpload={null}
+                            onView={() => handleViewDocument(emiratesIdDoc)}
+                            onReprocess={() => handleReprocess(emiratesIdDoc)}
+                            onVerify={() => handleVerify(emiratesIdDoc?._id)}
+                            onDelete={null}
+                            reprocessingDocumentId={reprocessingDocumentId}
+                            verifyMutation={verifyMutation}
+                            deleteMutation={deleteMutation}
+                          />
+                        ) : (
+                          <>
+                            <input
+                              ref={(el) =>
+                                (fileInputRefs.current[emiratesIdKey] = el)
+                              }
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                              onChange={(e) =>
+                                handleFileChange(
+                                  e,
+                                  "EMIRATES_ID_MANAGER",
+                                  manager._id
+                                )
+                              }
+                            />
+                            <DocumentCell
+                              document={emiratesIdDoc}
+                              isUploading={isUploadingEmiratesId}
+                              onUpload={() =>
+                                handleFileSelect(
+                                  "EMIRATES_ID_MANAGER",
+                                  manager._id
+                                )
+                              }
+                              onView={() => handleViewDocument(emiratesIdDoc)}
+                              onReprocess={() => handleReprocess(emiratesIdDoc)}
+                              onVerify={() => handleVerify(emiratesIdDoc?._id)}
+                              onDelete={() => handleDelete(emiratesIdDoc?._id)}
+                              reprocessingDocumentId={reprocessingDocumentId}
+                              verifyMutation={verifyMutation}
+                              deleteMutation={deleteMutation}
+                            />
+                          </>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1347,14 +1498,133 @@ export const DocumentChecklist = ({
           <DialogHeader>
             <DialogTitle>Add Manager</DialogTitle>
             <DialogDescription>
-              {managerFormData.emiratesId || managerFormData.passport
+              {isPartnerManager && selectedPartnerId
+                ? "Select a partner to copy their information. No document upload needed."
+                : managerFormData.emiratesId || managerFormData.passport
                 ? "Review the manager information copied from partner."
                 : "Upload a Passport or Emirates ID document. The system will extract the name and other details automatically."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {managerFormData.emiratesId || managerFormData.passport ? (
+            {/* Is Partner? Checkbox */}
+            {partners.length > 0 && (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isPartnerManager}
+                    onChange={(e) => {
+                      setIsPartnerManager(e.target.checked);
+                      if (!e.target.checked) {
+                        setSelectedPartnerId(null);
+                        setManagerFormData({
+                          name: "",
+                          documentType: "PASSPORT",
+                        });
+                      }
+                    }}
+                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Is this manager also a partner?
+                  </span>
+                </label>
+
+                {isPartnerManager && (
+                  <div className="space-y-2 ml-6">
+                    <label
+                      htmlFor="partner-select"
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      Select Partner *
+                    </label>
+                    <select
+                      id="partner-select"
+                      value={selectedPartnerId || ""}
+                      onChange={(e) => {
+                        const partnerId = e.target.value;
+                        setSelectedPartnerId(partnerId);
+                        if (partnerId) {
+                          const selectedPartner = partners.find(
+                            (p) => p._id === partnerId
+                          );
+                          if (selectedPartner) {
+                            const copyEmiratesId = selectedPartner.emiratesId
+                              ? {
+                                  number:
+                                    selectedPartner.emiratesId.number || null,
+                                  issueDate:
+                                    selectedPartner.emiratesId.issueDate ||
+                                    null,
+                                  expiryDate:
+                                    selectedPartner.emiratesId.expiryDate ||
+                                    null,
+                                  verified:
+                                    selectedPartner.emiratesId.verified ||
+                                    false,
+                                }
+                              : null;
+
+                            const copyPassport = selectedPartner.passport
+                              ? {
+                                  number:
+                                    selectedPartner.passport.number || null,
+                                  issueDate:
+                                    selectedPartner.passport.issueDate || null,
+                                  expiryDate:
+                                    selectedPartner.passport.expiryDate || null,
+                                  verified:
+                                    selectedPartner.passport.verified || false,
+                                }
+                              : null;
+
+                            setManagerFormData({
+                              name: selectedPartner.name || "",
+                              emiratesId: copyEmiratesId,
+                              passport: copyPassport,
+                            });
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select a partner...</option>
+                      {partners.map((partner) => (
+                        <option key={partner._id} value={partner._id}>
+                          {partner.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isPartnerManager && selectedPartnerId ? (
               // Show form for copied partner data
+              <div className="space-y-2">
+                <label
+                  htmlFor="manager-name"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Manager Name *
+                </label>
+                <input
+                  id="manager-name"
+                  type="text"
+                  value={managerFormData.name}
+                  onChange={(e) =>
+                    setManagerFormData({
+                      ...managerFormData,
+                      name: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter manager name"
+                />
+              </div>
+            ) : managerFormData.emiratesId || managerFormData.passport ? (
+              // Show form for copied partner data (from old flow)
               <div className="space-y-2">
                 <label
                   htmlFor="manager-name"
@@ -1442,6 +1712,8 @@ export const DocumentChecklist = ({
                 setShowManagerForm(false);
                 setManagerFormData({ name: "", documentType: "PASSPORT" });
                 setManagerFile(null);
+                setIsPartnerManager(false);
+                setSelectedPartnerId(null);
                 setProcessingManagerDocument(false);
               }}
               disabled={processingManagerDocument}
@@ -1454,7 +1726,8 @@ export const DocumentChecklist = ({
               disabled={
                 addManagerMutation.isPending ||
                 processingManagerDocument ||
-                (!managerFile && !managerFormData.name)
+                (!managerFile && !managerFormData.name) ||
+                (isPartnerManager && !selectedPartnerId)
               }
             >
               {processingManagerDocument ? (
@@ -1535,11 +1808,7 @@ const ExtractedDataDialog = ({
   onClose,
   onUpdate,
 }) => {
-  const [formData, setFormData] = useState({});
-  const [partners, setPartners] = useState([]);
-  const [managerName, setManagerName] = useState("");
-
-  useEffect(() => {
+  const initialFormData = useMemo(() => {
     const data = {};
     if (extractedData) {
       Object.keys(extractedData).forEach((key) => {
@@ -1556,32 +1825,18 @@ const ExtractedDataDialog = ({
         }
       });
     }
-    setFormData(data);
-
-    if (extractedData._partners) {
-      if (
-        extractedData._partners.value &&
-        Array.isArray(extractedData._partners.value)
-      ) {
-        setPartners(extractedData._partners.value);
-      } else if (Array.isArray(extractedData._partners)) {
-        setPartners(extractedData._partners);
-      }
-    }
-    if (extractedData._managerName) {
-      if (extractedData._managerName.value) {
-        setManagerName(extractedData._managerName.value);
-      } else if (typeof extractedData._managerName === "string") {
-        setManagerName(extractedData._managerName);
-      }
-    }
+    return data;
   }, [extractedData]);
+
+  const [formData, setFormData] = useState(initialFormData);
+
+  useEffect(() => {
+    setFormData(initialFormData);
+  }, [initialFormData]);
 
   const handleSubmit = async () => {
     await onUpdate({
       businessInfo: formData,
-      partners: partners,
-      managerName: managerName,
     });
   };
 
@@ -1662,78 +1917,6 @@ const ExtractedDataDialog = ({
                 {extractedData.corporateTaxNumber &&
                   renderField("corporateTaxNumber", "Corporate Tax Number")}
               </div>
-            </div>
-          )}
-
-          {[
-            "TRADE_LICENSE",
-            "VAT_CERTIFICATE",
-            "CORPORATE_TAX_CERTIFICATE",
-          ].includes(document?.category) && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-1">
-                Partners
-              </h3>
-              {partners.length === 0 ? (
-                <p className="text-xs text-gray-500">
-                  No partners extracted. Add them below.
-                </p>
-              ) : (
-                partners.map((partner, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={partner}
-                      onChange={(e) => {
-                        const newPartners = [...partners];
-                        newPartners[index] = e.target.value;
-                        setPartners(newPartners);
-                      }}
-                      className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setPartners(partners.filter((_, i) => i !== index));
-                      }}
-                      className="h-7 w-7 text-red-600"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setPartners([...partners, ""])}
-                className="text-xs"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add Partner
-              </Button>
-            </div>
-          )}
-
-          {[
-            "TRADE_LICENSE",
-            "VAT_CERTIFICATE",
-            "CORPORATE_TAX_CERTIFICATE",
-          ].includes(document?.category) && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-1">
-                Manager
-              </h3>
-              <input
-                type="text"
-                value={managerName}
-                onChange={(e) => setManagerName(e.target.value)}
-                placeholder="Manager name"
-                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
-              />
             </div>
           )}
         </div>

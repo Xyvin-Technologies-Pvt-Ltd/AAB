@@ -42,6 +42,13 @@ export const clientsApi = {
     return response.data;
   },
 
+  assignDocument: async (id, documentId, personId) => {
+    const response = await api.patch(`/clients/${id}/documents/${documentId}/assign`, {
+      personId,
+    });
+    return response.data;
+  },
+
   uploadDocumentByType: async (id, category, file, personId = null) => {
     const formData = new FormData();
     formData.append('file', file);

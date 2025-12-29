@@ -134,6 +134,12 @@ const personSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // For managers: link to partner if they are the same person
+    linkedPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Client.partners',
+      default: null,
+    },
   },
   { _id: true }
 );

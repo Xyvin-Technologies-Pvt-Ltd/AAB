@@ -281,7 +281,7 @@ export const Calendar = () => {
                 eventContent={(eventInfo) => {
                   const event = eventInfo.event;
                   const title = event.title;
-                  
+
                   return {
                     html: `
                       <div class="px-1 py-0.5 text-xs font-medium truncate" style="color: white;">
