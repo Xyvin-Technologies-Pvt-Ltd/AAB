@@ -1,4 +1,4 @@
-import { Pencil, Trash2, User, Calendar, AlertCircle } from "lucide-react";
+import { Pencil, Trash2, User, Calendar, AlertCircle, Play, Pause, Check } from "lucide-react";
 import { Button } from "@/ui/button";
 import { Avatar } from "@/components/Avatar";
 import { format } from "date-fns";
@@ -23,17 +23,33 @@ export const TaskCard = ({
   onDelete,
   onTaskClick,
   dragHandleProps,
+  onStartTimer,
+  onPauseTimer,
+  onResumeTimer,
+  onCompleteTimer,
+  runningTimerId,
+  isTimerRunning,
+  isTimerPaused,
 }) => {
   const priority = task.priority || "MEDIUM";
   const isOverdue =
     task.dueDate &&
     new Date(task.dueDate) < new Date() &&
     task.status !== "DONE";
+  const taskIdStr = task._id?.toString() || task._id;
+  const runningTimerIdStr = runningTimerId?.toString() || runningTimerId;
+  const isThisTaskRunning = runningTimerIdStr && taskIdStr && runningTimerIdStr === taskIdStr;
 
   return (
     <div
-      className={`bg-white rounded-lg border-2 p-2 shadow-sm hover:shadow-md transition-shadow ${
-        isOverdue ? "border-red-300" : priorityColors[priority]
+      className={`bg-white rounded-lg border-2 p-2 shadow-sm hover:shadow-md transition-shadow relative ${
+        isThisTaskRunning && isTimerRunning 
+          ? "border-emerald-400 animate-heartbeat" 
+          : isThisTaskRunning 
+          ? "border-emerald-300" 
+          : isOverdue 
+          ? "border-red-300" 
+          : priorityColors[priority]
       } ${dragHandleProps ? "cursor-move" : ""}`}
       {...(dragHandleProps || {})}
       onDoubleClick={(e) => {
@@ -50,9 +66,16 @@ export const TaskCard = ({
     >
       {/* Header with Priority */}
       <div className="flex items-start justify-between mb-1.5">
-        <h3 className="font-semibold text-xs text-gray-900 flex-1 line-clamp-2 leading-tight">
-          {task.name}
-        </h3>
+        <div className="flex items-center gap-1 flex-1 min-w-0">
+          {isThisTaskRunning && (
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              isTimerRunning ? 'bg-emerald-500 animate-heartbeatDot' : 'bg-amber-500'
+            }`} />
+          )}
+          <h3 className="font-semibold text-xs text-gray-900 line-clamp-2 leading-tight">
+            {task.name}
+          </h3>
+        </div>
         <span className="text-xs ml-1 flex-shrink-0" title={priority}>
           {priorityIcons[priority]}
         </span>
@@ -160,9 +183,65 @@ export const TaskCard = ({
 
         {/* Actions */}
         <div
-          className="flex items-center justify-end gap-1"
+          className="flex items-center justify-end gap-0.5"
           onClick={(e) => e.stopPropagation()}
         >
+          {isThisTaskRunning ? (
+            <>
+              {isTimerRunning ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPauseTimer?.();
+                  }}
+                  className="h-5 px-1 text-[10px] text-amber-600 hover:bg-amber-50"
+                  title="Pause"
+                >
+                  <Pause className="h-2.5 w-2.5" />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onResumeTimer?.();
+                  }}
+                  className="h-5 px-1 text-[10px] text-emerald-600 hover:bg-emerald-50"
+                  title="Resume"
+                >
+                  <Play className="h-2.5 w-2.5" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCompleteTimer?.();
+                }}
+                className="h-5 px-1 text-[10px] text-blue-600 hover:bg-blue-50"
+                title="Complete"
+              >
+                <Check className="h-2.5 w-2.5" />
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartTimer?.(task._id);
+              }}
+              className="h-5 px-1 text-[10px] text-emerald-600 hover:bg-emerald-50"
+              title="Start Timer"
+            >
+              <Play className="h-2.5 w-2.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -170,7 +249,8 @@ export const TaskCard = ({
               e.stopPropagation();
               onEdit(task);
             }}
-            className="h-5 px-1.5 text-[10px] hover:bg-gray-100"
+            className="h-5 px-1 text-[10px] hover:bg-gray-100"
+            title="Edit"
           >
             <Pencil className="h-2.5 w-2.5" />
           </Button>
@@ -181,7 +261,8 @@ export const TaskCard = ({
               e.stopPropagation();
               onDelete(task._id);
             }}
-            className="h-5 px-1.5 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="h-5 px-1 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
+            title="Delete"
           >
             <Trash2 className="h-2.5 w-2.5" />
           </Button>

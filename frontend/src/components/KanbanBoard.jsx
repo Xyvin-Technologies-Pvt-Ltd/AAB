@@ -25,7 +25,7 @@ const columns = [
   { id: "DONE", title: "Done" },
 ];
 
-const SortableTaskCard = ({ task, onEdit, onDelete, onTaskClick }) => {
+const SortableTaskCard = ({ task, onEdit, onDelete, onTaskClick, onStartTimer, onPauseTimer, onResumeTimer, onCompleteTimer, runningTimerId, isTimerRunning, isTimerPaused }) => {
   const {
     attributes,
     listeners,
@@ -50,13 +50,20 @@ const SortableTaskCard = ({ task, onEdit, onDelete, onTaskClick }) => {
         onEdit={onEdit}
         onDelete={onDelete}
         onTaskClick={onTaskClick}
+        onStartTimer={onStartTimer}
+        onPauseTimer={onPauseTimer}
+        onResumeTimer={onResumeTimer}
+        onCompleteTimer={onCompleteTimer}
+        runningTimerId={runningTimerId}
+        isTimerRunning={isTimerRunning}
+        isTimerPaused={isTimerPaused}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
   );
 };
 
-const KanbanColumn = ({ column, tasks, onEdit, onDelete, onTaskClick }) => {
+const KanbanColumn = ({ column, tasks, onEdit, onDelete, onTaskClick, onStartTimer, onPauseTimer, onResumeTimer, onCompleteTimer, runningTimerId, isTimerRunning, isTimerPaused }) => {
   const taskIds = tasks.map((task) => task._id);
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${column.id}`,
@@ -116,6 +123,13 @@ const KanbanColumn = ({ column, tasks, onEdit, onDelete, onTaskClick }) => {
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onTaskClick={onTaskClick}
+                    onStartTimer={onStartTimer}
+                    onPauseTimer={onPauseTimer}
+                    onResumeTimer={onResumeTimer}
+                    onCompleteTimer={onCompleteTimer}
+                    runningTimerId={runningTimerId}
+                    isTimerRunning={isTimerRunning}
+                    isTimerPaused={isTimerPaused}
                   />
                 ))}
               </div>
@@ -133,6 +147,13 @@ export const KanbanBoard = ({
   onEdit,
   onDelete,
   onTaskClick,
+  onStartTimer,
+  onPauseTimer,
+  onResumeTimer,
+  onCompleteTimer,
+  runningTimerId,
+  isTimerRunning,
+  isTimerPaused,
 }) => {
   const [localTasks, setLocalTasks] = useState(tasks);
   const [activeId, setActiveId] = useState(null);
@@ -256,13 +277,20 @@ export const KanbanBoard = ({
             onEdit={onEdit}
             onDelete={onDelete}
             onTaskClick={onTaskClick}
+            onStartTimer={onStartTimer}
+            onPauseTimer={onPauseTimer}
+            onResumeTimer={onResumeTimer}
+            onCompleteTimer={onCompleteTimer}
+            runningTimerId={runningTimerId}
+            isTimerRunning={isTimerRunning}
+            isTimerPaused={isTimerPaused}
           />
         ))}
       </div>
       <DragOverlay>
         {activeTask ? (
           <div className="opacity-50">
-            <TaskCard task={activeTask} onEdit={() => {}} onDelete={() => {}} />
+            <TaskCard task={activeTask} onEdit={() => {}} onDelete={() => {}} onStartTimer={() => {}} />
           </div>
         ) : null}
       </DragOverlay>

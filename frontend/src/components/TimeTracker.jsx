@@ -1,148 +1,107 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { timeEntriesApi } from '@/api/timeEntries';
-import { tasksApi } from '@/api/tasks';
-import { clientsApi } from '@/api/clients';
-import { packagesApi } from '@/api/packages';
-import { useAuthStore } from '@/store/authStore';
-import { Button } from '@/ui/button';
-import { Play, Square, X, Clock } from 'lucide-react';
-import { useToast } from '@/hooks/useToast';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { tasksApi } from "@/api/tasks";
+import { clientsApi } from "@/api/clients";
+import { packagesApi } from "@/api/packages";
+import { useTimer } from "@/hooks/useTimer";
+import { useAuthStore } from "@/store/authStore";
+import { Button } from "@/ui/button";
+import { Play, Square, X, Clock, Pause } from "lucide-react";
+import { useToast } from "@/hooks/useToast";
 
 export const TimeTracker = () => {
-  const { user } = useAuthStore();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [selectedClientId, setSelectedClientId] = useState('');
-  const [selectedPackageId, setSelectedPackageId] = useState('');
-  const [selectedTaskId, setSelectedTaskId] = useState('');
+  const { user } = useAuthStore();
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedPackageId, setSelectedPackageId] = useState("");
+  const [selectedTaskId, setSelectedTaskId] = useState("");
 
-  const employeeId = user?.role === 'EMPLOYEE' && user?.employeeId ? user.employeeId : user?.employeeId;
+  const {
+    runningTimer,
+    isRunning,
+    employeeId,
+    formattedTime,
+    isStarting,
+    isStopping,
+    isPausing,
+    isResuming,
+    handleStartTimer,
+    handlePauseTimer,
+    handleResumeTimer,
+    handleStopTimer,
+    handleDiscardTimer,
+  } = useTimer();
 
-  const { data: runningTimerData, refetch: refetchRunningTimer } = useQuery({
-    queryKey: ['running-timer', employeeId],
-    queryFn: () => timeEntriesApi.getRunningTimer(employeeId),
-    enabled: !!employeeId,
-    refetchInterval: 1000, // Refetch every second to update elapsed time
-  });
+  const isEmployee = user?.role === "EMPLOYEE";
 
   const { data: clientsData } = useQuery({
-    queryKey: ['clients'],
+    queryKey: ["clients"],
     queryFn: () => clientsApi.getAll({ limit: 100 }),
   });
 
   const { data: packagesData } = useQuery({
-    queryKey: ['packages', selectedClientId],
-    queryFn: () => packagesApi.getAll({ clientId: selectedClientId, limit: 100 }),
+    queryKey: ["packages", selectedClientId],
+    queryFn: () =>
+      packagesApi.getAll({ clientId: selectedClientId, limit: 100 }),
     enabled: !!selectedClientId,
   });
 
   const { data: tasksData } = useQuery({
-    queryKey: ['tasks', selectedPackageId],
-    queryFn: () => tasksApi.getAll({ packageId: selectedPackageId, limit: 100 }),
-    enabled: !!selectedPackageId,
+    queryKey: ["tasks", selectedPackageId, isEmployee ? employeeId : null],
+    queryFn: () => {
+      const params = { packageId: selectedPackageId, limit: 100 };
+      // If user is an employee, filter by assignedTo
+      if (isEmployee && employeeId) {
+        params.assignedTo = employeeId;
+      }
+      return tasksApi.getAll(params);
+    },
+    enabled: !!selectedPackageId && (!isEmployee || !!employeeId),
   });
 
-  const runningTimer = runningTimerData?.data;
-
-  const startTimerMutation = useMutation({
-    mutationFn: timeEntriesApi.startTimer,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['running-timer'] });
-      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
-      toast({ title: 'Success', description: 'Timer started', type: 'success' });
-      setSelectedClientId('');
-      setSelectedPackageId('');
-      setSelectedTaskId('');
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to start timer',
-        type: 'destructive',
-      });
-    },
-  });
-
-  const stopTimerMutation = useMutation({
-    mutationFn: (id) => timeEntriesApi.stopTimer(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['running-timer'] });
-      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
-      toast({ title: 'Success', description: 'Timer stopped', type: 'success' });
-      setElapsedSeconds(0);
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to stop timer',
-        type: 'destructive',
-      });
-    },
-  });
-
-  useEffect(() => {
-    if (runningTimer?.timerStartedAt) {
-      const interval = setInterval(() => {
-        const startTime = new Date(runningTimer.timerStartedAt);
-        const now = new Date();
-        const seconds = Math.floor((now - startTime) / 1000);
-        setElapsedSeconds(seconds);
-      }, 1000);
-
-      return () => clearInterval(interval);
-    } else {
-      setElapsedSeconds(0);
-    }
-  }, [runningTimer]);
-
-  const formatTime = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!selectedClientId || !selectedPackageId || !selectedTaskId) {
       toast({
-        title: 'Error',
-        description: 'Please select client, package, and task',
-        type: 'destructive',
+        title: "Error",
+        description: "Please select client, package, and task",
+        type: "destructive",
       });
       return;
     }
 
-    startTimerMutation.mutate({
+    const started = await handleStartTimer({
       employeeId,
       clientId: selectedClientId,
       packageId: selectedPackageId,
       taskId: selectedTaskId,
       date: new Date().toISOString(),
     });
-  };
 
-  const handleStop = () => {
-    if (runningTimer?._id) {
-      stopTimerMutation.mutate(runningTimer._id);
-    }
-  };
-
-  const handleDiscard = () => {
-    if (confirm('Are you sure you want to discard this timer?')) {
-      if (runningTimer?._id) {
-        stopTimerMutation.mutate(runningTimer._id);
-      }
+    if (started) {
+      setSelectedClientId("");
+      setSelectedPackageId("");
+      setSelectedTaskId("");
     }
   };
 
   const clients = clientsData?.data?.clients || [];
   const packages = packagesData?.data?.packages || [];
-  const tasks = tasksData?.data?.tasks || [];
+  // Filter tasks to only show assigned ones for employees
+  let tasks = tasksData?.data?.tasks || [];
+  if (isEmployee && employeeId) {
+    tasks = tasks.filter((task) => {
+      const assignedIds = Array.isArray(task.assignedTo)
+        ? task.assignedTo.map((emp) => emp._id || emp)
+        : task.assignedTo
+        ? [task.assignedTo._id || task.assignedTo]
+        : [];
+      // Only show tasks that are assigned to this employee (exclude unassigned tasks)
+      return assignedIds.length > 0 && assignedIds.includes(employeeId);
+    });
+  }
 
   if (!employeeId) {
-    return null; // Don't show timer if no employee ID
+    return null;
   }
 
   return (
@@ -154,9 +113,23 @@ export const TimeTracker = () => {
         </div>
         {runningTimer && (
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1 bg-red-100 rounded-full">
-              <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
-              <span className="text-sm font-semibold text-red-800">Running</span>
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                isRunning ? "bg-emerald-100" : "bg-amber-100"
+              }`}
+            >
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  isRunning ? "bg-emerald-600 animate-pulse" : "bg-amber-600"
+                }`}
+              ></div>
+              <span
+                className={`text-sm font-semibold ${
+                  isRunning ? "text-emerald-800" : "text-amber-800"
+                }`}
+              >
+                {isRunning ? "Running" : "Paused"}
+              </span>
             </div>
           </div>
         )}
@@ -165,28 +138,56 @@ export const TimeTracker = () => {
       {runningTimer ? (
         <div className="space-y-4">
           <div className="text-center">
-            <div className="text-3xl font-bold text-indigo-600 mb-2">
-              {formatTime(elapsedSeconds)}
+            <div
+              className={`text-3xl font-bold mb-2 ${
+                isRunning ? "text-emerald-600" : "text-amber-600"
+              }`}
+            >
+              {formattedTime}
             </div>
             <div className="text-sm text-gray-600">
-              <p className="font-medium">{runningTimer.taskId?.name || 'Task'}</p>
-              <p className="text-xs">{runningTimer.clientId?.name || 'Client'}</p>
+              <p className="font-medium">
+                {runningTimer.isMiscellaneous
+                  ? runningTimer.miscellaneousDescription || "Miscellaneous"
+                  : runningTimer.taskId?.name || "Task"}
+              </p>
+              <p className="text-xs">
+                {runningTimer.clientId?.name || "Client"}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
+            {isRunning ? (
+              <Button
+                variant="outline"
+                className="flex-1 bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700"
+                onClick={handlePauseTimer}
+                disabled={isPausing}
+              >
+                <Pause className="h-4 w-4 mr-2" />
+                Pause
+              </Button>
+            ) : (
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                onClick={handleResumeTimer}
+                disabled={isResuming}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Resume
+              </Button>
+            )}
             <Button
               variant="destructive"
-              className="flex-1"
-              onClick={handleStop}
-              disabled={stopTimerMutation.isPending}
+              onClick={() => handleStopTimer()}
+              disabled={isStopping}
             >
-              <Square className="h-4 w-4 mr-2" />
-              Stop
+              <Square className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              onClick={handleDiscard}
-              disabled={stopTimerMutation.isPending}
+              onClick={handleDiscardTimer}
+              disabled={isStopping}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -195,13 +196,15 @@ export const TimeTracker = () => {
       ) : (
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Client</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">
+              Client
+            </label>
             <select
               value={selectedClientId}
               onChange={(e) => {
                 setSelectedClientId(e.target.value);
-                setSelectedPackageId('');
-                setSelectedTaskId('');
+                setSelectedPackageId("");
+                setSelectedTaskId("");
               }}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
@@ -214,12 +217,14 @@ export const TimeTracker = () => {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Package</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">
+              Package
+            </label>
             <select
               value={selectedPackageId}
               onChange={(e) => {
                 setSelectedPackageId(e.target.value);
-                setSelectedTaskId('');
+                setSelectedTaskId("");
               }}
               disabled={!selectedClientId}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
@@ -233,7 +238,9 @@ export const TimeTracker = () => {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Task</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">
+              Task
+            </label>
             <select
               value={selectedTaskId}
               onChange={(e) => setSelectedTaskId(e.target.value)}
@@ -251,7 +258,12 @@ export const TimeTracker = () => {
           <Button
             className="w-full"
             onClick={handleStart}
-            disabled={!selectedClientId || !selectedPackageId || !selectedTaskId || startTimerMutation.isPending}
+            disabled={
+              !selectedClientId ||
+              !selectedPackageId ||
+              !selectedTaskId ||
+              isStarting
+            }
           >
             <Play className="h-4 w-4 mr-2" />
             Start Timer
@@ -261,4 +273,3 @@ export const TimeTracker = () => {
     </div>
   );
 };
-

@@ -4,6 +4,7 @@ import { packagesApi } from '@/api/packages';
 import { Card } from '@/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
+import { LoaderWithText } from '@/components/Loader';
 
 export const Packages = () => {
   const navigate = useNavigate();
@@ -32,9 +33,8 @@ export const Packages = () => {
 
         {isLoading ? (
           <Card>
-            <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading packages...</p>
+            <div className="p-12">
+              <LoaderWithText text="Loading packages..." />
             </div>
           </Card>
         ) : (

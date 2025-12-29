@@ -12,9 +12,13 @@ import { Employees } from './pages/Employees';
 import { EmployeeDetails } from './pages/EmployeeDetails';
 import { TimeEntries } from './pages/TimeEntries';
 import { Analytics } from './pages/Analytics';
+import { PackageAnalytics } from './pages/PackageAnalytics';
+import { ClientAnalytics } from './pages/ClientAnalytics';
+import { EmployeeAnalytics } from './pages/EmployeeAnalytics';
 import { Calendar } from './pages/Calendar';
 import { Alerts } from './pages/Alerts';
 import { Settings } from './pages/Settings';
+import { Teams } from './pages/Teams';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,8 +103,32 @@ function App() {
             <Route
               path="/analytics"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
                   <Analytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics/package/:packageId"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+                  <PackageAnalytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics/client/:clientId"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+                  <ClientAnalytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics/employee/:employeeId"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+                  <EmployeeAnalytics />
                 </ProtectedRoute>
               }
             />
@@ -123,8 +151,16 @@ function App() {
             <Route
               path="/settings"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/teams"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <Teams />
                 </ProtectedRoute>
               }
             />

@@ -9,7 +9,6 @@ import { servicesApi } from "@/api/services";
 import { activitiesApi } from "@/api/activities";
 import { Button } from "@/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { AdvancedFilters } from "@/components/AdvancedFilters";
 import { TaskDetailDrawer } from "@/components/TaskDetailDrawer";
 import { Avatar } from "@/components/Avatar";
 import { SelectSearch } from "@/ui/select-search";
@@ -23,13 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/ui/drawer";
+import { TaskFilterDrawer } from "@/components/TaskFilterDrawer";
 import {
   Plus,
   Search,
@@ -49,7 +42,10 @@ import {
   Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
+import { useTimer } from "@/hooks/useTimer";
 import { format } from "date-fns";
+import { Play, Pause, Check } from "lucide-react";
+import { LoaderWithText } from "@/components/Loader";
 
 export const Tasks = () => {
   const [showForm, setShowForm] = useState(false);
@@ -66,6 +62,21 @@ export const Tasks = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Use centralized timer hook
+  const {
+    runningTimer,
+    isRunning,
+    isPaused,
+    handleStartTimerForTask,
+    handlePauseTimer,
+    handleResumeTimer,
+    handleCompleteTimer,
+    startTimerForTaskMutation,
+    pauseTimerMutation,
+    resumeTimerMutation,
+    stopTimerMutation,
+  } = useTimer();
 
   const { data: tasksData, isLoading } = useQuery({
     queryKey: ["tasks", filters],
@@ -236,6 +247,8 @@ export const Tasks = () => {
       });
     }
   };
+
+  // Timer handlers now come from the useTimer hook
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -528,7 +541,9 @@ export const Tasks = () => {
 
         {/* View Content */}
         {isLoading ? (
-          <div className="text-center py-12">Loading tasks...</div>
+          <div className="py-12">
+            <LoaderWithText text="Loading tasks..." />
+          </div>
         ) : viewMode === "kanban" ? (
           <KanbanBoard
             tasks={tasks}
@@ -536,6 +551,20 @@ export const Tasks = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onTaskClick={handleTaskClick}
+            onStartTimer={(taskId) => {
+              const task = tasks.find(t => t._id === taskId);
+              return handleStartTimerForTask(taskId, task);
+            }}
+            onPauseTimer={handlePauseTimer}
+            onResumeTimer={handleResumeTimer}
+            onCompleteTimer={handleCompleteTimer}
+            runningTimerId={
+              runningTimer?.taskId?._id?.toString() || 
+              runningTimer?.taskId?.toString() || 
+              (runningTimer?.taskId && typeof runningTimer.taskId === 'string' ? runningTimer.taskId : null)
+            }
+            isTimerRunning={isRunning && !isPaused}
+            isTimerPaused={isPaused}
           />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
@@ -599,6 +628,9 @@ export const Tasks = () => {
                       <ArrowUpDown className="h-2.5 w-2.5" />
                     </div>
                   </th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                    Timer
+                  </th>
                   <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
                     Actions
                   </th>
@@ -608,7 +640,7 @@ export const Tasks = () => {
                 {sortedTasks.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="9"
+                      colSpan="10"
                       className="px-3 py-8 text-center text-xs text-gray-500"
                     >
                       No tasks found
@@ -776,6 +808,75 @@ export const Tasks = () => {
                             {isOverdue && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
                           </div>
                         </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div
+                            className="flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {(() => {
+                              const taskIdStr = task._id?.toString() || task._id;
+                              const runningTaskIdStr = (
+                                runningTimer?.taskId?._id?.toString() || 
+                                runningTimer?.taskId?.toString() || 
+                                (runningTimer?.taskId && typeof runningTimer.taskId === 'string' ? runningTimer.taskId : null)
+                              );
+                              const isThisTaskRunning = runningTaskIdStr && taskIdStr && runningTaskIdStr === taskIdStr;
+                              
+                              if (isThisTaskRunning) {
+                                return (
+                                  <>
+                                    {isRunning && !isPaused ? (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handlePauseTimer}
+                                        disabled={pauseTimerMutation.isPending}
+                                        className="h-6 w-6 p-0 text-amber-600 hover:bg-amber-50"
+                                        title="Pause"
+                                      >
+                                        <Pause className="h-3 w-3" />
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleResumeTimer}
+                                        disabled={resumeTimerMutation.isPending}
+                                        className="h-6 w-6 p-0 text-emerald-600 hover:bg-emerald-50"
+                                        title="Resume"
+                                      >
+                                        <Play className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={handleCompleteTimer}
+                                      disabled={stopTimerMutation.isPending}
+                                      className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50"
+                                      title="Complete"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                );
+                              } else {
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleStartTimerForTask(task._id, task)}
+                                    disabled={startTimerForTaskMutation.isPending}
+                                    className="h-6 w-6 p-0 text-emerald-600 hover:bg-emerald-50"
+                                    title="Start Timer"
+                                  >
+                                    <Play className="h-3 w-3" />
+                                  </Button>
+                                );
+                              }
+                            })()}
+                          </div>
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap text-right">
                           <div
                             className="flex items-center justify-end gap-1"
@@ -818,27 +919,15 @@ export const Tasks = () => {
         />
 
         {/* Filter Drawer */}
-        <Drawer open={showFilters} onOpenChange={setShowFilters}>
-          <DrawerContent side="right" className="sm:max-w-sm">
-            <DrawerHeader className="px-4 pt-4 pb-3 border-b border-gray-200">
-              <DrawerTitle className="text-base font-semibold">Filter Tasks</DrawerTitle>
-              <DrawerDescription className="text-xs text-gray-500 mt-1">
-                Refine your task list with filters
-              </DrawerDescription>
-            </DrawerHeader>
-            <div className="px-4 py-4 overflow-y-auto flex-1">
-              <AdvancedFilters
-                clients={clients}
-                packages={packagesData?.data?.packages || []}
-                employees={employees}
-                onFilterChange={(newFilters) => {
-                  setFilters(newFilters);
-                }}
-                initialFilters={filters}
-              />
-            </div>
-          </DrawerContent>
-        </Drawer>
+        <TaskFilterDrawer
+          open={showFilters}
+          onOpenChange={setShowFilters}
+          filters={filters}
+          onFilterChange={setFilters}
+          clients={clients}
+          packages={packagesData?.data?.packages || []}
+          employees={employees}
+        />
 
         {/* Task Form Dialog */}
         <Dialog open={showForm} onOpenChange={setShowForm}>

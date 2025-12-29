@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { analyticsApi } from '@/api/analytics';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
+import { LoaderWithText } from '@/components/Loader';
 import {
   BarChart,
   Bar,
@@ -20,16 +21,28 @@ export const DashboardGraphs = () => {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Upcoming Statistics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center text-gray-500">
-            Loading...
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Tasks (Next 4 Months)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <LoaderWithText text="Loading tasks statistics..." />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Submissions (Next 4 Months)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <LoaderWithText text="Loading submissions statistics..." />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 

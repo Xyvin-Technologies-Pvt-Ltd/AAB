@@ -12,6 +12,8 @@ import { Avatar } from '@/components/Avatar';
 import { ArrowLeft, Clock, CheckSquare, TrendingUp, User } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import { format } from 'date-fns';
+import { formatTimeFromSeconds } from '@/utils/dateFormat';
+import { LoaderWithText } from '@/components/Loader';
 
 export const EmployeeDetails = () => {
   const { id } = useParams();
@@ -52,7 +54,7 @@ export const EmployeeDetails = () => {
   const tasks = tasksData?.data?.tasks || [];
   const teamMembers = teamData?.data || [];
 
-  const totalHours = timeEntries.reduce((sum, entry) => sum + entry.minutesSpent / 60, 0);
+  const totalHours = timeEntries.reduce((sum, entry) => sum + entry.minutesSpent / 3600, 0);
   const openTasks = tasks.filter((t) => t.status !== 'DONE').length;
   const completedTasks = tasks.filter((t) => t.status === 'DONE').length;
   const completionRate = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
@@ -65,7 +67,9 @@ export const EmployeeDetails = () => {
   if (employeeLoading) {
     return (
       <AppLayout>
-        <div className="text-center py-12">Loading...</div>
+        <div className="py-12">
+          <LoaderWithText text="Loading employee details..." />
+        </div>
       </AppLayout>
     );
   }
@@ -205,7 +209,7 @@ export const EmployeeDetails = () => {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-indigo-600">
-                        {Math.floor(entry.minutesSpent / 60)}h {entry.minutesSpent % 60}m
+                        {formatTimeFromSeconds(entry.minutesSpent, true)}
                       </p>
                     </div>
                   </div>

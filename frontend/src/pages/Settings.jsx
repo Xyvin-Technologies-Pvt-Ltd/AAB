@@ -7,6 +7,7 @@ import { Button } from '@/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/ui/tabs';
 import { Card } from '@/ui/card';
 import { Edit, Trash2, Search } from 'lucide-react';
+import { LoaderWithText } from '@/components/Loader';
 
 const ServicesTab = () => {
   const [showForm, setShowForm] = useState(false);
@@ -133,7 +134,9 @@ const ServicesTab = () => {
       )}
 
       {isLoading ? (
-        <div>Loading...</div>
+        <div className="py-8">
+          <LoaderWithText text="Loading activities..." />
+        </div>
       ) : (
         <Card>
           <div className="overflow-x-auto">
@@ -321,7 +324,9 @@ const ActivitiesTab = () => {
       )}
 
       {isLoading ? (
-        <div>Loading...</div>
+        <div className="py-8">
+          <LoaderWithText text="Loading activities..." />
+        </div>
       ) : (
         <Card>
           <div className="overflow-x-auto">

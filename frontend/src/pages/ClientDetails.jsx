@@ -33,6 +33,7 @@ import { EmaraTaxCredentials } from "@/components/EmaraTaxCredentials";
 import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 import { Badge } from "@/ui/badge";
 import { useBusinessInfoUpdate } from "@/api/queries/clientQueries";
+import { LoaderWithText } from "@/components/Loader";
 import {
   Dialog,
   DialogContent,
@@ -592,7 +593,9 @@ export const ClientDetails = () => {
   if (clientLoading || clientFetching || isPending) {
     return (
       <AppLayout>
-        <div className="text-center py-12">Loading...</div>
+        <div className="py-12">
+          <LoaderWithText text="Loading client details..." />
+        </div>
       </AppLayout>
     );
   }

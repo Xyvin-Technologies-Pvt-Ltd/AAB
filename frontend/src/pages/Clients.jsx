@@ -17,6 +17,7 @@ import { Card } from '@/ui/card';
 import { Plus, Search, Edit, Trash2, Eye, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { useNavigate } from 'react-router-dom';
+import { LoaderWithText } from '@/components/Loader';
 
 export const Clients = () => {
   const [search, setSearch] = useState('');
@@ -172,9 +173,8 @@ export const Clients = () => {
         {/* Table */}
         {isLoading ? (
           <Card>
-            <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading clients...</p>
+            <div className="p-12">
+              <LoaderWithText text="Loading clients..." />
             </div>
           </Card>
         ) : (

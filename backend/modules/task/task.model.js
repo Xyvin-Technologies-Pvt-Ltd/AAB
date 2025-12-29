@@ -157,6 +157,10 @@ const taskSchema = new mongoose.Schema(
         },
       },
     ],
+    createdFromTimeEntry: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TimeEntry',
+    },
   },
   {
     timestamps: true,

@@ -9,6 +9,46 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      keyframes: {
+        heartbeat: {
+          '0%, 100%': { 
+            boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.4)',
+          },
+          '10%': { 
+            boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.2)',
+          },
+          '20%': { 
+            boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.4)',
+          },
+          '30%': { 
+            boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.2)',
+          },
+          '40%': { 
+            boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.4)',
+          },
+        },
+        heartbeatDot: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '10%': { transform: 'scale(1.4)', opacity: '0.7' },
+          '20%': { transform: 'scale(1)', opacity: '1' },
+          '30%': { transform: 'scale(1.4)', opacity: '0.7' },
+          '40%': { transform: 'scale(1)', opacity: '1' },
+        },
+        'accordion-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
+        },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
+      },
+      animation: {
+        heartbeat: 'heartbeat 1.5s ease-in-out infinite',
+        heartbeatDot: 'heartbeatDot 1.5s ease-in-out infinite',
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

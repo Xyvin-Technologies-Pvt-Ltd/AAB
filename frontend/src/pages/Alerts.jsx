@@ -7,14 +7,6 @@ import { Badge } from '@/ui/badge';
 import { Button } from '@/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/ui/tabs';
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerTrigger,
-} from '@/ui/drawer';
-import {
   AlertCircle,
   AlertTriangle,
   Clock,
@@ -27,8 +19,10 @@ import {
   ChevronRight,
   Calendar,
 } from 'lucide-react';
+import { AlertFilterDrawer } from '@/components/AlertFilterDrawer';
 import { useNavigate } from 'react-router-dom';
 import { formatDateDDMMYYYY } from '@/utils/dateFormat';
+import { LoaderWithText } from '@/components/Loader';
 
 const AlertItem = ({ item, onClientClick }) => {
   // Get type icon
@@ -318,83 +312,26 @@ export const Alerts = () => {
             <h1 className="text-xl font-bold text-gray-900">Alerts & Deadlines</h1>
             <p className="text-xs text-gray-600 mt-0.5">Monitor compliance alerts and deadlines</p>
           </div>
-          <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-            <DrawerTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Filters
-                {hasActiveFilters && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-indigo-600 text-white text-[10px] font-semibold rounded-full">
-                    1
-                  </span>
-                )}
-              </Button>
-            </DrawerTrigger>
-            <DrawerContent side="right" className="sm:max-w-sm">
-              <DrawerHeader className="border-b px-4 py-3">
-                <DrawerTitle className="text-base font-semibold">Filter Alerts</DrawerTitle>
-                <DrawerDescription className="text-xs text-gray-500">
-                  Filter alerts by type, month, and more
-                </DrawerDescription>
-              </DrawerHeader>
-              <div className="px-4 py-4 space-y-4 overflow-y-auto max-h-[calc(100vh-120px)]">
-                {/* Type Filter */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-2">
-                    Filter by Type
-                  </label>
-                  <div className="space-y-1.5">
-                    {filterTypes.map((type) => (
-                      <button
-                        key={type.value}
-                        onClick={() => {
-                          setTypeFilter(type.value);
-                          setDrawerOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors ${
-                          typeFilter === type.value
-                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                            : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        <span className="font-medium">{type.label}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {type.count}
-                        </Badge>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Info about month selection */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-start gap-2">
-                    <Calendar className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-medium text-blue-900 mb-1">Month Selection</p>
-                      <p className="text-[10px] text-blue-700">
-                        Use the tabs above to switch between "This Month" and "Next Month" views.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {hasActiveFilters && (
-                  <div className="pt-2 border-t">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={clearFilters}
-                      className="w-full"
-                    >
-                      <X className="h-3.5 w-3.5 mr-1.5" />
-                      Clear All Filters
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </DrawerContent>
-          </Drawer>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setDrawerOpen(true)}>
+            <Filter className="h-4 w-4" />
+            Filters
+            {hasActiveFilters && (
+              <span className="ml-1 px-1.5 py-0.5 bg-indigo-600 text-white text-[10px] font-semibold rounded-full">
+                1
+              </span>
+            )}
+          </Button>
+          <AlertFilterDrawer
+            open={drawerOpen}
+            onOpenChange={setDrawerOpen}
+            filters={{ type: typeFilter }}
+            onFilterChange={(newFilters) => {
+              setTypeFilter(newFilters.type || '');
+              setDrawerOpen(false);
+            }}
+            filterTypes={filterTypes}
+            getTypeCount={getTypeCount}
+          />
         </div>
 
         {/* Tabs */}
@@ -411,9 +348,8 @@ export const Alerts = () => {
           <TabsContent value="thisMonth" className="mt-3">
             {isLoading ? (
               <Card>
-                <CardContent className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                  <p className="mt-3 text-sm text-gray-600">Loading alerts...</p>
+                <CardContent className="p-8">
+                  <LoaderWithText text="Loading alerts..." />
                 </CardContent>
               </Card>
             ) : (
@@ -450,9 +386,8 @@ export const Alerts = () => {
           <TabsContent value="nextMonth" className="mt-3">
             {isLoading ? (
               <Card>
-                <CardContent className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                  <p className="mt-3 text-sm text-gray-600">Loading alerts...</p>
+                <CardContent className="p-8">
+                  <LoaderWithText text="Loading alerts..." />
                 </CardContent>
               </Card>
             ) : (

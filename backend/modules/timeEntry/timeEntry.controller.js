@@ -23,13 +23,25 @@ export const getTimeEntries = async (req, res, next) => {
       taskId: req.query.taskId,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
+      isMiscellaneous: req.query.isMiscellaneous !== undefined ? req.query.isMiscellaneous === 'true' : undefined,
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,
     };
 
-    // If user is EMPLOYEE, filter to only their time entries
-    if (req.user.role === 'EMPLOYEE' && req.user.employeeId) {
-      filters.employeeId = req.user.employeeId.toString();
+    // Apply RBAC filtering
+    const { filterByTeam } = await import('../../middlewares/rbac.js');
+    const query = {};
+    
+    // If user is EMPLOYEE or MANAGER, filter by team access
+    if (req.user.role === 'EMPLOYEE' || req.user.role === 'MANAGER') {
+      await filterByTeam(query, req.user, 'employeeId');
+      // Override employeeId filter if team filtering is applied
+      if (query.employeeId && query.employeeId.$in) {
+        filters.employeeId = undefined; // Remove explicit filter, use team filter
+        filters._teamFilter = query.employeeId.$in; // Pass team filter to service
+      } else if (req.user.role === 'EMPLOYEE' && req.user.employeeId) {
+        filters.employeeId = req.user.employeeId.toString();
+      }
     }
 
     const result = await timeEntryService.getTimeEntries(filters);
@@ -86,10 +98,12 @@ export const startTimer = async (req, res, next) => {
 
 export const stopTimer = async (req, res, next) => {
   try {
+    const markTaskComplete = req.query.markTaskComplete === 'true';
     const timer = await timeEntryService.stopTimer(
       req.params.id,
       req.user._id,
-      req.user.role
+      req.user.role,
+      markTaskComplete
     );
     return successResponse(res, 200, 'Timer stopped successfully', timer);
   } catch (error) {
@@ -114,6 +128,47 @@ export const getRunningTimer = async (req, res, next) => {
 
     const timer = await timeEntryService.getRunningTimer(employeeId);
     return successResponse(res, 200, 'Running timer retrieved successfully', timer || null);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const pauseTimer = async (req, res, next) => {
+  try {
+    const timer = await timeEntryService.pauseTimer(
+      req.params.id,
+      req.user._id,
+      req.user.role
+    );
+    return successResponse(res, 200, 'Timer paused successfully', timer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resumeTimer = async (req, res, next) => {
+  try {
+    const timer = await timeEntryService.resumeTimer(
+      req.params.id,
+      req.user._id,
+      req.user.role
+    );
+    return successResponse(res, 200, 'Timer resumed successfully', timer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const startTimerForTask = async (req, res, next) => {
+  try {
+    const { employeeId } = req.body;
+    const timer = await timeEntryService.startTimerForTask(
+      req.params.taskId,
+      employeeId,
+      req.user._id,
+      req.user.role
+    );
+    return successResponse(res, 201, 'Timer started for task successfully', timer);
   } catch (error) {
     next(error);
   }

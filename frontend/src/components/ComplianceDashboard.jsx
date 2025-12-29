@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
 import { Badge } from '@/ui/badge';
 import { useComplianceStatus } from '@/api/queries/clientQueries';
 import { formatDateDDMMYYYY } from '@/utils/dateFormat';
+import { LoaderWithText } from '@/components/Loader';
 
 const AlertCard = ({ alert }) => {
   const getIcon = () => {
@@ -67,8 +68,8 @@ export const ComplianceDashboard = ({ clientId }) => {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="p-12 text-center">
-          <p className="text-gray-500">Loading compliance status...</p>
+        <CardContent className="p-12">
+          <LoaderWithText text="Loading compliance status..." />
         </CardContent>
       </Card>
     );

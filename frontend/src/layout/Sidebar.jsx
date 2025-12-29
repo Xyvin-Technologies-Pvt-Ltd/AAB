@@ -11,25 +11,78 @@ import {
   X,
   Bell,
   Settings,
+  Users2,
 } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useUIStore } from "@/store/uiStore";
+import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
 
-const menuItems = [
-  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/clients", label: "Clients", icon: Users },
-  { path: "/alerts", label: "Alerts", icon: Bell },
-  { path: "/tasks", label: "Tasks", icon: CheckSquare },
-  { path: "/calendar", label: "Calendar", icon: Calendar },
-  { path: "/employees", label: "Employees", icon: UserCog },
-  { path: "/time-entries", label: "Time Entries", icon: Clock },
-  { path: "/analytics", label: "Analytics", icon: BarChart3 },
+const allMenuItems = [
+  {
+    path: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/clients",
+    label: "Clients",
+    icon: Users,
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/alerts",
+    label: "Alerts",
+    icon: Bell,
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/tasks",
+    label: "Tasks",
+    icon: CheckSquare,
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/calendar",
+    label: "Calendar",
+    icon: Calendar,
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/employees",
+    label: "Employees",
+    icon: UserCog,
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/time-entries",
+    label: "Time Entries",
+    icon: Clock,
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    roles: ["ADMIN", "MANAGER"],
+  },
+  { path: "/teams", label: "Teams", icon: Users2, roles: ["ADMIN"] },
 ];
 
 export const Sidebar = () => {
   const location = useLocation();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
+  const { user, canAccess } = useAuthStore();
+
+  // Filter menu items based on user role
+  const menuItems = allMenuItems.filter((item) => {
+    if (!user) return false;
+    return item.roles.includes(user.role);
+  });
+
+  // Check if user can access settings (ADMIN only)
+  const canAccessSettings = canAccess("settings", "view");
 
   return (
     <>
@@ -100,29 +153,31 @@ export const Sidebar = () => {
             })}
           </nav>
 
-          {/* Settings Section */}
-          <div className="p-4 border-t border-indigo-700">
-            <Link
-              to="/settings"
-              onClick={() => setSidebarOpen(false)}
-              className={cn(
-                "flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200",
-                location.pathname === "/settings"
-                  ? "bg-white text-indigo-900 shadow-lg"
-                  : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
-              )}
-            >
-              <Settings
+          {/* Settings Section - Only show for ADMIN */}
+          {canAccessSettings && (
+            <div className="p-4 border-t border-indigo-700">
+              <Link
+                to="/settings"
+                onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  "h-5 w-5",
+                  "flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200",
                   location.pathname === "/settings"
-                    ? "text-indigo-600"
-                    : "text-indigo-300"
+                    ? "bg-white text-indigo-900 shadow-lg"
+                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                 )}
-              />
-              <span className="font-medium">Settings</span>
-            </Link>
-          </div>
+              >
+                <Settings
+                  className={cn(
+                    "h-5 w-5",
+                    location.pathname === "/settings"
+                      ? "text-indigo-600"
+                      : "text-indigo-300"
+                  )}
+                />
+                <span className="font-medium">Settings</span>
+              </Link>
+            </div>
+          )}
         </div>
       </aside>
     </>

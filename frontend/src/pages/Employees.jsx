@@ -17,6 +17,7 @@ import { Avatar } from "@/components/Avatar";
 import { Plus, Pencil, Trash2, Eye, FileText, Upload, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
+import { LoaderWithText } from "@/components/Loader";
 
 export const Employees = () => {
   const [showForm, setShowForm] = useState(false);
@@ -251,9 +252,8 @@ export const Employees = () => {
 
         {isLoading ? (
           <Card>
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-              <p className="mt-3 text-xs text-gray-600">Loading...</p>
+            <div className="p-8">
+              <LoaderWithText text="Loading employees..." />
             </div>
           </Card>
         ) : (

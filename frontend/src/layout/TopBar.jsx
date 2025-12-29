@@ -3,7 +3,7 @@ import { LogOut, User, Lock, ChevronDown } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Avatar } from "@/components/Avatar";
 import { SidebarToggle } from "./Sidebar";
-import { TimeTracker } from "@/components/TimeTracker";
+import { CompactTimer } from "@/components/CompactTimer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,8 +34,8 @@ export const TopBar = () => {
         <div className="flex items-center justify-between px-4 py-3 gap-4">
           <SidebarToggle />
           <div className="flex-1" />
-          <div className="w-80">
-            <TimeTracker />
+          <div className="flex-1 max-w-md flex justify-end">
+            <CompactTimer />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -11,6 +11,7 @@ import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Button } from "@/ui/button";
 import { Card } from "@/ui/card";
+import { LoaderWithText } from "@/components/Loader";
 import {
   CalendarCheck,
   FileText,
@@ -248,7 +249,9 @@ export const Calendar = () => {
 
         {/* Calendar */}
         {isLoading ? (
-          <div className="text-center py-12">Loading calendar...</div>
+          <div className="py-12">
+            <LoaderWithText text="Loading calendar..." />
+          </div>
         ) : (
           <Card>
             <div className="p-4">

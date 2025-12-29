@@ -1,8 +1,9 @@
 import { Card, CardContent } from '@/ui/card';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { StatCardSkeleton } from './StatCardSkeleton';
 
-export const StatCard = ({ title, value, icon: Icon, gradient, trend, subtitle, to, onClick }) => {
+export const StatCard = ({ title, value, icon: Icon, gradient, trend, subtitle, to, onClick, isLoading }) => {
   const navigate = useNavigate();
   
   const handleClick = () => {
@@ -14,6 +15,10 @@ export const StatCard = ({ title, value, icon: Icon, gradient, trend, subtitle, 
   };
 
   const isClickable = to || onClick;
+
+  if (isLoading) {
+    return <StatCardSkeleton gradient={gradient} />;
+  }
 
   return (
     <Card 

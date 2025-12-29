@@ -1,89 +1,72 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AppLayout } from '@/layout/AppLayout';
-import { analyticsApi } from '@/api/analytics';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { AppLayout } from "@/layout/AppLayout";
+import { analyticsApi } from "@/api/analytics";
+import { formatCurrency } from "@/utils/currencyFormat";
+import { Badge } from "@/ui/badge";
+import { LoaderWithText } from "@/components/Loader";
 
 export const Analytics = () => {
-  const [activeTab, setActiveTab] = useState('packages');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [activeTab, setActiveTab] = useState("packages");
+  const navigate = useNavigate();
 
+  // Analytics queries - no filters, show overall data since start
   const { data: packageData, isLoading: packagesLoading } = useQuery({
-    queryKey: ['analytics', 'packages', startDate, endDate],
-    queryFn: () => analyticsApi.getPackageProfitability({ startDate, endDate }),
+    queryKey: ["analytics", "packages", "overall"],
+    queryFn: () => analyticsApi.getPackageProfitability({}),
   });
 
   const { data: clientData, isLoading: clientsLoading } = useQuery({
-    queryKey: ['analytics', 'clients', startDate, endDate],
-    queryFn: () => analyticsApi.getClientProfitability({ startDate, endDate }),
+    queryKey: ["analytics", "clients", "overall"],
+    queryFn: () => analyticsApi.getClientProfitability({}),
   });
 
   const { data: employeeData, isLoading: employeesLoading } = useQuery({
-    queryKey: ['analytics', 'employees', startDate, endDate],
-    queryFn: () => analyticsApi.getEmployeeUtilization({ startDate, endDate }),
+    queryKey: ["analytics", "employees", "overall"],
+    queryFn: () => analyticsApi.getEmployeeUtilization({}),
   });
 
-  const packages = packageData?.data || [];
-  const clients = clientData?.data || [];
-  const employees = employeeData?.data || [];
+  const packagesList = packageData?.data || [];
+  const clientsList = clientData?.data || [];
+  const employeesList = employeeData?.data || [];
 
   return (
     <AppLayout>
       <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold mb-6">Analytics</h1>
-
-        <div className="mb-6 bg-white p-4 rounded-lg shadow">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              />
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Analytics</h1>
         </div>
 
         <div className="bg-white rounded-lg shadow">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
               <button
-                onClick={() => setActiveTab('packages')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                  activeTab === 'packages'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                onClick={() => setActiveTab("packages")}
+                className={`py-3 px-4 text-xs font-medium border-b-2 ${
+                  activeTab === "packages"
+                    ? "border-indigo-500 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 Package Profitability
               </button>
               <button
-                onClick={() => setActiveTab('clients')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                  activeTab === 'clients'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                onClick={() => setActiveTab("clients")}
+                className={`py-3 px-4 text-xs font-medium border-b-2 ${
+                  activeTab === "clients"
+                    ? "border-indigo-500 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 Client Profitability
               </button>
               <button
-                onClick={() => setActiveTab('employees')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                  activeTab === 'employees'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                onClick={() => setActiveTab("employees")}
+                className={`py-3 px-4 text-xs font-medium border-b-2 ${
+                  activeTab === "employees"
+                    ? "border-indigo-500 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 Employee Utilization
@@ -91,198 +74,318 @@ export const Analytics = () => {
             </nav>
           </div>
 
-          <div className="p-6">
-            {activeTab === 'packages' && (
+          <div className="p-4">
+            {activeTab === "packages" && (
               <div>
                 {packagesLoading ? (
-                  <div>Loading...</div>
+                  <div className="py-8">
+                    <LoaderWithText text="Loading packages..." />
+                  </div>
+                ) : packagesList.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No data available
+                  </div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Package
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Client
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Revenue
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Cost
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Profit
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Margin %
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {packages.map((pkg) => (
-                        <tr key={pkg.packageId}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {pkg.packageName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {pkg.clientName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {pkg.revenue?.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {pkg.cost?.toFixed(2)}
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                              pkg.profit >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {pkg.profit?.toFixed(2)}
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                              pkg.margin >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {pkg.margin?.toFixed(2)}%
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Package
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Client
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Type
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Revenue (Overall)
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Cost (Overall)
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Profit (Overall)
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Margin %
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {packagesList.map((pkg) => {
+                          // Calculate overall totals since start
+                          const overallRevenue =
+                            pkg.totalCycleRevenue ||
+                            pkg.cycleRevenue ||
+                            pkg.revenue ||
+                            0;
+                          const overallCost =
+                            pkg.totalCycleCost ||
+                            pkg.cycleCost ||
+                            pkg.cost ||
+                            0;
+                          const overallProfit = overallRevenue - overallCost;
+                          const overallMargin =
+                            overallRevenue > 0
+                              ? (overallProfit / overallRevenue) * 100
+                              : 0;
+
+                          return (
+                            <tr
+                              key={pkg.packageId}
+                              onClick={() =>
+                                navigate(`/analytics/package/${pkg.packageId}`)
+                              }
+                              className="hover:bg-gray-50 cursor-pointer transition-colors"
+                            >
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <div className="text-xs font-medium text-gray-900">
+                                  {pkg.packageName}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                                {pkg.clientName}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <Badge
+                                  variant={
+                                    pkg.type === "RECURRING"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  className="text-[10px] px-1.5 py-0.5"
+                                >
+                                  {pkg.type === "RECURRING"
+                                    ? "Recurring"
+                                    : "One Time"}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                                {formatCurrency(overallRevenue)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                                {formatCurrency(overallCost)}
+                              </td>
+                              <td
+                                className={`px-3 py-2 whitespace-nowrap text-xs font-medium ${
+                                  overallProfit >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {formatCurrency(overallProfit)}
+                              </td>
+                              <td
+                                className={`px-3 py-2 whitespace-nowrap text-xs font-medium ${
+                                  overallMargin >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {overallMargin.toFixed(1)}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
 
-            {activeTab === 'clients' && (
+            {activeTab === "clients" && (
               <div>
                 {clientsLoading ? (
-                  <div>Loading...</div>
+                  <div className="py-8">
+                    <LoaderWithText text="Loading clients..." />
+                  </div>
+                ) : clientsList.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No data available
+                  </div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Client
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Packages
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Total Revenue
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Total Cost
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Total Profit
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Margin %
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {clients.map((client) => (
-                        <tr key={client.clientId}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {client.clientName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {client.packagesCount}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {client.totalRevenue?.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {client.totalCost?.toFixed(2)}
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                              client.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {client.totalProfit?.toFixed(2)}
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                              client.margin >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {client.margin?.toFixed(2)}%
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Client
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Packages
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Revenue (Overall)
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Cost (Overall)
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Profit (Overall)
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Margin %
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {clientsList.map((client) => {
+                          // Calculate overall totals
+                          const overallRevenue =
+                            client.totalCycleRevenue ||
+                            client.totalRevenue ||
+                            0;
+                          const overallCost =
+                            client.totalCycleCost || client.totalCost || 0;
+                          const overallProfit = overallRevenue - overallCost;
+                          const overallMargin =
+                            overallRevenue > 0
+                              ? (overallProfit / overallRevenue) * 100
+                              : 0;
+
+                          return (
+                            <tr
+                              key={client.clientId}
+                              onClick={() =>
+                                navigate(`/analytics/client/${client.clientId}`)
+                              }
+                              className="hover:bg-gray-50 cursor-pointer transition-colors"
+                            >
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                                {client.clientName}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                                {client.packagesCount || 0}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                                {formatCurrency(overallRevenue)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                                {formatCurrency(overallCost)}
+                              </td>
+                              <td
+                                className={`px-3 py-2 whitespace-nowrap text-xs font-medium ${
+                                  overallProfit >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {formatCurrency(overallProfit)}
+                              </td>
+                              <td
+                                className={`px-3 py-2 whitespace-nowrap text-xs font-medium ${
+                                  overallMargin >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {overallMargin.toFixed(1)}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
 
-            {activeTab === 'employees' && (
+            {activeTab === "employees" && (
               <div>
                 {employeesLoading ? (
-                  <div>Loading...</div>
+                  <div className="py-8">
+                    <LoaderWithText text="Loading employees..." />
+                  </div>
+                ) : employeesList.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No data available
+                  </div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Employee
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Hours Logged
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Available Hours
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Utilization %
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                          Cost Contribution
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {employees.map((emp) => (
-                        <tr key={emp.employeeId}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {emp.employeeName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {emp.hoursLogged}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {emp.monthlyWorkingHours}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
-                                <div
-                                  className={`h-2.5 rounded-full ${
-                                    emp.utilizationRate >= 80
-                                      ? 'bg-green-600'
-                                      : emp.utilizationRate >= 50
-                                      ? 'bg-yellow-500'
-                                      : 'bg-red-500'
-                                  }`}
-                                  style={{ width: `${Math.min(emp.utilizationRate, 100)}%` }}
-                                />
-                              </div>
-                              <span>{emp.utilizationRate}%</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {emp.costContribution?.toFixed(2)}
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Employee
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Monthly Salary
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Hourly Rate
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Hours Logged
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Utilization %
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                            Cost Contribution
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {employeesList.map((emp) => {
+                          return (
+                            <tr
+                              key={emp.employeeId}
+                              onClick={() =>
+                                navigate(
+                                  `/analytics/employee/${emp.employeeId}`
+                                )
+                              }
+                              className="hover:bg-gray-50 cursor-pointer transition-colors"
+                            >
+                              <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                                {emp.employeeName}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                                {formatCurrency(emp.monthlyCost)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                                {formatCurrency(emp.hourlyCost)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                                {(emp.hoursLogged || 0).toFixed(1)} hrs
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-16 bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className={`h-2 rounded-full ${
+                                        emp.utilizationRate >= 80
+                                          ? "bg-green-600"
+                                          : emp.utilizationRate >= 50
+                                          ? "bg-yellow-500"
+                                          : "bg-red-500"
+                                      }`}
+                                      style={{
+                                        width: `${Math.min(
+                                          emp.utilizationRate || 0,
+                                          100
+                                        )}%`,
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px]">
+                                    {(emp.utilizationRate || 0).toFixed(1)}%
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                                {formatCurrency(emp.costContribution || 0)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
@@ -292,4 +395,3 @@ export const Analytics = () => {
     </AppLayout>
   );
 };
-

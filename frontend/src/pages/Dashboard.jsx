@@ -23,22 +23,22 @@ export const Dashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  const { data: clientsData } = useQuery({
+  const { data: clientsData, isLoading: clientsLoading } = useQuery({
     queryKey: ["clients", "count"],
     queryFn: () => clientsApi.getAll({ limit: 1 }),
   });
 
-  const { data: packagesData } = useQuery({
+  const { data: packagesData, isLoading: packagesLoading } = useQuery({
     queryKey: ["packages", "count"],
     queryFn: () => packagesApi.getAll({ limit: 1, status: "ACTIVE" }),
   });
 
-  const { data: employeesData } = useQuery({
+  const { data: employeesData, isLoading: employeesLoading } = useQuery({
     queryKey: ["employees", "count"],
     queryFn: () => employeesApi.getAll({ limit: 1 }),
   });
 
-  const { data: tasksData } = useQuery({
+  const { data: tasksData, isLoading: tasksLoading } = useQuery({
     queryKey: ["tasks", "dashboard"],
     queryFn: () => tasksApi.getAll({ limit: 1000 }),
   });
@@ -52,7 +52,7 @@ export const Dashboard = () => {
   const nextYear = nextMonthDate.getFullYear();
 
   // Fetch alerts for both current and next month to get total count
-  const { data: currentMonthAlerts } = useQuery({
+  const { data: currentMonthAlerts, isLoading: currentAlertsLoading } = useQuery({
     queryKey: ["allAlerts", currentMonth, currentYear, "all"],
     queryFn: () => clientsApi.getAllAlerts({
       type: undefined,
@@ -62,7 +62,7 @@ export const Dashboard = () => {
     }),
   });
 
-  const { data: nextMonthAlerts } = useQuery({
+  const { data: nextMonthAlerts, isLoading: nextAlertsLoading } = useQuery({
     queryKey: ["allAlerts", nextMonth, nextYear, "all"],
     queryFn: () => clientsApi.getAllAlerts({
       type: undefined,
@@ -132,6 +132,7 @@ export const Dashboard = () => {
             icon={Users}
             gradient="bg-gradient-to-br from-blue-500 to-blue-600 text-white"
             to="/clients"
+            isLoading={clientsLoading}
           />
           <StatCard
             title="Active Packages"
@@ -139,6 +140,7 @@ export const Dashboard = () => {
             icon={Package}
             gradient="bg-gradient-to-br from-purple-500 to-purple-600 text-white"
             to="/packages"
+            isLoading={packagesLoading}
           />
           <StatCard
             title="Employees"
@@ -146,6 +148,7 @@ export const Dashboard = () => {
             icon={UserCog}
             gradient="bg-gradient-to-br from-green-500 to-green-600 text-white"
             to="/employees"
+            isLoading={employeesLoading}
           />
           <StatCard
             title="Alerts"
@@ -153,6 +156,7 @@ export const Dashboard = () => {
             icon={AlertCircle}
             gradient="bg-gradient-to-br from-orange-500 to-orange-600 text-white"
             to="/alerts"
+            isLoading={currentAlertsLoading || nextAlertsLoading}
           />
         </div>
 
@@ -165,9 +169,13 @@ export const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">
-                {taskStatusSummary.TODO}
-              </div>
+              {tasksLoading ? (
+                <div className="h-9 w-16 bg-white/20 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-white">
+                  {taskStatusSummary.TODO}
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 border-0">
@@ -177,9 +185,13 @@ export const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">
-                {taskStatusSummary.IN_PROGRESS}
-              </div>
+              {tasksLoading ? (
+                <div className="h-9 w-16 bg-white/20 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-white">
+                  {taskStatusSummary.IN_PROGRESS}
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-green-500 to-green-600 border-0">
@@ -189,9 +201,13 @@ export const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">
-                {taskStatusSummary.DONE}
-              </div>
+              {tasksLoading ? (
+                <div className="h-9 w-16 bg-white/20 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-white">
+                  {taskStatusSummary.DONE}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
