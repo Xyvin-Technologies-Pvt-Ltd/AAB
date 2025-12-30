@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Edit2, Trash2, User, FileText, Eye, Link, MoreVertical } from "lucide-react";
+import {
+  Edit2,
+  Trash2,
+  User,
+  FileText,
+  Eye,
+  Link,
+  MoreVertical,
+} from "lucide-react";
 import { Button } from "@/ui/button";
 import {
   Dialog,
@@ -202,7 +210,10 @@ export const PartnersManagers = ({
                           />
                         </div>
                       </td>
-                      <td className="px-2 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                      <td
+                        className="px-2 py-2 align-middle"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -319,7 +330,10 @@ export const PartnersManagers = ({
                           />
                         </div>
                       </td>
-                      <td className="px-2 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                      <td
+                        className="px-2 py-2 align-middle"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

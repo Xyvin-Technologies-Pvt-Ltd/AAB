@@ -43,12 +43,12 @@ export function getAvatarColor(initials) {
   if (!initials || initials === '?') {
     return avatarColors[0];
   }
-  
+
   // If we already have a color for these initials, return it
   if (initialsColorMap.has(initials)) {
     return initialsColorMap.get(initials);
   }
-  
+
   // Assign a color based on the initials hash
   // Use a simple hash function to consistently map initials to colors
   let hash = 0;
@@ -57,9 +57,9 @@ export function getAvatarColor(initials) {
   }
   const colorIndex = Math.abs(hash) % avatarColors.length;
   const color = avatarColors[colorIndex];
-  
+
   // Store the mapping
   initialsColorMap.set(initials, color);
-  
+
   return color;
 }

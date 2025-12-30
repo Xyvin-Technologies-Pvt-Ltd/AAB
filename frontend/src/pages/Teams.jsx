@@ -13,7 +13,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-import { Plus, Pencil, Trash2, Users, UserCheck, MoreVertical } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Users,
+  UserCheck,
+  MoreVertical,
+} from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { MultiSelect } from "@/ui/multi-select";
 import { LoaderWithText } from "@/components/Loader";
@@ -114,9 +121,7 @@ export const Teams = () => {
   const handleEdit = (team) => {
     setEditingTeam(team);
     setSelectedManagerId(team.managerId?._id || team.managerId || "");
-    setSelectedMembers(
-      team.members?.map((m) => m._id || m) || []
-    );
+    setSelectedMembers(team.members?.map((m) => m._id || m) || []);
     setShowForm(true);
   };
 
@@ -157,7 +162,9 @@ export const Teams = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Teams</h1>
-            <p className="text-gray-600 mt-1">Manage teams and assign managers</p>
+            <p className="text-gray-600 mt-1">
+              Manage teams and assign managers
+            </p>
           </div>
           <Button onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -251,7 +258,9 @@ export const Teams = () => {
                         </span>
                       )}
                       {(!team.members || team.members.length === 0) && (
-                        <span className="text-xs text-gray-400">No members</span>
+                        <span className="text-xs text-gray-400">
+                          No members
+                        </span>
                       )}
                     </div>
                   </div>
@@ -355,7 +364,9 @@ export const Teams = () => {
                 </label>
                 <select
                   name="isActive"
-                  defaultValue={editingTeam?.isActive !== false ? "true" : "false"}
+                  defaultValue={
+                    editingTeam?.isActive !== false ? "true" : "false"
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="true">Active</option>
@@ -374,7 +385,12 @@ export const Teams = () => {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                <Button
+                  type="submit"
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
+                >
                   {editingTeam ? "Update" : "Create"} Team
                 </Button>
               </DialogFooter>
@@ -385,4 +401,3 @@ export const Teams = () => {
     </AppLayout>
   );
 };
-

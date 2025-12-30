@@ -1,36 +1,36 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AppLayout } from '@/layout/AppLayout';
-import { servicesApi } from '@/api/services';
-import { activitiesApi } from '@/api/activities';
-import { Button } from '@/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/ui/tabs';
-import { Card } from '@/ui/card';
-import { Edit, Trash2, Search, MoreVertical } from 'lucide-react';
-import { LoaderWithText } from '@/components/Loader';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AppLayout } from "@/layout/AppLayout";
+import { servicesApi } from "@/api/services";
+import { activitiesApi } from "@/api/activities";
+import { Button } from "@/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/ui/tabs";
+import { Card } from "@/ui/card";
+import { Edit, Trash2, Search, MoreVertical } from "lucide-react";
+import { LoaderWithText } from "@/components/Loader";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/ui/dropdown-menu';
+} from "@/ui/dropdown-menu";
 
 const ServicesTab = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
   const { data: servicesData, isLoading } = useQuery({
-    queryKey: ['services'],
+    queryKey: ["services"],
     queryFn: () => servicesApi.getAll({ limit: 100 }),
   });
 
   const createMutation = useMutation({
     mutationFn: servicesApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services'] });
+      queryClient.invalidateQueries({ queryKey: ["services"] });
       setShowForm(false);
       resetForm();
     },
@@ -39,7 +39,7 @@ const ServicesTab = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => servicesApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services'] });
+      queryClient.invalidateQueries({ queryKey: ["services"] });
       setShowForm(false);
       setEditingService(null);
       resetForm();
@@ -49,7 +49,7 @@ const ServicesTab = () => {
   const deleteMutation = useMutation({
     mutationFn: servicesApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services'] });
+      queryClient.invalidateQueries({ queryKey: ["services"] });
     },
   });
 
@@ -63,7 +63,7 @@ const ServicesTab = () => {
   };
 
   const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this service?')) {
+    if (confirm("Are you sure you want to delete this service?")) {
       deleteMutation.mutate(id);
     }
   };
@@ -72,7 +72,7 @@ const ServicesTab = () => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = {
-      name: formData.get('name'),
+      name: formData.get("name"),
     };
 
     if (editingService) {
@@ -91,7 +91,9 @@ const ServicesTab = () => {
     <div>
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-bold">Services</h2>
-        <Button onClick={() => setShowForm(true)} size="sm">Add Service</Button>
+        <Button onClick={() => setShowForm(true)} size="sm">
+          Add Service
+        </Button>
       </div>
 
       {/* Search Bar */}
@@ -109,11 +111,13 @@ const ServicesTab = () => {
       {showForm && (
         <Card className="mb-3 p-4">
           <h3 className="text-base font-semibold mb-3">
-            {editingService ? 'Edit Service' : 'Add Service'}
+            {editingService ? "Edit Service" : "Add Service"}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Name
+              </label>
               <input
                 type="text"
                 name="name"
@@ -123,7 +127,9 @@ const ServicesTab = () => {
               />
             </div>
             <div className="flex gap-2">
-              <Button type="submit" size="sm">Save</Button>
+              <Button type="submit" size="sm">
+                Save
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -164,7 +170,10 @@ const ServicesTab = () => {
                     <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                       {service.name}
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-2 py-1.5 whitespace-nowrap text-xs font-medium"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -205,10 +214,13 @@ const ServicesTab = () => {
                 ))}
                 {filteredServices.length === 0 && (
                   <tr>
-                    <td colSpan="2" className="px-2 py-3 text-center text-xs text-gray-500">
+                    <td
+                      colSpan="2"
+                      className="px-2 py-3 text-center text-xs text-gray-500"
+                    >
                       {search
                         ? `No services found matching "${search}".`
-                        : 'No services found. Add your first service to get started.'}
+                        : "No services found. Add your first service to get started."}
                     </td>
                   </tr>
                 )}
@@ -224,18 +236,18 @@ const ServicesTab = () => {
 const ActivitiesTab = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
   const { data: activitiesData, isLoading } = useQuery({
-    queryKey: ['activities'],
+    queryKey: ["activities"],
     queryFn: () => activitiesApi.getAll({ limit: 100 }),
   });
 
   const createMutation = useMutation({
     mutationFn: activitiesApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
       setShowForm(false);
       resetForm();
     },
@@ -244,7 +256,7 @@ const ActivitiesTab = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => activitiesApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
       setShowForm(false);
       setEditingActivity(null);
       resetForm();
@@ -254,7 +266,7 @@ const ActivitiesTab = () => {
   const deleteMutation = useMutation({
     mutationFn: activitiesApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
     },
   });
 
@@ -268,7 +280,7 @@ const ActivitiesTab = () => {
   };
 
   const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this activity?')) {
+    if (confirm("Are you sure you want to delete this activity?")) {
       deleteMutation.mutate(id);
     }
   };
@@ -277,7 +289,7 @@ const ActivitiesTab = () => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = {
-      name: formData.get('name'),
+      name: formData.get("name"),
     };
 
     if (editingActivity) {
@@ -296,7 +308,9 @@ const ActivitiesTab = () => {
     <div>
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-bold">Activities</h2>
-        <Button onClick={() => setShowForm(true)} size="sm">Add Activity</Button>
+        <Button onClick={() => setShowForm(true)} size="sm">
+          Add Activity
+        </Button>
       </div>
 
       {/* Search Bar */}
@@ -314,11 +328,13 @@ const ActivitiesTab = () => {
       {showForm && (
         <Card className="mb-3 p-4">
           <h3 className="text-base font-semibold mb-3">
-            {editingActivity ? 'Edit Activity' : 'Add Activity'}
+            {editingActivity ? "Edit Activity" : "Add Activity"}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Name
+              </label>
               <input
                 type="text"
                 name="name"
@@ -328,7 +344,9 @@ const ActivitiesTab = () => {
               />
             </div>
             <div className="flex gap-2">
-              <Button type="submit" size="sm">Save</Button>
+              <Button type="submit" size="sm">
+                Save
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -369,7 +387,10 @@ const ActivitiesTab = () => {
                     <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                       {activity.name}
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-2 py-1.5 whitespace-nowrap text-xs font-medium"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -410,10 +431,13 @@ const ActivitiesTab = () => {
                 ))}
                 {filteredActivities.length === 0 && (
                   <tr>
-                    <td colSpan="2" className="px-2 py-3 text-center text-xs text-gray-500">
+                    <td
+                      colSpan="2"
+                      className="px-2 py-3 text-center text-xs text-gray-500"
+                    >
                       {search
                         ? `No activities found matching "${search}".`
-                        : 'No activities found. Add your first activity to get started.'}
+                        : "No activities found. Add your first activity to get started."}
                     </td>
                   </tr>
                 )}
@@ -447,4 +471,3 @@ export const Settings = () => {
     </AppLayout>
   );
 };
-

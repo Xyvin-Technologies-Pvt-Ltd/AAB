@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/ui/button";
-import { X, Search, Building2, Package, User, AlertCircle, CheckCircle, Calendar } from "lucide-react";
+import {
+  X,
+  Search,
+  Building2,
+  Package,
+  User,
+  AlertCircle,
+  CheckCircle,
+  Calendar,
+} from "lucide-react";
 import { SelectSearch } from "@/ui/select-search";
 
 export const TaskFilterDrawer = ({
@@ -202,7 +211,9 @@ export const TaskFilterDrawer = ({
                 <input
                   type="date"
                   value={localFilters.dateFrom || ""}
-                  onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("dateFrom", e.target.value)
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>

@@ -49,7 +49,7 @@ export const getClients = async (filters = {}) => {
       const clientId = typeof pkg.clientId === 'object' ? pkg.clientId._id : pkg.clientId;
       return clientId;
     });
-    
+
     if (clientIdsWithPackage.length > 0) {
       query._id = { $in: clientIdsWithPackage };
     } else {
@@ -69,7 +69,7 @@ export const getClients = async (filters = {}) => {
         return isNaN(parsed) ? null : parsed;
       })
       .filter((m) => m !== null && m >= 0 && m <= 11);
-    
+
     if (monthNumbers.length > 0) {
       allClients = allClients.filter((client) => {
         // Skip clients without business info or VAT tax periods
@@ -82,10 +82,10 @@ export const getClients = async (filters = {}) => {
         client.businessInfo.vatTaxPeriods.forEach((period) => {
           if (period && period.startDate) {
             try {
-              const startDate = period.startDate instanceof Date 
-                ? period.startDate 
+              const startDate = period.startDate instanceof Date
+                ? period.startDate
                 : new Date(period.startDate);
-              
+
               // Check if date is valid
               if (!isNaN(startDate.getTime())) {
                 const month = startDate.getMonth(); // 0-11
@@ -220,8 +220,8 @@ export const uploadDocumentByType = async (clientId, category, documentData, upl
   // For person documents (with personId), check if document exists for this category and person
   const existingDoc = personId
     ? client.documents.find(
-        (doc) => doc.category === category && doc.assignedToPerson?.toString() === personId.toString()
-      )
+      (doc) => doc.category === category && doc.assignedToPerson?.toString() === personId.toString()
+    )
     : client.documents.find((doc) => doc.category === category && !doc.assignedToPerson);
 
   if (existingDoc) {
@@ -433,7 +433,7 @@ export const removePerson = async (clientId, personId, role) => {
     const partnerDocs = client.documents.filter(
       doc => doc.assignedToPerson?.toString() === personId.toString()
     );
-    
+
     // Delete each document from S3
     const { deleteFile } = await import('../../helpers/s3Storage.js');
     for (const doc of partnerDocs) {
@@ -445,13 +445,13 @@ export const removePerson = async (clientId, personId, role) => {
       // Remove from documents array
       client.documents.pull(doc._id);
     }
-    
+
     // Remove the partner
     client.partners.pull(personId);
-    
+
   } else if (role === 'MANAGER') {
     const manager = client.managers.id(personId);
-    
+
     // Check if manager is linked to a partner
     if (manager && manager.linkedPartnerId) {
       // Just remove the manager, don't touch documents (they belong to the partner)
@@ -461,7 +461,7 @@ export const removePerson = async (clientId, personId, role) => {
       const managerDocs = client.documents.filter(
         doc => doc.assignedToPerson?.toString() === personId.toString()
       );
-      
+
       const { deleteFile } = await import('../../helpers/s3Storage.js');
       for (const doc of managerDocs) {
         try {
@@ -471,7 +471,7 @@ export const removePerson = async (clientId, personId, role) => {
         }
         client.documents.pull(doc._id);
       }
-      
+
       client.managers.pull(personId);
     }
   } else {
@@ -1291,7 +1291,7 @@ export const bulkCreateClientsFromCSV = async (fileBuffer) => {
 
         // Extract and map CSV columns to client data
         const clientName = normalizedRow['Client Name'] || normalizedRow['client name'] || normalizedRow['ClientName'] || '';
-        
+
         if (!clientName) {
           results.failed++;
           results.errors.push({
@@ -1322,22 +1322,22 @@ export const bulkCreateClientsFromCSV = async (fileBuffer) => {
           clientStatus = 'INACTIVE';
         }
 
-        const emaraTaxUsername = normalizedRow['Emara Tax User Name'] || 
-                                 normalizedRow['emara tax user name'] || 
-                                 normalizedRow['EmaraTaxUserName'] || 
-                                 normalizedRow['EmaraTax User Name'] || '';
-        
-        const emaraTaxPassword = normalizedRow['Password'] || 
-                                 normalizedRow['password'] || '';
+        const emaraTaxUsername = normalizedRow['Emara Tax User Name'] ||
+          normalizedRow['emara tax user name'] ||
+          normalizedRow['EmaraTaxUserName'] ||
+          normalizedRow['EmaraTax User Name'] || '';
 
-        const vatReturnMonth = normalizedRow['VAT Return Month'] || 
-                              normalizedRow['vat return month'] || 
-                              normalizedRow['VATReturnMonth'] || '';
+        const emaraTaxPassword = normalizedRow['Password'] ||
+          normalizedRow['password'] || '';
 
-        const packageName = normalizedRow['Package name'] || 
-                           normalizedRow['Package Name'] || 
-                           normalizedRow['package name'] || 
-                           normalizedRow['PackageName'] || '';
+        const vatReturnMonth = normalizedRow['VAT Return Month'] ||
+          normalizedRow['vat return month'] ||
+          normalizedRow['VATReturnMonth'] || '';
+
+        const packageName = normalizedRow['Package name'] ||
+          normalizedRow['Package Name'] ||
+          normalizedRow['package name'] ||
+          normalizedRow['PackageName'] || '';
 
         // Parse VAT return month
         const vatData = parseVATReturnMonth(vatReturnMonth);

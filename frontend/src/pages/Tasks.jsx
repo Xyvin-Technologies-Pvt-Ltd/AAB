@@ -75,7 +75,9 @@ export const Tasks = () => {
   const [showPackageForm, setShowPackageForm] = useState(false);
   const [packageType, setPackageType] = useState("RECURRING");
   const [packageSelectedServices, setPackageSelectedServices] = useState([]);
-  const [packageSelectedActivities, setPackageSelectedActivities] = useState([]);
+  const [packageSelectedActivities, setPackageSelectedActivities] = useState(
+    []
+  );
   const [templatePackageId, setTemplatePackageId] = useState("");
   const [packageTypeFilter, setPackageTypeFilter] = useState("");
   const packageFormRef = useRef(null);
@@ -108,13 +110,28 @@ export const Tasks = () => {
   });
 
   const { data: packagesData } = useQuery({
-    queryKey: ["packages", filters.clientId || selectedClientId || editingTask?.clientId?._id || editingTask?.clientId],
+    queryKey: [
+      "packages",
+      filters.clientId ||
+        selectedClientId ||
+        editingTask?.clientId?._id ||
+        editingTask?.clientId,
+    ],
     queryFn: () =>
       packagesApi.getAll({
-        clientId: filters.clientId || selectedClientId || editingTask?.clientId?._id || editingTask?.clientId,
+        clientId:
+          filters.clientId ||
+          selectedClientId ||
+          editingTask?.clientId?._id ||
+          editingTask?.clientId,
         limit: 100,
       }),
-    enabled: !!(filters.clientId || selectedClientId || editingTask?.clientId?._id || editingTask?.clientId),
+    enabled: !!(
+      filters.clientId ||
+      selectedClientId ||
+      editingTask?.clientId?._id ||
+      editingTask?.clientId
+    ),
   });
 
   const { data: employeesData } = useQuery({
@@ -146,7 +163,7 @@ export const Tasks = () => {
     if (!packageTypeFilter) return true;
     return pkg.type === packageTypeFilter;
   });
-  
+
   // Format packages for SelectSearch (include client name in display)
   const formattedTemplatePackages = filteredTemplatePackages.map((pkg) => ({
     _id: pkg._id,
@@ -161,31 +178,45 @@ export const Tasks = () => {
 
   // Get selected package to filter services and activities
   const selectedPackage = packages.find((pkg) => pkg._id === selectedPackageId);
-  const packageServiceIds = selectedPackage?.services?.map((s) => (typeof s === 'object' ? s._id : s)) || [];
-  const packageActivityIds = selectedPackage?.activities?.map((a) => (typeof a === 'object' ? a._id : a)) || [];
+  const packageServiceIds =
+    selectedPackage?.services?.map((s) =>
+      typeof s === "object" ? s._id : s
+    ) || [];
+  const packageActivityIds =
+    selectedPackage?.activities?.map((a) =>
+      typeof a === "object" ? a._id : a
+    ) || [];
 
   // Filter services and activities based on selected package
   // Use same pattern as ClientDetails.jsx which works correctly
-  const availableServices = servicesData?.data?.services || servicesData?.data || [];
-  const availableActivities = activitiesData?.data?.activities || activitiesData?.data || [];
-  
+  const availableServices =
+    servicesData?.data?.services || servicesData?.data || [];
+  const availableActivities =
+    activitiesData?.data?.activities || activitiesData?.data || [];
+
   // Debug: Log services data to help diagnose the issue
   useEffect(() => {
     if (showPackageForm) {
-      console.log('Package Form Open - Services Data:', {
+      console.log("Package Form Open - Services Data:", {
         servicesData,
         availableServices,
         servicesDataStructure: servicesData?.data,
-        servicesCount: availableServices.length
+        servicesCount: availableServices.length,
       });
-      console.log('Package Form Open - Activities Data:', {
+      console.log("Package Form Open - Activities Data:", {
         activitiesData,
         availableActivities,
         activitiesDataStructure: activitiesData?.data,
-        activitiesCount: availableActivities.length
+        activitiesCount: availableActivities.length,
       });
     }
-  }, [showPackageForm, servicesData, activitiesData, availableServices, availableActivities]);
+  }, [
+    showPackageForm,
+    servicesData,
+    activitiesData,
+    availableServices,
+    availableActivities,
+  ]);
   const filteredServices = selectedPackageId
     ? availableServices.filter((s) => packageServiceIds.includes(s._id))
     : availableServices;
@@ -309,7 +340,8 @@ export const Tasks = () => {
     onError: (error) => {
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to create package",
+        description:
+          error.response?.data?.message || "Failed to create package",
         type: "destructive",
       });
     },
@@ -335,10 +367,11 @@ export const Tasks = () => {
         const clientId = client._id?.toString() || client._id;
         return clientId === clientIdStr;
       });
-      
+
       // Update selectedClientId if client exists and it's different
       if (clientExists) {
-        const currentClientId = selectedClientId?.toString() || selectedClientId;
+        const currentClientId =
+          selectedClientId?.toString() || selectedClientId;
         if (currentClientId !== clientIdStr) {
           setSelectedClientId(clientIdStr);
         }
@@ -346,7 +379,8 @@ export const Tasks = () => {
       } else if (pendingClientId) {
         // Client not found yet, but keep the pending ID
         // This might happen if clients are still loading
-        const currentClientId = selectedClientId?.toString() || selectedClientId;
+        const currentClientId =
+          selectedClientId?.toString() || selectedClientId;
         if (currentClientId !== clientIdStr) {
           setSelectedClientId(clientIdStr);
         }
@@ -418,10 +452,14 @@ export const Tasks = () => {
     // Auto-fill form fields
     setPackageType(templatePackage.type || "RECURRING");
     setPackageSelectedServices(
-      templatePackage.services?.map((s) => (typeof s === "object" ? s._id : s)) || []
+      templatePackage.services?.map((s) =>
+        typeof s === "object" ? s._id : s
+      ) || []
     );
     setPackageSelectedActivities(
-      templatePackage.activities?.map((a) => (typeof a === "object" ? a._id : a)) || []
+      templatePackage.activities?.map((a) =>
+        typeof a === "object" ? a._id : a
+      ) || []
     );
 
     // Set form field values using the form reference
@@ -430,45 +468,70 @@ export const Tasks = () => {
       const nameInput = form.querySelector('[name="name"]');
       const contractValueInput = form.querySelector('[name="contractValue"]');
       const startDateInput = form.querySelector('[name="startDate"]');
-      const billingFrequencySelect = form.querySelector('[name="billingFrequency"]');
+      const billingFrequencySelect = form.querySelector(
+        '[name="billingFrequency"]'
+      );
       const statusSelect = form.querySelector('[name="status"]');
 
       if (nameInput) nameInput.value = templatePackage.name || "";
-      if (contractValueInput) contractValueInput.value = templatePackage.contractValue || "";
+      if (contractValueInput)
+        contractValueInput.value = templatePackage.contractValue || "";
       if (startDateInput) startDateInput.value = "";
-      if (billingFrequencySelect) billingFrequencySelect.value = templatePackage.billingFrequency || "";
+      if (billingFrequencySelect)
+        billingFrequencySelect.value = templatePackage.billingFrequency || "";
       if (statusSelect) statusSelect.value = templatePackage.status || "ACTIVE";
     }
   };
 
   const handleEdit = (task) => {
     setEditingTask(task);
-    
+
     // Extract and convert IDs to strings
-    const clientId = task.clientId?._id?.toString() || task.clientId?.toString() || task.clientId || "";
-    const packageId = task.packageId?._id?.toString() || task.packageId?.toString() || task.packageId || "";
-    
+    const clientId =
+      task.clientId?._id?.toString() ||
+      task.clientId?.toString() ||
+      task.clientId ||
+      "";
+    const packageId =
+      task.packageId?._id?.toString() ||
+      task.packageId?.toString() ||
+      task.packageId ||
+      "";
+
     // Handle both single employee (old format) and array (new format)
     const assignedEmployees = Array.isArray(task.assignedTo)
       ? task.assignedTo.map((emp) => {
           const empId = emp._id?.toString() || emp._id || emp;
-          return typeof empId === 'string' ? empId : empId?.toString() || empId;
+          return typeof empId === "string" ? empId : empId?.toString() || empId;
         })
       : task.assignedTo
-      ? [task.assignedTo._id?.toString() || task.assignedTo._id || task.assignedTo?.toString() || task.assignedTo]
+      ? [
+          task.assignedTo._id?.toString() ||
+            task.assignedTo._id ||
+            task.assignedTo?.toString() ||
+            task.assignedTo,
+        ]
       : [];
-    
+
     // Handle services and activities - convert to strings
-    const serviceIds = task.services?.map((s) => {
-      const serviceId = typeof s === 'object' ? (s._id?.toString() || s._id) : s;
-      return typeof serviceId === 'string' ? serviceId : serviceId?.toString() || serviceId;
-    }) || [];
-    
-    const activityIds = task.activities?.map((a) => {
-      const activityId = typeof a === 'object' ? (a._id?.toString() || a._id) : a;
-      return typeof activityId === 'string' ? activityId : activityId?.toString() || activityId;
-    }) || [];
-    
+    const serviceIds =
+      task.services?.map((s) => {
+        const serviceId =
+          typeof s === "object" ? s._id?.toString() || s._id : s;
+        return typeof serviceId === "string"
+          ? serviceId
+          : serviceId?.toString() || serviceId;
+      }) || [];
+
+    const activityIds =
+      task.activities?.map((a) => {
+        const activityId =
+          typeof a === "object" ? a._id?.toString() || a._id : a;
+        return typeof activityId === "string"
+          ? activityId
+          : activityId?.toString() || activityId;
+      }) || [];
+
     setSelectedClientId(clientId);
     setSelectedPackageId(packageId);
     setSelectedEmployees(assignedEmployees);
@@ -480,51 +543,74 @@ export const Tasks = () => {
   const handleCopy = (task) => {
     // Copy task data but reset status to TODO and remove _id
     setEditingTask(null); // Not editing, creating a new task
-    
+
     // Extract and convert IDs to strings
-    const clientId = task.clientId?._id?.toString() || task.clientId?.toString() || task.clientId || "";
-    const packageId = task.packageId?._id?.toString() || task.packageId?.toString() || task.packageId || "";
-    
+    const clientId =
+      task.clientId?._id?.toString() ||
+      task.clientId?.toString() ||
+      task.clientId ||
+      "";
+    const packageId =
+      task.packageId?._id?.toString() ||
+      task.packageId?.toString() ||
+      task.packageId ||
+      "";
+
     // Handle both single employee (old format) and array (new format)
     const assignedEmployees = Array.isArray(task.assignedTo)
       ? task.assignedTo.map((emp) => {
           const empId = emp._id?.toString() || emp._id || emp;
-          return typeof empId === 'string' ? empId : empId?.toString() || empId;
+          return typeof empId === "string" ? empId : empId?.toString() || empId;
         })
       : task.assignedTo
-      ? [task.assignedTo._id?.toString() || task.assignedTo._id || task.assignedTo?.toString() || task.assignedTo]
+      ? [
+          task.assignedTo._id?.toString() ||
+            task.assignedTo._id ||
+            task.assignedTo?.toString() ||
+            task.assignedTo,
+        ]
       : [];
-    
+
     // Handle services and activities - convert to strings
-    const serviceIds = task.services?.map((s) => {
-      const serviceId = typeof s === 'object' ? (s._id?.toString() || s._id) : s;
-      return typeof serviceId === 'string' ? serviceId : serviceId?.toString() || serviceId;
-    }) || [];
-    
-    const activityIds = task.activities?.map((a) => {
-      const activityId = typeof a === 'object' ? (a._id?.toString() || a._id) : a;
-      return typeof activityId === 'string' ? activityId : activityId?.toString() || activityId;
-    }) || [];
-    
+    const serviceIds =
+      task.services?.map((s) => {
+        const serviceId =
+          typeof s === "object" ? s._id?.toString() || s._id : s;
+        return typeof serviceId === "string"
+          ? serviceId
+          : serviceId?.toString() || serviceId;
+      }) || [];
+
+    const activityIds =
+      task.activities?.map((a) => {
+        const activityId =
+          typeof a === "object" ? a._id?.toString() || a._id : a;
+        return typeof activityId === "string"
+          ? activityId
+          : activityId?.toString() || activityId;
+      }) || [];
+
     setCopiedTaskData({
       name: `${task.name} (Copy)`,
       description: task.description || "",
       priority: task.priority || "MEDIUM",
-      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "",
+      dueDate: task.dueDate
+        ? new Date(task.dueDate).toISOString().split("T")[0]
+        : "",
     });
-    
+
     // Set pending client ID to be set after form opens and clients are loaded
     if (clientId) {
       setPendingClientId(clientId);
     }
-    
+
     // Set state values - ensure they're strings
     setSelectedClientId(clientId);
     setSelectedPackageId(packageId);
     setSelectedEmployees(assignedEmployees);
     setSelectedServices(serviceIds);
     setSelectedActivities(activityIds);
-    
+
     // Open form after state is set
     setShowForm(true);
   };
@@ -561,7 +647,8 @@ export const Tasks = () => {
       priority: formData.get("priority") || "MEDIUM",
       dueDate: formData.get("dueDate") || undefined,
       services: selectedServices.length > 0 ? selectedServices : undefined,
-      activities: selectedActivities.length > 0 ? selectedActivities : undefined,
+      activities:
+        selectedActivities.length > 0 ? selectedActivities : undefined,
     };
 
     if (editingTask) {
@@ -851,16 +938,18 @@ export const Tasks = () => {
             onTaskClick={handleTaskClick}
             onCopy={handleCopy}
             onStartTimer={(taskId) => {
-              const task = tasks.find(t => t._id === taskId);
+              const task = tasks.find((t) => t._id === taskId);
               return handleStartTimerForTask(taskId, task);
             }}
             onPauseTimer={handlePauseTimer}
             onResumeTimer={handleResumeTimer}
             onCompleteTimer={handleCompleteTimer}
             runningTimerId={
-              runningTimer?.taskId?._id?.toString() || 
-              runningTimer?.taskId?.toString() || 
-              (runningTimer?.taskId && typeof runningTimer.taskId === 'string' ? runningTimer.taskId : null)
+              runningTimer?.taskId?._id?.toString() ||
+              runningTimer?.taskId?.toString() ||
+              (runningTimer?.taskId && typeof runningTimer.taskId === "string"
+                ? runningTimer.taskId
+                : null)
             }
             isTimerRunning={isRunning && !isPaused}
             isTimerPaused={isPaused}
@@ -870,8 +959,7 @@ export const Tasks = () => {
             <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                  </th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider"></th>
                   <th
                     className="px-3 py-2 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("name")}
@@ -972,10 +1060,7 @@ export const Tasks = () => {
                         onClick={() => handleTaskClick(task)}
                       >
                         <td className="px-3 py-2">
-                          <Avatar
-                            name={task.name}
-                            size="sm"
-                          />
+                          <Avatar name={task.name} size="sm" />
                         </td>
                         <td className="px-3 py-2">
                           <div className="text-xs font-medium text-gray-900 truncate max-w-[200px]">
@@ -990,22 +1075,34 @@ export const Tasks = () => {
                         <td className="px-3 py-2 whitespace-nowrap">
                           <div className="flex items-center gap-1 text-xs text-gray-600">
                             <Building2 className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                            <span className="truncate max-w-[120px]">{task.clientId?.name || "-"}</span>
+                            <span className="truncate max-w-[120px]">
+                              {task.clientId?.name || "-"}
+                            </span>
                           </div>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                            {task.assignedTo && Array.isArray(task.assignedTo) ? (
+                            {task.assignedTo &&
+                            Array.isArray(task.assignedTo) ? (
                               task.assignedTo.length > 0 ? (
                                 <>
                                   <Avatar
-                                    src={task.assignedTo[0]?.profilePicture?.url}
-                                    name={task.assignedTo[0]?.name || task.assignedTo[0]?.email || ''}
+                                    src={
+                                      task.assignedTo[0]?.profilePicture?.url
+                                    }
+                                    name={
+                                      task.assignedTo[0]?.name ||
+                                      task.assignedTo[0]?.email ||
+                                      ""
+                                    }
                                     size="xs"
                                   />
                                   <span className="truncate max-w-[100px]">
-                                    {task.assignedTo[0]?.name || task.assignedTo[0]?.email || task.assignedTo[0]}
-                                    {task.assignedTo.length > 1 && ` +${task.assignedTo.length - 1}`}
+                                    {task.assignedTo[0]?.name ||
+                                      task.assignedTo[0]?.email ||
+                                      task.assignedTo[0]}
+                                    {task.assignedTo.length > 1 &&
+                                      ` +${task.assignedTo.length - 1}`}
                                   </span>
                                 </>
                               ) : (
@@ -1018,11 +1115,17 @@ export const Tasks = () => {
                               <>
                                 <Avatar
                                   src={task.assignedTo.profilePicture?.url}
-                                  name={task.assignedTo.name || task.assignedTo.email || ''}
+                                  name={
+                                    task.assignedTo.name ||
+                                    task.assignedTo.email ||
+                                    ""
+                                  }
                                   size="xs"
                                 />
                                 <span className="truncate max-w-[100px]">
-                                  {task.assignedTo.name || task.assignedTo.email || task.assignedTo}
+                                  {task.assignedTo.name ||
+                                    task.assignedTo.email ||
+                                    task.assignedTo}
                                 </span>
                               </>
                             ) : (
@@ -1042,7 +1145,9 @@ export const Tasks = () => {
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px]"
                                 >
                                   <Briefcase className="h-2.5 w-2.5" />
-                                  <span className="truncate max-w-[80px]">{service.name || service}</span>
+                                  <span className="truncate max-w-[80px]">
+                                    {service.name || service}
+                                  </span>
                                 </span>
                               ))}
                               {task.services.length > 1 && (
@@ -1058,15 +1163,19 @@ export const Tasks = () => {
                         <td className="px-3 py-2">
                           {task.activities && task.activities.length > 0 ? (
                             <div className="flex flex-wrap gap-0.5">
-                              {task.activities.slice(0, 1).map((activity, idx) => (
-                                <span
-                                  key={activity._id || activity || idx}
-                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px]"
-                                >
-                                  <Activity className="h-2.5 w-2.5" />
-                                  <span className="truncate max-w-[80px]">{activity.name || activity}</span>
-                                </span>
-                              ))}
+                              {task.activities
+                                .slice(0, 1)
+                                .map((activity, idx) => (
+                                  <span
+                                    key={activity._id || activity || idx}
+                                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px]"
+                                  >
+                                    <Activity className="h-2.5 w-2.5" />
+                                    <span className="truncate max-w-[80px]">
+                                      {activity.name || activity}
+                                    </span>
+                                  </span>
+                                ))}
                               {task.activities.length > 1 && (
                                 <span className="text-[10px] text-gray-500 px-1">
                                   +{task.activities.length - 1}
@@ -1098,13 +1207,17 @@ export const Tasks = () => {
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <div className="flex items-center gap-1 text-xs">
-                            <Calendar className={`h-3 w-3 flex-shrink-0 ${
-                              isOverdue ? "text-red-500" : "text-gray-400"
-                            }`} />
+                            <Calendar
+                              className={`h-3 w-3 flex-shrink-0 ${
+                                isOverdue ? "text-red-500" : "text-gray-400"
+                              }`}
+                            />
                             {task.dueDate ? (
                               <span
                                 className={
-                                  isOverdue ? "text-red-600 font-semibold" : "text-gray-600"
+                                  isOverdue
+                                    ? "text-red-600 font-semibold"
+                                    : "text-gray-600"
                                 }
                               >
                                 {format(new Date(task.dueDate), "MMM dd")}
@@ -1112,7 +1225,9 @@ export const Tasks = () => {
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
-                            {isOverdue && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                            {isOverdue && (
+                              <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                            )}
                           </div>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
@@ -1121,14 +1236,20 @@ export const Tasks = () => {
                             onClick={(e) => e.stopPropagation()}
                           >
                             {(() => {
-                              const taskIdStr = task._id?.toString() || task._id;
-                              const runningTaskIdStr = (
-                                runningTimer?.taskId?._id?.toString() || 
-                                runningTimer?.taskId?.toString() || 
-                                (runningTimer?.taskId && typeof runningTimer.taskId === 'string' ? runningTimer.taskId : null)
-                              );
-                              const isThisTaskRunning = runningTaskIdStr && taskIdStr && runningTaskIdStr === taskIdStr;
-                              
+                              const taskIdStr =
+                                task._id?.toString() || task._id;
+                              const runningTaskIdStr =
+                                runningTimer?.taskId?._id?.toString() ||
+                                runningTimer?.taskId?.toString() ||
+                                (runningTimer?.taskId &&
+                                typeof runningTimer.taskId === "string"
+                                  ? runningTimer.taskId
+                                  : null);
+                              const isThisTaskRunning =
+                                runningTaskIdStr &&
+                                taskIdStr &&
+                                runningTaskIdStr === taskIdStr;
+
                               if (isThisTaskRunning) {
                                 return (
                                   <>
@@ -1172,8 +1293,12 @@ export const Tasks = () => {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleStartTimerForTask(task._id, task)}
-                                    disabled={startTimerForTaskMutation.isPending}
+                                    onClick={() =>
+                                      handleStartTimerForTask(task._id, task)
+                                    }
+                                    disabled={
+                                      startTimerForTaskMutation.isPending
+                                    }
                                     className="h-6 w-6 p-0 text-emerald-600 hover:bg-emerald-50"
                                     title="Start Timer"
                                   >
@@ -1184,7 +1309,10 @@ export const Tasks = () => {
                             })()}
                           </div>
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                        <td
+                          className="px-3 py-2 whitespace-nowrap text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -1294,7 +1422,7 @@ export const Tasks = () => {
                       Client *
                     </label>
                     <SelectSearch
-                      key={`client-${selectedClientId || 'empty'}-${showForm}`}
+                      key={`client-${selectedClientId || "empty"}-${showForm}`}
                       options={clients}
                       value={selectedClientId}
                       onChange={(value) => {
@@ -1330,7 +1458,9 @@ export const Tasks = () => {
                       searchPlaceholder="Search packages..."
                       emptyMessage="No packages found"
                       disabled={!selectedClientId && !editingTask}
-                      onAddNew={selectedClientId ? handleCreatePackage : undefined}
+                      onAddNew={
+                        selectedClientId ? handleCreatePackage : undefined
+                      }
                       addNewLabel="Add Package"
                     />
                   </div>
@@ -1399,7 +1529,9 @@ export const Tasks = () => {
                     id="description"
                     name="description"
                     rows={3}
-                    defaultValue={copiedTaskData?.description || editingTask?.description}
+                    defaultValue={
+                      copiedTaskData?.description || editingTask?.description
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -1447,7 +1579,11 @@ export const Tasks = () => {
                     <select
                       id="priority"
                       name="priority"
-                      defaultValue={copiedTaskData?.priority || editingTask?.priority || "MEDIUM"}
+                      defaultValue={
+                        copiedTaskData?.priority ||
+                        editingTask?.priority ||
+                        "MEDIUM"
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="LOW">Low</option>
@@ -1520,7 +1656,10 @@ export const Tasks = () => {
             </DialogHeader>
             <form onSubmit={handleClientSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="clientName" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="clientName"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Name
                 </label>
                 <input
@@ -1531,7 +1670,10 @@ export const Tasks = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="contactPerson" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="contactPerson"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Contact Person
                 </label>
                 <input
@@ -1542,7 +1684,10 @@ export const Tasks = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="clientEmail" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="clientEmail"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Email
                 </label>
                 <input
@@ -1553,7 +1698,10 @@ export const Tasks = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="clientPhone" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="clientPhone"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Phone
                 </label>
                 <input
@@ -1564,7 +1712,10 @@ export const Tasks = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="clientStatus" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="clientStatus"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Status
                 </label>
                 <select
@@ -1586,10 +1737,7 @@ export const Tasks = () => {
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={createClientMutation.isPending}
-                >
+                <Button type="submit" disabled={createClientMutation.isPending}>
                   {createClientMutation.isPending ? "Creating..." : "Create"}
                 </Button>
               </DialogFooter>
@@ -1606,7 +1754,11 @@ export const Tasks = () => {
                 Fill in the details to create a new package for this client.
               </DialogDescription>
             </DialogHeader>
-            <form ref={packageFormRef} onSubmit={handlePackageSubmit} className="space-y-4">
+            <form
+              ref={packageFormRef}
+              onSubmit={handlePackageSubmit}
+              className="space-y-4"
+            >
               <div className="space-y-2">
                 <label
                   htmlFor="templatePackage"
@@ -1778,7 +1930,7 @@ export const Tasks = () => {
                 </div>
               </div>
               <DialogFooter>
-                  <Button
+                <Button
                   type="button"
                   variant="outline"
                   onClick={() => {

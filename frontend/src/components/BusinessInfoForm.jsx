@@ -88,80 +88,92 @@ const getVATCycleMonths = (businessInfo) => {
 };
 
 // Memoized FieldWrapper component to prevent unnecessary re-renders
-const FieldWrapper = memo(({ field, label, type = "text", showCopy = false, formData, isEditing, handleFieldChange, handleCopy, copiedField }) => {
-  const value = formData[field];
-  const displayValue =
-    type === "date" && value ? formatDateDDMonthYear(value) : value;
+const FieldWrapper = memo(
+  ({
+    field,
+    label,
+    type = "text",
+    showCopy = false,
+    formData,
+    isEditing,
+    handleFieldChange,
+    handleCopy,
+    copiedField,
+  }) => {
+    const value = formData[field];
+    const displayValue =
+      type === "date" && value ? formatDateDDMonthYear(value) : value;
 
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
-      {isEditing ? (
-        <>
-          {type === "textarea" ? (
-            <textarea
-              key={`textarea-${field}`}
-              value={formData[field] || ""}
-              onChange={(e) => handleFieldChange(field, e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              rows={3}
-            />
-          ) : type === "date" ? (
-            <input
-              key={`date-${field}`}
-              type="date"
-              value={
-                formData[field]
-                  ? new Date(formData[field]).toISOString().split("T")[0]
-                  : ""
-              }
-              onChange={(e) => handleFieldChange(field, e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          ) : type === "select" ? (
-            <select
-              key={`select-${field}`}
-              value={formData[field] || ""}
-              onChange={(e) => handleFieldChange(field, e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">Select</option>
-              <option value="MONTHLY">Monthly</option>
-              <option value="QUARTERLY">Quarterly</option>
-            </select>
-          ) : (
-            <input
-              key={`input-${field}`}
-              type={type}
-              value={formData[field] || ""}
-              onChange={(e) => handleFieldChange(field, e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          )}
-        </>
-      ) : (
-        <div className="px-3 py-2 text-sm text-gray-900 min-h-[36px] flex items-center justify-between bg-white border border-gray-200 rounded-lg">
-          <span className={!displayValue ? "text-gray-400" : ""}>
-            {displayValue || "Not set"}
-          </span>
-          {showCopy && displayValue && (
-            <button
-              onClick={() => handleCopy(value, label)}
-              className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors"
-              title="Copy to clipboard"
-            >
-              {copiedField === label ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4 text-gray-500 hover:text-gray-700" />
-              )}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-});
+    return (
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-gray-700">{label}</label>
+        {isEditing ? (
+          <>
+            {type === "textarea" ? (
+              <textarea
+                key={`textarea-${field}`}
+                value={formData[field] || ""}
+                onChange={(e) => handleFieldChange(field, e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                rows={3}
+              />
+            ) : type === "date" ? (
+              <input
+                key={`date-${field}`}
+                type="date"
+                value={
+                  formData[field]
+                    ? new Date(formData[field]).toISOString().split("T")[0]
+                    : ""
+                }
+                onChange={(e) => handleFieldChange(field, e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            ) : type === "select" ? (
+              <select
+                key={`select-${field}`}
+                value={formData[field] || ""}
+                onChange={(e) => handleFieldChange(field, e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Select</option>
+                <option value="MONTHLY">Monthly</option>
+                <option value="QUARTERLY">Quarterly</option>
+              </select>
+            ) : (
+              <input
+                key={`input-${field}`}
+                type={type}
+                value={formData[field] || ""}
+                onChange={(e) => handleFieldChange(field, e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            )}
+          </>
+        ) : (
+          <div className="px-3 py-2 text-sm text-gray-900 min-h-[36px] flex items-center justify-between bg-white border border-gray-200 rounded-lg">
+            <span className={!displayValue ? "text-gray-400" : ""}>
+              {displayValue || "Not set"}
+            </span>
+            {showCopy && displayValue && (
+              <button
+                onClick={() => handleCopy(value, label)}
+                className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Copy to clipboard"
+              >
+                {copiedField === label ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+                )}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
 
 FieldWrapper.displayName = "FieldWrapper";
 
