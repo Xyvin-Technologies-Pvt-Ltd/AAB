@@ -164,7 +164,7 @@ export const getTimeEntries = async (filters = {}) => {
   };
 };
 
-export const getTimeEntryById = async (timeEntryId) => {
+export const getTimeEntryById = async (timeEntryId, user = null) => {
   const timeEntry = await TimeEntry.findById(timeEntryId)
     .populate('employeeId', 'name monthlyCost monthlyWorkingHours')
     .populate('clientId', 'name')
@@ -174,6 +174,32 @@ export const getTimeEntryById = async (timeEntryId) => {
   if (!timeEntry) {
     throw new Error('Time entry not found');
   }
+
+  // Check access permissions if user is provided
+  if (user) {
+    if (user.role === 'ADMIN') {
+      // Admin can access all
+      return timeEntry;
+    }
+
+    const entryEmployeeId = timeEntry.employeeId?._id?.toString() || timeEntry.employeeId?.toString() || timeEntry.employeeId;
+
+    if (user.role === 'EMPLOYEE' && user.employeeId) {
+      // Employee can only access their own
+      if (entryEmployeeId !== user.employeeId.toString()) {
+        throw new Error('Access denied. You can only view your own time entries.');
+      }
+    } else if (user.role === 'MANAGER' && user.employeeId) {
+      // Manager can access their own + team members
+      const { getUserAccessibleEmployeeIds } = await import('../../middlewares/rbac.js');
+      const accessibleEmployeeIds = await getUserAccessibleEmployeeIds(user);
+      
+      if (!accessibleEmployeeIds.includes(entryEmployeeId)) {
+        throw new Error('Access denied. You can only view time entries for yourself and your team members.');
+      }
+    }
+  }
+
   return timeEntry;
 };
 
@@ -183,10 +209,11 @@ export const updateTimeEntry = async (timeEntryId, updateData, userId, userRole)
     throw new Error('Time entry not found');
   }
 
+  const User = (await import('../auth/auth.model.js')).default;
+  const user = await User.findById(userId);
+
   // If user is EMPLOYEE, ensure they can only update their own time
   if (userRole === 'EMPLOYEE') {
-    const User = (await import('../auth/auth.model.js')).default;
-    const user = await User.findById(userId);
     if (!user || !user.employeeId) {
       throw new Error('Employee record not found for user');
     }
@@ -198,6 +225,19 @@ export const updateTimeEntry = async (timeEntryId, updateData, userId, userRole)
     // Prevent employees from changing employeeId
     if (updateData.employeeId && updateData.employeeId !== currentEntry.employeeId.toString()) {
       throw new Error('Employees cannot change the employee ID');
+    }
+  } else if (userRole === 'MANAGER' && user && user.employeeId) {
+    // Manager can update their own + team members' entries
+    const { getUserAccessibleEmployeeIds } = await import('../../middlewares/rbac.js');
+    const accessibleEmployeeIds = await getUserAccessibleEmployeeIds(user);
+    
+    if (!accessibleEmployeeIds.includes(currentEntry.employeeId.toString())) {
+      throw new Error('You can only update time entries for yourself and your team members.');
+    }
+
+    // Prevent managers from changing employeeId to someone outside their team
+    if (updateData.employeeId && !accessibleEmployeeIds.includes(updateData.employeeId)) {
+      throw new Error('You can only assign time entries to yourself or your team members.');
     }
   }
 
@@ -244,16 +284,25 @@ export const deleteTimeEntry = async (timeEntryId, userId, userRole) => {
     throw new Error('Time entry not found');
   }
 
+  const User = (await import('../auth/auth.model.js')).default;
+  const user = await User.findById(userId);
+
   // If user is EMPLOYEE, ensure they can only delete their own time
   if (userRole === 'EMPLOYEE') {
-    const User = (await import('../auth/auth.model.js')).default;
-    const user = await User.findById(userId);
     if (!user || !user.employeeId) {
       throw new Error('Employee record not found for user');
     }
 
     if (timeEntry.employeeId.toString() !== user.employeeId.toString()) {
       throw new Error('Employees can only delete their own time entries');
+    }
+  } else if (userRole === 'MANAGER' && user && user.employeeId) {
+    // Manager can delete their own + team members' entries
+    const { getUserAccessibleEmployeeIds } = await import('../../middlewares/rbac.js');
+    const accessibleEmployeeIds = await getUserAccessibleEmployeeIds(user);
+    
+    if (!accessibleEmployeeIds.includes(timeEntry.employeeId.toString())) {
+      throw new Error('You can only delete time entries for yourself and your team members.');
     }
   }
 

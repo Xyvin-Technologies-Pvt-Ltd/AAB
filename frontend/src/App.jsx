@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from './ui/toast';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { Clients } from './pages/Clients';
 import { ClientDetails } from './pages/ClientDetails';
@@ -36,6 +38,8 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/dashboard"
               element={
@@ -79,7 +83,7 @@ function App() {
             <Route
               path="/employees"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <Employees />
                 </ProtectedRoute>
               }
@@ -87,7 +91,7 @@ function App() {
             <Route
               path="/employees/:id"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <EmployeeDetails />
                 </ProtectedRoute>
               }
@@ -103,7 +107,7 @@ function App() {
             <Route
               path="/analytics"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <Analytics />
                 </ProtectedRoute>
               }
@@ -111,7 +115,7 @@ function App() {
             <Route
               path="/analytics/package/:packageId"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <PackageAnalytics />
                 </ProtectedRoute>
               }
@@ -119,7 +123,7 @@ function App() {
             <Route
               path="/analytics/client/:clientId"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <ClientAnalytics />
                 </ProtectedRoute>
               }
@@ -127,7 +131,7 @@ function App() {
             <Route
               path="/analytics/employee/:employeeId"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <EmployeeAnalytics />
                 </ProtectedRoute>
               }

@@ -62,7 +62,7 @@ export const useAuthStore = create((set, get) => {
       const permissions = {
         analytics: {
           ADMIN: ['view', 'edit', 'delete'],
-          MANAGER: ['view'],
+          MANAGER: [],
           EMPLOYEE: [],
         },
         settings: {
@@ -82,13 +82,13 @@ export const useAuthStore = create((set, get) => {
         },
         employees: {
           ADMIN: ['view', 'edit', 'delete'],
-          MANAGER: ['view'],
-          EMPLOYEE: ['view'],
+          MANAGER: [],
+          EMPLOYEE: [],
         },
         teams: {
           ADMIN: ['view', 'edit', 'delete'],
-          MANAGER: ['view'],
-          EMPLOYEE: ['view'],
+          MANAGER: [],
+          EMPLOYEE: [],
         },
       };
 

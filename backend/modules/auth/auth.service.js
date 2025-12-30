@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import User from './auth.model.js';
 import Employee from '../employee/employee.model.js';
 import { jwtConfig } from '../../config/jwt.js';
+import { sendPasswordResetEmail } from '../../helpers/emailService.js';
 
 export const registerUser = async (userData) => {
   const { email, password, role, employeeId } = userData;
@@ -161,5 +163,65 @@ export const updateAccountDetails = async (userId, updateData, profileImageFile)
   } else {
     throw new Error('User does not have an associated employee record');
   }
+};
+
+export const forgotPassword = async (email) => {
+  // Find user by email
+  const user = await User.findOne({ email }).select('+resetPasswordToken +resetPasswordExpires');
+
+  if (!user) {
+    // Don't reveal if user exists or not for security
+    return { message: 'If an account with that email exists, a password reset link has been sent.' };
+  }
+
+  // Generate reset token
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+  // Set token expiration (1 hour)
+  user.resetPasswordToken = resetTokenHash;
+  user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+
+  await user.save({ validateBeforeSave: false });
+
+  // Send reset email with unhashed token
+  try {
+    await sendPasswordResetEmail(user.email, resetToken);
+    return { message: 'If an account with that email exists, a password reset link has been sent.' };
+  } catch (error) {
+    // If email fails, clear the token
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+    throw new Error('Error sending password reset email. Please try again later.');
+  }
+};
+
+export const resetPassword = async (token, newPassword) => {
+  // Hash the token to compare with stored hash
+  const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+  // Find user with valid token and not expired
+  const user = await User.findOne({
+    resetPasswordToken: resetTokenHash,
+    resetPasswordExpires: { $gt: Date.now() },
+  }).select('+password +resetPasswordToken +resetPasswordExpires');
+
+  if (!user) {
+    throw new Error('Invalid or expired reset token');
+  }
+
+  // Update password
+  user.password = newPassword;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+
+  await user.save();
+
+  return {
+    id: user._id,
+    email: user.email,
+    role: user.role,
+  };
 };
 

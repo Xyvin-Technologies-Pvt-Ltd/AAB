@@ -7,6 +7,8 @@ import {
     registerSchema,
     loginSchema,
     changePasswordSchema,
+    forgotPasswordSchema,
+    resetPasswordSchema,
 } from '../../validators/schemas/auth.schema.js';
 
 const router = express.Router();
@@ -14,6 +16,10 @@ const router = express.Router();
 // Public routes
 router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
+router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
+router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
 
 // Protected routes
 router.get('/me', authenticate, authController.getMe);

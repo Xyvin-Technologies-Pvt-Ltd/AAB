@@ -20,18 +20,18 @@ export const checkResourceAccess = (user, resource, action = 'view') => {
   const permissions = {
     analytics: {
       ADMIN: ['view', 'edit', 'delete'],
-      MANAGER: ['view'], // Managers can view team analytics
+      MANAGER: [], // Only admin can access analytics
       EMPLOYEE: [], // Employees cannot access analytics
     },
     settings: {
       ADMIN: ['view', 'edit', 'delete'],
-      MANAGER: [],
-      EMPLOYEE: [],
+      MANAGER: [], // Only admin can access settings
+      EMPLOYEE: [], // Only admin can access settings
     },
     timeEntries: {
       ADMIN: ['view', 'edit', 'delete'],
-      MANAGER: ['view'], // Managers can view team time entries
-      EMPLOYEE: ['view'], // Employees can view their own
+      MANAGER: ['view'], // Managers can view their own + team members' time entries
+      EMPLOYEE: ['view'], // Employees can view their own only
     },
     tasks: {
       ADMIN: ['view', 'edit', 'delete'],
@@ -45,8 +45,8 @@ export const checkResourceAccess = (user, resource, action = 'view') => {
     },
     teams: {
       ADMIN: ['view', 'edit', 'delete'],
-      MANAGER: ['view'], // Managers can view their teams
-      EMPLOYEE: ['view'], // Employees can view their teams
+      MANAGER: [], // Only admin can access teams
+      EMPLOYEE: [], // Only admin can access teams
     },
   };
 

@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "seed": "node seeds/index.js"
+    "seed": "node seeds/index.js",
+    "send-credentials": "node scripts/sendEmployeeCredentials.js",
+    "send-credentials:test": "node scripts/sendEmployeeCredentials.js"
   },
   "keywords": [],
   "author": "",
@@ -28,6 +30,7 @@
     "mongoose": "^8.0.3",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
+    "nodemailer": "^6.10.1",
     "openai": "^4.28.0",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.4.449",

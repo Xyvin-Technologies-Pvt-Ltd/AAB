@@ -5,27 +5,49 @@ Profitability and effort tracking platform backend built with Node.js, Express, 
 ## Setup
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Create a `.env` file in the backend directory:
+
 ```env
 NODE_ENV=development
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/accounting
 JWT_SECRET=your-secret-key-change-in-production
 JWT_EXPIRE=7d
+
+# AWS S3 Configuration
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-aws-access-key-id
+AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+AWS_S3_BUCKET_NAME=your-s3-bucket-name
+
+# Frontend URL
+FRONTEND_URL=http://localhost:5173
+
+# Email Configuration (SMTP)
+EMAIL_HOST=mail.aaccounting.me
+EMAIL_PORT=465
+EMAIL_USER=it@aaccounting.me
+EMAIL_PASS=your-email-password
+
+# Login URL for employee credentials email
+LOGIN_URL=https://erp.aaccounting.me
 ```
 
 3. Make sure MongoDB is running on your system.
 
 4. Seed the database with sample data:
+
 ```bash
 npm run seed
 ```
 
 5. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -35,11 +57,13 @@ The API will be available at `http://localhost:5000`
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/register` - Register a new user (Admin only)
 - `POST /api/auth/login` - Login user
 - `GET /api/auth/me` - Get current user
 
 ### Clients
+
 - `GET /api/clients` - Get all clients (with pagination, search, filters)
 - `GET /api/clients/:id` - Get client by ID
 - `POST /api/clients` - Create a new client
@@ -47,6 +71,7 @@ The API will be available at `http://localhost:5000`
 - `DELETE /api/clients/:id` - Delete client
 
 ### Employees
+
 - `GET /api/employees` - Get all employees
 - `GET /api/employees/:id` - Get employee by ID
 - `POST /api/employees` - Create a new employee
@@ -54,6 +79,7 @@ The API will be available at `http://localhost:5000`
 - `DELETE /api/employees/:id` - Delete employee
 
 ### Packages
+
 - `GET /api/packages` - Get all packages (with filters)
 - `GET /api/packages/:id` - Get package by ID
 - `POST /api/packages` - Create a new package
@@ -61,6 +87,7 @@ The API will be available at `http://localhost:5000`
 - `DELETE /api/packages/:id` - Delete package
 
 ### Tasks
+
 - `GET /api/tasks` - Get all tasks
 - `GET /api/tasks/:id` - Get task by ID
 - `POST /api/tasks` - Create a new task
@@ -68,6 +95,7 @@ The API will be available at `http://localhost:5000`
 - `DELETE /api/tasks/:id` - Delete task
 
 ### Time Entries
+
 - `GET /api/time-entries` - Get all time entries
 - `GET /api/time-entries/:id` - Get time entry by ID
 - `POST /api/time-entries` - Create a new time entry
@@ -75,6 +103,7 @@ The API will be available at `http://localhost:5000`
 - `DELETE /api/time-entries/:id` - Delete time entry
 
 ### Analytics (Read-Only)
+
 - `GET /api/analytics/packages` - Get package profitability
 - `GET /api/analytics/clients` - Get client profitability
 - `GET /api/analytics/employees` - Get employee utilization
@@ -82,6 +111,7 @@ The API will be available at `http://localhost:5000`
 ## Seed Data
 
 The seed script creates:
+
 - 1 Admin user (email: `admin@accounting.com`, password: `admin123`)
 - 5 Employee users with associated employee records
 - 10 Clients
@@ -126,4 +156,3 @@ backend/
 
 - **Cost Calculation**: Employee hourly cost = monthlyCost / monthlyWorkingHours
 - **Profitability**: Profit = Revenue - Cost, Margin = (Profit / Revenue) × 100
-

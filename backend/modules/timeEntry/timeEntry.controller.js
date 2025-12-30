@@ -53,7 +53,7 @@ export const getTimeEntries = async (req, res, next) => {
 
 export const getTimeEntryById = async (req, res, next) => {
   try {
-    const timeEntry = await timeEntryService.getTimeEntryById(req.params.id);
+    const timeEntry = await timeEntryService.getTimeEntryById(req.params.id, req.user);
     return successResponse(res, 200, 'Time entry retrieved successfully', timeEntry);
   } catch (error) {
     next(error);

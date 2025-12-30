@@ -1,14 +1,15 @@
 import express from 'express';
 import { validate } from '../../middlewares/validator.js';
-import { authenticate } from '../../middlewares/auth.js';
+import { authenticate, authorize } from '../../middlewares/auth.js';
 import { uploadSingle } from '../../middlewares/upload.js';
 import * as employeeController from './employee.controller.js';
 import { createEmployeeSchema, updateEmployeeSchema } from '../../validators/schemas/employee.schema.js';
 
 const router = express.Router();
 
-// All routes require authentication
+// All routes require authentication and admin role
 router.use(authenticate);
+router.use(authorize('ADMIN'));
 
 router.post('/', validate(createEmployeeSchema), employeeController.createEmployee);
 router.get('/', employeeController.getEmployees);

@@ -1,13 +1,14 @@
 import express from 'express';
-import { authenticate } from '../../middlewares/auth.js';
+import { authenticate, authorize } from '../../middlewares/auth.js';
 import * as analyticsController from './analytics.controller.js';
 
 const router = express.Router();
 
-// All routes require authentication
+// All routes require authentication and admin role
 router.use(authenticate);
+router.use(authorize('ADMIN'));
 
-// Read-only analytics endpoints
+// Read-only analytics endpoints (admin only)
 router.get('/packages', analyticsController.getPackageProfitability);
 router.get('/clients', analyticsController.getClientProfitability);
 router.get('/employees', analyticsController.getEmployeeUtilization);

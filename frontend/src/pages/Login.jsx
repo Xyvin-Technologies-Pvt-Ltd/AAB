@@ -1,12 +1,20 @@
-import { useState } from 'react';
-import { useLogin } from '@/hooks/useAuth';
-import { Button } from '@/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/ui/card';
-import { Eye, EyeOff, TrendingUp } from 'lucide-react';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useLogin } from "@/hooks/useAuth";
+import { Button } from "@/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/ui/card";
+import { Eye, EyeOff } from "lucide-react";
+import logoImg from "@/assets/Logo_1.png";
 
 export const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const loginMutation = useLogin();
@@ -23,12 +31,17 @@ export const Login = () => {
         <div className="absolute inset-0 bg-grid-pattern opacity-10" />
         <div className="relative z-10 flex flex-col justify-center items-center text-white p-12">
           <div className="mb-8">
-            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-xl">
-              <TrendingUp className="h-12 w-12 text-indigo-600" />
+            <div className="mb-6 flex justify-center">
+              <img
+                src={logoImg}
+                alt="Authentic Accounting"
+                className="h-20 object-contain"
+              />
             </div>
             <h1 className="text-4xl font-bold mb-4">Accounting Platform</h1>
             <p className="text-xl text-indigo-100">
-              Track profitability and manage your accounting operations efficiently
+              Track profitability and manage your accounting operations
+              efficiently
             </p>
           </div>
           <div className="mt-8 space-y-4">
@@ -53,12 +66,17 @@ export const Login = () => {
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-3xl font-bold">Welcome Back</CardTitle>
-            <CardDescription>Sign in to your account to continue</CardDescription>
+            <CardDescription>
+              Sign in to your account to continue
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="email"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Email address
                 </label>
                 <input
@@ -75,14 +93,17 @@ export const Login = () => {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="password"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Password
                 </label>
                 <div className="relative">
                   <input
                     id="password"
                     name="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     required
                     value={password}
@@ -95,7 +116,11 @@ export const Login = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -110,15 +135,19 @@ export const Login = () => {
                   />
                   <span className="text-sm text-gray-600">Remember me</span>
                 </label>
-                <a href="#" className="text-sm text-indigo-600 hover:text-indigo-800">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-indigo-600 hover:text-indigo-800"
+                >
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               {loginMutation.isError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-600">
-                    {loginMutation.error?.response?.data?.message || 'Login failed. Please try again.'}
+                    {loginMutation.error?.response?.data?.message ||
+                      "Login failed. Please try again."}
                   </p>
                 </div>
               )}
@@ -153,16 +182,9 @@ export const Login = () => {
                     Signing in...
                   </span>
                 ) : (
-                  'Sign in'
+                  "Sign in"
                 )}
               </Button>
-
-              <div className="text-center text-sm text-gray-600">
-                <p>
-                  Demo credentials: <span className="font-semibold">admin@accounting.com</span> /{' '}
-                  <span className="font-semibold">admin123</span>
-                </p>
-              </div>
             </form>
           </CardContent>
         </Card>

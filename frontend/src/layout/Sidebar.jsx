@@ -10,13 +10,14 @@ import {
   Menu,
   X,
   Bell,
-  Settings,
   Users2,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useUIStore } from "@/store/uiStore";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
+import logoImg from "@/assets/Logo_1.png";
 
 const allMenuItems = [
   {
@@ -53,7 +54,7 @@ const allMenuItems = [
     path: "/employees",
     label: "Employees",
     icon: UserCog,
-    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+    roles: ["ADMIN"],
   },
   {
     path: "/time-entries",
@@ -73,7 +74,7 @@ const allMenuItems = [
 export const Sidebar = () => {
   const location = useLocation();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
-  const { user, canAccess } = useAuthStore();
+  const { user, logout } = useAuthStore();
 
   // Filter menu items based on user role
   const menuItems = allMenuItems.filter((item) => {
@@ -81,8 +82,10 @@ export const Sidebar = () => {
     return item.roles.includes(user.role);
   });
 
-  // Check if user can access settings (ADMIN only)
-  const canAccessSettings = canAccess("settings", "view");
+  const handleLogout = () => {
+    logout();
+    window.location.href = "/login";
+  };
 
   return (
     <>
@@ -105,14 +108,8 @@ export const Sidebar = () => {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-indigo-700">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-indigo-600 font-bold text-lg">A</span>
-              </div>
-              <div>
-                <h1 className="text-lg font-bold">Accounting</h1>
-                <p className="text-xs text-indigo-300">Platform</p>
-              </div>
+            <div className="flex items-center space-x-3">
+              <img src={logoImg} alt="Authentic Accounting" className="h-10 object-contain" />
             </div>
             <Button
               variant="ghost"
@@ -153,31 +150,16 @@ export const Sidebar = () => {
             })}
           </nav>
 
-          {/* Settings Section - Only show for ADMIN */}
-          {canAccessSettings && (
-            <div className="p-4 border-t border-indigo-700">
-              <Link
-                to="/settings"
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200",
-                  location.pathname === "/settings"
-                    ? "bg-white text-indigo-900 shadow-lg"
-                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
-                )}
-              >
-                <Settings
-                  className={cn(
-                    "h-5 w-5",
-                    location.pathname === "/settings"
-                      ? "text-indigo-600"
-                      : "text-indigo-300"
-                  )}
-                />
-                <span className="font-medium">Settings</span>
-              </Link>
-            </div>
-          )}
+          {/* Logout Section */}
+          <div className="p-4 border-t border-indigo-700">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 text-indigo-100 hover:bg-indigo-700 hover:text-white"
+            >
+              <LogOut className="h-5 w-5 text-indigo-300" />
+              <span className="font-medium">Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
     </>

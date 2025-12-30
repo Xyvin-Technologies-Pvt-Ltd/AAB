@@ -73,6 +73,11 @@ jobs:
           AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}
         run: |
           # Create deployment script
           cat > deploy-backend.sh << 'DEPLOY_SCRIPT'
@@ -91,6 +96,11 @@ jobs:
           FRONTEND_URL="${10}"
           OPENAI_API_KEY="${11}"
           ENCRYPTION_KEY="${12}"
+          EMAIL_HOST="${13}"
+          EMAIL_PORT="${14}"
+          EMAIL_USER="${15}"
+          EMAIL_PASS="${16}"
+          LOGIN_URL="${17}"
           
           # Login to ECR
           aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
@@ -119,6 +129,11 @@ jobs:
             -e FRONTEND_URL="${FRONTEND_URL}" \
             -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
             -e ENCRYPTION_KEY="${ENCRYPTION_KEY}" \
+            -e EMAIL_HOST="${EMAIL_HOST}" \
+            -e EMAIL_PORT="${EMAIL_PORT}" \
+            -e EMAIL_USER="${EMAIL_USER}" \
+            -e EMAIL_PASS="${EMAIL_PASS}" \
+            -e LOGIN_URL="${LOGIN_URL}" \
             ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
           
           # Wait for container to be healthy
@@ -162,7 +177,12 @@ jobs:
             '${{ secrets.AWS_S3_BUCKET_NAME }}' \
             '${{ secrets.FRONTEND_URL }}' \
             '${{ secrets.OPENAI_API_KEY }}' \
-            '${{ secrets.ENCRYPTION_KEY }}'"
+            '${{ secrets.ENCRYPTION_KEY }}' \
+            '${{ secrets.EMAIL_HOST }}' \
+            '${{ secrets.EMAIL_PORT }}' \
+            '${{ secrets.EMAIL_USER }}' \
+            '${{ secrets.EMAIL_PASS }}' \
+            '${{ secrets.LOGIN_URL }}'"
           rm deploy-backend.sh
 
       - name: Verify Deployment

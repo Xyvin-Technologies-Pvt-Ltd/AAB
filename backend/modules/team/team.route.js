@@ -8,16 +8,19 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Get teams - accessible to all authenticated users
+// All team routes are admin-only
+router.use(authorize('ADMIN'));
+
+// Get teams - admin only
 router.get('/', teamController.getTeams);
 
-// Get team by ID - accessible to all authenticated users
+// Get team by ID - admin only
 router.get('/:id', teamController.getTeamById);
 
-// Get teams by manager - accessible to all authenticated users
+// Get teams by manager - admin only
 router.get('/manager/:managerId', teamController.getTeamsByManager);
 
-// Get teams by member - accessible to all authenticated users
+// Get teams by member - admin only
 router.get('/member/:employeeId', teamController.getTeamsByMember);
 
 // Create, update, delete - ADMIN only

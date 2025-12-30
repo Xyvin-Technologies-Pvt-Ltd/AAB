@@ -6,13 +6,7 @@ import { employeesApi } from "@/api/employees";
 import { tasksApi } from "@/api/tasks";
 import { StatCard } from "@/components/StatCard";
 import { DashboardGraphs } from "@/components/DashboardGraphs";
-import {
-  Users,
-  Package,
-  UserCog,
-  Calendar,
-  AlertCircle,
-} from "lucide-react";
+import { Users, Package, UserCog, Calendar, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import { Button } from "@/ui/button";
 import { useAuthStore } from "@/store/authStore";
@@ -22,6 +16,26 @@ import { useNavigate } from "react-router-dom";
 export const Dashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+
+  // Get first name from employee name and capitalize first letter
+  const getFirstName = () => {
+    const fullName = user?.employeeId?.name || user?.name;
+    if (fullName) {
+      const firstName = fullName.split(" ")[0];
+      return (
+        firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()
+      );
+    }
+    const emailName = user?.email?.split("@")[0];
+    if (emailName) {
+      return (
+        emailName.charAt(0).toUpperCase() + emailName.slice(1).toLowerCase()
+      );
+    }
+    return "User";
+  };
+
+  const firstName = getFirstName();
 
   const { data: clientsData, isLoading: clientsLoading } = useQuery({
     queryKey: ["clients", "count"],
@@ -52,24 +66,27 @@ export const Dashboard = () => {
   const nextYear = nextMonthDate.getFullYear();
 
   // Fetch alerts for both current and next month to get total count
-  const { data: currentMonthAlerts, isLoading: currentAlertsLoading } = useQuery({
-    queryKey: ["allAlerts", currentMonth, currentYear, "all"],
-    queryFn: () => clientsApi.getAllAlerts({
-      type: undefined,
-      severity: undefined,
-      month: currentMonth,
-      year: currentYear,
-    }),
-  });
+  const { data: currentMonthAlerts, isLoading: currentAlertsLoading } =
+    useQuery({
+      queryKey: ["allAlerts", currentMonth, currentYear, "all"],
+      queryFn: () =>
+        clientsApi.getAllAlerts({
+          type: undefined,
+          severity: undefined,
+          month: currentMonth,
+          year: currentYear,
+        }),
+    });
 
   const { data: nextMonthAlerts, isLoading: nextAlertsLoading } = useQuery({
     queryKey: ["allAlerts", nextMonth, nextYear, "all"],
-    queryFn: () => clientsApi.getAllAlerts({
-      type: undefined,
-      severity: undefined,
-      month: nextMonth,
-      year: nextYear,
-    }),
+    queryFn: () =>
+      clientsApi.getAllAlerts({
+        type: undefined,
+        severity: undefined,
+        month: nextMonth,
+        year: nextYear,
+      }),
   });
 
   const totalClients = clientsData?.data?.pagination?.total || 0;
@@ -82,7 +99,11 @@ export const Dashboard = () => {
   const currentDeadlines = currentMonthAlerts?.data?.deadlines || [];
   const nextAlerts = nextMonthAlerts?.data?.alerts || [];
   const nextDeadlines = nextMonthAlerts?.data?.deadlines || [];
-  const totalAlerts = currentAlerts.length + currentDeadlines.length + nextAlerts.length + nextDeadlines.length;
+  const totalAlerts =
+    currentAlerts.length +
+    currentDeadlines.length +
+    nextAlerts.length +
+    nextDeadlines.length;
 
   // Filter overdue tasks
   const overdueTasks = allTasks.filter(
@@ -117,7 +138,7 @@ export const Dashboard = () => {
         {/* Welcome Section */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user?.email?.split("@")[0] || "User"}!
+            Welcome back, {firstName}!
           </h1>
           <p className="text-gray-600 mt-1">
             Here's what's happening with your accounting platform today.
@@ -337,7 +358,6 @@ export const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
-
       </div>
     </AppLayout>
   );

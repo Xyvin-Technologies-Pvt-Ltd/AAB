@@ -1,7 +1,71 @@
 import Employee from './employee.model.js';
+import User from '../auth/auth.model.js';
+import { sendWelcomeEmail } from '../../helpers/emailService.js';
+import crypto from 'crypto';
+
+/**
+ * Generate a secure random password
+ * @returns {string} - Random password
+ */
+const generatePassword = () => {
+  // Generate 12 character password with uppercase, lowercase, numbers, and special chars
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const special = '!@#$%^&*';
+  const allChars = uppercase + lowercase + numbers + special;
+
+  let password = '';
+  // Ensure at least one of each type
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+
+  // Fill the rest randomly
+  for (let i = password.length; i < 12; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  // Shuffle the password
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+};
 
 export const createEmployee = async (employeeData) => {
   const employee = await Employee.create(employeeData);
+
+  // If employee has an email, create a user account with auto-generated password
+  if (employee.email) {
+    // Check if user already exists with this email
+    const existingUser = await User.findOne({ email: employee.email });
+    if (existingUser) {
+      // User already exists, just link the employeeId if not already linked
+      if (!existingUser.employeeId) {
+        existingUser.employeeId = employee._id;
+        await existingUser.save();
+      }
+    } else {
+      // Generate secure password
+      const generatedPassword = generatePassword();
+
+      // Create user account
+      const user = await User.create({
+        email: employee.email,
+        password: generatedPassword,
+        role: employeeData.role || 'EMPLOYEE',
+        employeeId: employee._id,
+      });
+
+      // Send welcome email with credentials
+      try {
+        await sendWelcomeEmail(employee.email, generatedPassword, employee.name);
+      } catch (error) {
+        // Log error but don't fail employee creation
+        console.error('Error sending welcome email:', error);
+      }
+    }
+  }
+
   return employee;
 };
 

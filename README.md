@@ -9,7 +9,7 @@ An internal profitability and effort-tracking platform for accounting firms. Thi
 - **Task Management**: Organize tasks within packages
 - **Employee Management**: Track employee costs and working hours
 - **Time Entry Logging**: Log time spent on tasks by employees
-- **Profitability Analytics**: 
+- **Profitability Analytics**:
   - Package-level profitability analysis
   - Client-level aggregated profitability
   - Employee utilization metrics
@@ -17,6 +17,7 @@ An internal profitability and effort-tracking platform for accounting firms. Thi
 ## Technology Stack
 
 ### Backend
+
 - Node.js (JavaScript)
 - Express.js
 - MongoDB with Mongoose
@@ -25,6 +26,7 @@ An internal profitability and effort-tracking platform for accounting firms. Thi
 - Winston Logging
 
 ### Frontend
+
 - React 19
 - Vite
 - Tailwind CSS
@@ -36,36 +38,60 @@ An internal profitability and effort-tracking platform for accounting firms. Thi
 ## Quick Start
 
 ### Prerequisites
+
 - Node.js (v18 or higher)
 - MongoDB (running locally or connection string)
 
 ### Backend Setup
 
 1. Navigate to backend directory:
+
 ```bash
 cd backend
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Create `.env` file:
+
 ```env
 NODE_ENV=development
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/accounting
 JWT_SECRET=your-secret-key-change-in-production
 JWT_EXPIRE=7d
+
+# AWS S3 Configuration
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-aws-access-key-id
+AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+AWS_S3_BUCKET_NAME=your-s3-bucket-name
+
+# Frontend URL
+FRONTEND_URL=http://localhost:5173
+
+# Email Configuration (SMTP)
+EMAIL_HOST=mail.aaccounting.me
+EMAIL_PORT=465
+EMAIL_USER=it@aaccounting.me
+EMAIL_PASS=your-email-password
+
+# Login URL for employee credentials email
+LOGIN_URL=https://erp.aaccounting.me
 ```
 
 4. Seed the database:
+
 ```bash
 npm run seed
 ```
 
 5. Start the server:
+
 ```bash
 npm run dev
 ```
@@ -73,21 +99,25 @@ npm run dev
 ### Frontend Setup
 
 1. Navigate to frontend directory:
+
 ```bash
 cd frontend
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Create `.env` file:
+
 ```env
 VITE_API_URL=http://localhost:5000/api
 ```
 
 4. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -97,6 +127,7 @@ npm run dev
 ## Default Credentials
 
 After seeding:
+
 - **Admin**: `admin@accounting.com` / `admin123`
 - **Employee**: `ahmed@accounting.com` / `employee123`
 
@@ -121,6 +152,7 @@ AAcounting/
 ## Key Business Rules
 
 1. **Revenue Normalization**: All revenue is normalized to monthly equivalent
+
    - MONTHLY → value
    - QUARTERLY → value / 3
    - YEARLY → value / 12
@@ -128,11 +160,12 @@ AAcounting/
 
 2. **Cost Calculation**: Employee hourly cost = monthlyCost / monthlyWorkingHours
 
-3. **Profitability**: 
+3. **Profitability**:
+
    - Profit = Monthly Revenue - Monthly Cost
    - Margin % = (Profit / Revenue) × 100
 
-4. **Access Control**: 
+4. **Access Control**:
    - Employees can only log/edit their own time entries
    - Admins have full access
 
@@ -149,4 +182,3 @@ See `backend/README.md` for detailed API endpoint documentation.
 ## License
 
 Internal use only.
-

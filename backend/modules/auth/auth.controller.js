@@ -78,3 +78,23 @@ export const updateAccountDetails = async (req, res, next) => {
   }
 };
 
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const result = await authService.forgotPassword(email);
+    return successResponse(res, 200, result.message, null);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    const result = await authService.resetPassword(token, newPassword);
+    return successResponse(res, 200, 'Password reset successfully', result);
+  } catch (error) {
+    next(error);
+  }
+};
+
