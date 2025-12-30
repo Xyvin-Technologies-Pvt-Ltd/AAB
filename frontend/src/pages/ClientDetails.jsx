@@ -34,6 +34,8 @@ import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 import { Badge } from "@/ui/badge";
 import { useBusinessInfoUpdate } from "@/api/queries/clientQueries";
 import { LoaderWithText } from "@/components/Loader";
+import { Pagination } from "@/components/Pagination";
+import { SearchInput } from "@/components/SearchInput";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +51,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
+import { SelectSearch } from "@/ui/select-search";
 
 export const ClientDetails = () => {
   const { id } = useParams();
@@ -63,8 +66,12 @@ export const ClientDetails = () => {
   const [stillActive, setStillActive] = useState(true);
   const [packageType, setPackageType] = useState("RECURRING");
   const [templatePackageId, setTemplatePackageId] = useState("");
+  const [packageTypeFilter, setPackageTypeFilter] = useState("");
   const packageFormRef = useRef(null);
   const [isEditingContact, setIsEditingContact] = useState(false);
+  const [packageSearch, setPackageSearch] = useState("");
+  const [packagePage, setPackagePage] = useState(1);
+  const packageLimit = 5;
   const [contactFormData, setContactFormData] = useState({
     name: "",
     contactPerson: "",
@@ -110,8 +117,45 @@ export const ClientDetails = () => {
 
   const allPackages = allPackagesData?.data?.packages || [];
 
+  // Filter packages by type for template selection
+  const filteredTemplatePackages = allPackages.filter((pkg) => {
+    if (!packageTypeFilter) return true;
+    return pkg.type === packageTypeFilter;
+  });
+
+  // Format packages for SelectSearch (include client name in display)
+  const formattedTemplatePackages = filteredTemplatePackages.map((pkg) => ({
+    _id: pkg._id,
+    name: `${pkg.name}${pkg.clientId?.name ? ` (${pkg.clientId.name})` : ""}`,
+  }));
+
   const client = clientData?.data;
-  const packages = packagesData?.data?.packages || [];
+  const clientPackages = packagesData?.data?.packages || [];
+
+  // Client-side filtering and pagination for packages
+  const filteredPackages = clientPackages.filter((pkg) => {
+    if (!packageSearch) return true;
+    const searchLower = packageSearch.toLowerCase();
+    return (
+      pkg.name?.toLowerCase().includes(searchLower) ||
+      pkg.type?.toLowerCase().includes(searchLower) ||
+      pkg.status?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const packageTotal = filteredPackages.length;
+  const packageSkip = (packagePage - 1) * packageLimit;
+  const packages = filteredPackages.slice(
+    packageSkip,
+    packageSkip + packageLimit
+  );
+  const packagePagination = {
+    page: packagePage,
+    limit: packageLimit,
+    total: packageTotal,
+    pages: Math.ceil(packageTotal / packageLimit),
+  };
+
   const services = servicesData?.data?.services || servicesData?.data || [];
   const activities =
     activitiesData?.data?.activities || activitiesData?.data || [];
@@ -191,7 +235,7 @@ export const ClientDetails = () => {
 
   const vatCycleMonths = client ? getVATCycleMonths(client) : null;
 
-  // Initialize contact form data when client loads
+  // Initialize contact form data when client loads (only when not editing)
   useEffect(() => {
     if (client && !isEditingContact) {
       setContactFormData({
@@ -202,15 +246,9 @@ export const ClientDetails = () => {
         status: client.status || "ACTIVE",
       });
     }
+    // Only run when client ID changes or editing state changes, not on individual field changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    client?.name,
-    client?.contactPerson,
-    client?.email,
-    client?.phone,
-    client?.status,
-    isEditingContact,
-  ]);
+  }, [client?._id, isEditingContact]);
 
   const updateClientMutation = useMutation({
     mutationFn: (data) => clientsApi.update(id, data),
@@ -769,6 +807,7 @@ export const ClientDetails = () => {
                       <p className="text-xs text-gray-500 mb-1">Client Name</p>
                       {isEditingContact ? (
                         <input
+                          key="contact-name-input"
                           type="text"
                           value={contactFormData.name}
                           onChange={(e) =>
@@ -792,6 +831,7 @@ export const ClientDetails = () => {
                       </p>
                       {isEditingContact ? (
                         <input
+                          key="contact-person-input"
                           type="text"
                           value={contactFormData.contactPerson}
                           onChange={(e) =>
@@ -813,6 +853,7 @@ export const ClientDetails = () => {
                       <p className="text-xs text-gray-500 mb-1">Email</p>
                       {isEditingContact ? (
                         <input
+                          key="contact-email-input"
                           type="email"
                           value={contactFormData.email}
                           onChange={(e) =>
@@ -834,6 +875,7 @@ export const ClientDetails = () => {
                       <p className="text-xs text-gray-500 mb-1">Phone</p>
                       {isEditingContact ? (
                         <input
+                          key="contact-phone-input"
                           type="tel"
                           value={contactFormData.phone}
                           onChange={(e) =>
@@ -855,6 +897,7 @@ export const ClientDetails = () => {
                       <p className="text-xs text-gray-500 mb-1">Status</p>
                       {isEditingContact ? (
                         <select
+                          key="contact-status-select"
                           value={contactFormData.status}
                           onChange={(e) =>
                             setContactFormData({
@@ -1014,6 +1057,18 @@ export const ClientDetails = () => {
                   <Plus className="h-3 w-3 mr-1" />
                   Add
                 </Button>
+              </div>
+
+              {/* Search */}
+              <div className="mb-2">
+                <SearchInput
+                  value={packageSearch}
+                  onChange={(value) => {
+                    setPackageSearch(value);
+                    setPackagePage(1);
+                  }}
+                  placeholder="Search packages..."
+                />
               </div>
 
               {packagesLoading ? (
@@ -1201,6 +1256,12 @@ export const ClientDetails = () => {
                       </tbody>
                     </table>
                   </div>
+                  {packagePagination.pages > 1 && (
+                    <Pagination
+                      pagination={packagePagination}
+                      onPageChange={setPackagePage}
+                    />
+                  )}
                 </Card>
               )}
             </div>
@@ -1281,22 +1342,33 @@ export const ClientDetails = () => {
                   >
                     Copy from Existing Package (Optional)
                   </label>
-                  <select
-                    id="templatePackage"
-                    value={templatePackageId}
-                    onChange={(e) =>
-                      handleTemplatePackageSelect(e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">Select a package to copy...</option>
-                    {allPackages.map((pkg) => (
-                      <option key={pkg._id} value={pkg._id}>
-                        {pkg.name}{" "}
-                        {pkg.clientId?.name ? `(${pkg.clientId.name})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">
+                        Filter by Type
+                      </label>
+                      <select
+                        value={packageTypeFilter}
+                        onChange={(e) => {
+                          setPackageTypeFilter(e.target.value);
+                          setTemplatePackageId(""); // Reset selection when filter changes
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">All Types</option>
+                        <option value="RECURRING">Recurring</option>
+                        <option value="ONE_TIME">One Time</option>
+                      </select>
+                    </div>
+                    <SelectSearch
+                      options={formattedTemplatePackages}
+                      value={templatePackageId}
+                      onChange={(value) => handleTemplatePackageSelect(value)}
+                      placeholder="Search and select package to copy..."
+                      searchPlaceholder="Search packages..."
+                      emptyMessage="No packages found"
+                    />
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

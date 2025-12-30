@@ -2,26 +2,46 @@ import api from './axios';
 
 export const analyticsApi = {
   getPackageProfitability: async (params = {}) => {
-    // Remove undefined/null values from params
-    const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
-    );
+    // Always include page and limit, filter out only undefined/null/empty string for other params
+    const cleanParams = {
+      page: params.page || 1,
+      limit: params.limit || 10,
+      ...Object.fromEntries(
+        Object.entries(params).filter(([k, v]) => 
+          k !== 'page' && k !== 'limit' && v !== undefined && v !== null && v !== ''
+        )
+      ),
+    };
     const response = await api.get('/analytics/packages', { params: cleanParams });
     return response.data;
   },
 
   getClientProfitability: async (params = {}) => {
-    const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
-    );
+    // Always include page and limit, filter out only undefined/null/empty string for other params
+    const cleanParams = {
+      page: params.page || 1,
+      limit: params.limit || 10,
+      ...Object.fromEntries(
+        Object.entries(params).filter(([k, v]) => 
+          k !== 'page' && k !== 'limit' && v !== undefined && v !== null && v !== ''
+        )
+      ),
+    };
     const response = await api.get('/analytics/clients', { params: cleanParams });
     return response.data;
   },
 
   getEmployeeUtilization: async (params = {}) => {
-    const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
-    );
+    // Always include page and limit, filter out only undefined/null/empty string for other params
+    const cleanParams = {
+      page: params.page || 1,
+      limit: params.limit || 10,
+      ...Object.fromEntries(
+        Object.entries(params).filter(([k, v]) => 
+          k !== 'page' && k !== 'limit' && v !== undefined && v !== null && v !== ''
+        )
+      ),
+    };
     const response = await api.get('/analytics/employees', { params: cleanParams });
     return response.data;
   },

@@ -18,6 +18,8 @@ import { Plus, Pencil, Trash2, Eye, FileText, Upload, X, MoreVertical } from "lu
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 import { LoaderWithText } from "@/components/Loader";
+import { Pagination } from "@/components/Pagination";
+import { SearchInput } from "@/components/SearchInput";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,9 +35,13 @@ export const Employees = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => employeesApi.getAll({ limit: 100 }),
+    queryKey: ["employees", page, search],
+    queryFn: () => employeesApi.getAll({ page, limit, search }),
   });
 
   const createMutation = useMutation({
@@ -242,6 +248,12 @@ export const Employees = () => {
   };
 
   const employees = data?.data?.employees || [];
+  const pagination = data?.data?.pagination;
+
+  const handleSearchChange = (value) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   return (
     <AppLayout>
@@ -256,6 +268,17 @@ export const Employees = () => {
             Add Employee
           </Button>
         </div>
+
+        {/* Search */}
+        <Card>
+          <div className="p-2">
+            <SearchInput
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Search employees..."
+            />
+          </div>
+        </Card>
 
         {isLoading ? (
           <Card>
@@ -413,6 +436,9 @@ export const Employees = () => {
                 </tbody>
               </table>
             </div>
+            {pagination && (
+              <Pagination pagination={pagination} onPageChange={setPage} />
+            )}
           </Card>
         )}
 

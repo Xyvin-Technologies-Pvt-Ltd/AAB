@@ -48,24 +48,27 @@ export const MultiSelect = ({
     }
   }, [isOpen]);
 
+  // Helper function to compare IDs as strings
+  const compareIds = (id1, id2) => {
+    const str1 = id1?.toString() || id1;
+    const str2 = id2?.toString() || id2;
+    return str1 === str2;
+  };
+
   const toggleOption = (optionId) => {
-    const isSelected = selected.includes(optionId);
+    const optionIdStr = optionId?.toString() || optionId;
+    const isSelected = selected.some((id) => compareIds(id, optionIdStr));
     if (isSelected) {
-      onChange(selected.filter((id) => id !== optionId));
+      onChange(selected.filter((id) => !compareIds(id, optionIdStr)));
     } else {
-      onChange([...selected, optionId]);
+      onChange([...selected, optionIdStr]);
     }
   };
 
   const removeOption = (optionId, e) => {
     e.stopPropagation();
-    onChange(selected.filter((id) => id !== optionId));
-  };
-
-  const getSelectedNames = () => {
-    return selected
-      .map((id) => options.find((opt) => opt._id === id)?.name)
-      .filter(Boolean);
+    const optionIdStr = optionId?.toString() || optionId;
+    onChange(selected.filter((id) => !compareIds(id, optionIdStr)));
   };
 
   return (
@@ -87,24 +90,29 @@ export const MultiSelect = ({
           {selected.length === 0 ? (
             <span className="text-gray-500">{placeholder}</span>
           ) : (
-            getSelectedNames().map((name, idx) => {
-              const optionId = options.find((opt) => opt.name === name)?._id;
+            selected.map((id, idx) => {
+              const idStr = id?.toString() || id;
+              const option = options.find((opt) => {
+                const optId = opt._id?.toString() || opt._id;
+                return optId === idStr;
+              });
+              if (!option) return null;
               return (
                 <span
-                  key={optionId || idx}
+                  key={idStr || idx}
                   className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs rounded-md"
                 >
-                  {name}
+                  {option.name}
                   <button
                     type="button"
-                    onClick={(e) => removeOption(optionId, e)}
+                    onClick={(e) => removeOption(idStr, e)}
                     className="hover:bg-indigo-200 rounded-full p-0.5"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </span>
               );
-            })
+            }).filter(Boolean)
           )}
         </div>
         <ChevronDown
@@ -139,11 +147,15 @@ export const MultiSelect = ({
             ) : (
               <div className="p-1">
                 {filteredOptions.map((option) => {
-                  const isSelected = selected.includes(option._id);
+                  const optionId = option._id?.toString() || option._id;
+                  const isSelected = selected.some((id) => {
+                    const idStr = id?.toString() || id;
+                    return idStr === optionId;
+                  });
                   return (
                     <div
                       key={option._id}
-                      onClick={() => toggleOption(option._id)}
+                      onClick={() => toggleOption(optionId)}
                       className={cn(
                         'flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer hover:bg-gray-100',
                         isSelected && 'bg-indigo-50 hover:bg-indigo-100'

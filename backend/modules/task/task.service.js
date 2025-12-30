@@ -22,7 +22,7 @@ export const createTask = async (taskData, userId) => {
 };
 
 export const getTasks = async (filters = {}) => {
-  const { clientId, packageId, status, assignedTo, priority, search, page = 1, limit = 10 } = filters;
+  const { clientId, packageId, status, assignedTo, priority, search, dateFrom, dateTo, page = 1, limit = 10 } = filters;
 
   const query = {};
 
@@ -53,6 +53,20 @@ export const getTasks = async (filters = {}) => {
       { description: { $regex: search, $options: 'i' } },
       { category: { $regex: search, $options: 'i' } },
     ];
+  }
+
+  // Date filtering by dueDate
+  if (dateFrom || dateTo) {
+    query.dueDate = {};
+    if (dateFrom) {
+      query.dueDate.$gte = new Date(dateFrom);
+    }
+    if (dateTo) {
+      // Set to end of day for dateTo
+      const endDate = new Date(dateTo);
+      endDate.setHours(23, 59, 59, 999);
+      query.dueDate.$lte = endDate;
+    }
   }
 
   const skip = (page - 1) * limit;

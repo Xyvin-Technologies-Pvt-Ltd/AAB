@@ -61,6 +61,7 @@ export const getTimeEntries = async (filters = {}) => {
     _teamFilter,
     page = 1,
     limit = 10,
+    search = '',
   } = filters;
 
   const query = {};
@@ -100,15 +101,55 @@ export const getTimeEntries = async (filters = {}) => {
 
   const skip = (page - 1) * limit;
 
-  const [timeEntries, total] = await Promise.all([
-    TimeEntry.find(query)
+  let timeEntriesQuery = TimeEntry.find(query)
+    .populate('employeeId', 'name monthlyCost monthlyWorkingHours')
+    .populate('clientId', 'name')
+    .populate('packageId', 'name type')
+    .populate('taskId', 'name category')
+    .sort({ date: -1, createdAt: -1 });
+
+  // Apply search filter if provided
+  if (search) {
+    // Search in populated fields - we'll filter after population
+    const allEntries = await timeEntriesQuery.lean();
+    const searchLower = search.toLowerCase();
+    const filteredEntries = allEntries.filter((entry) => {
+      return (
+        entry.employeeId?.name?.toLowerCase().includes(searchLower) ||
+        entry.clientId?.name?.toLowerCase().includes(searchLower) ||
+        entry.packageId?.name?.toLowerCase().includes(searchLower) ||
+        entry.taskId?.name?.toLowerCase().includes(searchLower) ||
+        entry.miscellaneousDescription?.toLowerCase().includes(searchLower) ||
+        entry.description?.toLowerCase().includes(searchLower)
+      );
+    });
+
+    const total = filteredEntries.length;
+    const paginatedEntries = filteredEntries.slice(skip, skip + limit);
+
+    // Re-populate the entries
+    const populatedEntries = await TimeEntry.find({
+      _id: { $in: paginatedEntries.map((e) => e._id) },
+    })
       .populate('employeeId', 'name monthlyCost monthlyWorkingHours')
       .populate('clientId', 'name')
       .populate('packageId', 'name type')
       .populate('taskId', 'name category')
-      .sort({ date: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
+      .sort({ date: -1, createdAt: -1 });
+
+    return {
+      timeEntries: populatedEntries,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  const [timeEntries, total] = await Promise.all([
+    timeEntriesQuery.skip(skip).limit(limit),
     TimeEntry.countDocuments(query),
   ]);
 

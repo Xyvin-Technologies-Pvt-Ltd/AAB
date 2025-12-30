@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/ui/button";
-import { X, Search, Building2, Package, User, AlertCircle } from "lucide-react";
+import { X, Search, Building2, Package, User, AlertCircle, CheckCircle, Calendar } from "lucide-react";
 import { SelectSearch } from "@/ui/select-search";
 
 export const TaskFilterDrawer = ({
@@ -30,6 +30,9 @@ export const TaskFilterDrawer = ({
       packageId: "",
       assignedTo: "",
       priority: [],
+      status: "",
+      dateFrom: "",
+      dateTo: "",
     };
     setLocalFilters(clearedFilters);
     onFilterChange(clearedFilters);
@@ -60,11 +63,20 @@ export const TaskFilterDrawer = ({
     LOW: "bg-gray-100 text-gray-800 border-gray-200",
   };
 
+  const statuses = [
+    { value: "TODO", label: "To Do" },
+    { value: "IN_PROGRESS", label: "In Progress" },
+    { value: "DONE", label: "Done" },
+  ];
+
   const hasActiveFilters =
     localFilters.search ||
     localFilters.clientId ||
     localFilters.packageId ||
     localFilters.assignedTo ||
+    localFilters.status ||
+    localFilters.dateFrom ||
+    localFilters.dateTo ||
     (localFilters.priority && localFilters.priority.length > 0);
 
   return (
@@ -156,6 +168,55 @@ export const TaskFilterDrawer = ({
               searchPlaceholder="Search employees..."
               emptyMessage="No employees found"
             />
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <CheckCircle className="h-4 w-4 inline mr-1" />
+              Status
+            </label>
+            <select
+              value={localFilters.status || ""}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="">All Statuses</option>
+              {statuses.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <Calendar className="h-4 w-4 inline mr-1" />
+              Due Date Range
+            </label>
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">From</label>
+                <input
+                  type="date"
+                  value={localFilters.dateFrom || ""}
+                  onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">To</label>
+                <input
+                  type="date"
+                  value={localFilters.dateTo || ""}
+                  onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+                  min={localFilters.dateFrom || undefined}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Priority Filter */}

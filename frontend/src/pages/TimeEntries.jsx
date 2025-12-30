@@ -23,6 +23,8 @@ import {
 import { useToast } from "@/hooks/useToast";
 import { formatTimeFromSeconds } from "@/utils/dateFormat";
 import { LoaderWithText } from "@/components/Loader";
+import { Pagination } from "@/components/Pagination";
+import { SearchInput } from "@/components/SearchInput";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +57,9 @@ export const TimeEntries = () => {
     endDate: "",
     isMiscellaneous: null,
   });
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [editingEntry, setEditingEntry] = useState(null);
@@ -95,10 +100,12 @@ export const TimeEntries = () => {
   const isEmployee = user?.role === "EMPLOYEE";
 
   const { data: entriesData, isLoading } = useQuery({
-    queryKey: ["time-entries", filters],
+    queryKey: ["time-entries", filters, page, search],
     queryFn: () =>
       timeEntriesApi.getAll({
-        limit: 1000,
+        page,
+        limit,
+        search,
         ...filters,
         employeeId: filters.employeeId || undefined,
         clientId: filters.clientId || undefined,
@@ -488,8 +495,14 @@ export const TimeEntries = () => {
   };
 
   const entries = entriesData?.data?.timeEntries || [];
+  const entriesPagination = entriesData?.data?.pagination;
   const employees = employeesData?.data?.employees || [];
   const clients = clientsData?.data?.clients || [];
+
+  const handleSearchChange = (value) => {
+    setSearch(value);
+    setPage(1);
+  };
   // Filter tasks to only show assigned ones for employees
   let tasks = tasksData?.data?.tasks || [];
   if (isEmployee && employeeId) {
@@ -612,6 +625,19 @@ export const TimeEntries = () => {
             </Button>
           </div>
         </div>
+
+        {/* Search - only show in table view */}
+        {viewMode === "table" && (
+          <Card>
+            <div className="p-2">
+              <SearchInput
+                value={search}
+                onChange={handleSearchChange}
+                placeholder="Search time entries..."
+              />
+            </div>
+          </Card>
+        )}
 
         {/* Timer Card */}
         <Card className="border border-gray-200 rounded-lg p-6">
@@ -1164,6 +1190,12 @@ export const TimeEntries = () => {
                 )}
               </tbody>
             </table>
+            {entriesPagination && (
+              <Pagination
+                pagination={entriesPagination}
+                onPageChange={setPage}
+              />
+            )}
           </div>
         )}
 

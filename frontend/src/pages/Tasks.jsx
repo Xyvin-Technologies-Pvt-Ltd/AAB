@@ -41,6 +41,7 @@ import {
   Pencil,
   Trash2,
   MoreVertical,
+  Copy,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useTimer } from "@/hooks/useTimer";
@@ -59,11 +60,13 @@ export const Tasks = () => {
   const [showForm, setShowForm] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [copiedTaskData, setCopiedTaskData] = useState(null);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedPackageId, setSelectedPackageId] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
   const [selectedActivities, setSelectedActivities] = useState([]);
+  const [pendingClientId, setPendingClientId] = useState(null);
   const [filters, setFilters] = useState({});
   const [viewMode, setViewMode] = useState("kanban"); // 'kanban' or 'table'
   const [selectedTask, setSelectedTask] = useState(null);
@@ -74,6 +77,7 @@ export const Tasks = () => {
   const [packageSelectedServices, setPackageSelectedServices] = useState([]);
   const [packageSelectedActivities, setPackageSelectedActivities] = useState([]);
   const [templatePackageId, setTemplatePackageId] = useState("");
+  const [packageTypeFilter, setPackageTypeFilter] = useState("");
   const packageFormRef = useRef(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -135,6 +139,19 @@ export const Tasks = () => {
     queryKey: ["packages", "all"],
     queryFn: () => packagesApi.getAll({ limit: 1000 }),
   });
+
+  // Filter packages by type for template selection
+  const allPackages = allPackagesData?.data?.packages || [];
+  const filteredTemplatePackages = allPackages.filter((pkg) => {
+    if (!packageTypeFilter) return true;
+    return pkg.type === packageTypeFilter;
+  });
+  
+  // Format packages for SelectSearch (include client name in display)
+  const formattedTemplatePackages = filteredTemplatePackages.map((pkg) => ({
+    _id: pkg._id,
+    name: `${pkg.name}${pkg.clientId?.name ? ` (${pkg.clientId.name})` : ""}`,
+  }));
 
   // Extract data from queries
   const tasks = tasksData?.data?.tasks || [];
@@ -300,12 +317,42 @@ export const Tasks = () => {
 
   const resetForm = () => {
     setEditingTask(null);
+    setCopiedTaskData(null);
+    setPendingClientId(null);
     setSelectedClientId("");
     setSelectedPackageId("");
     setSelectedEmployees([]);
     setSelectedServices([]);
     setSelectedActivities([]);
   };
+
+  // Ensure client is selected when form opens with copied data and clients are loaded
+  useEffect(() => {
+    if (showForm && !editingTask && pendingClientId && clients.length > 0) {
+      // Find the client in the options
+      const clientIdStr = pendingClientId?.toString() || pendingClientId;
+      const clientExists = clients.find((client) => {
+        const clientId = client._id?.toString() || client._id;
+        return clientId === clientIdStr;
+      });
+      
+      // Update selectedClientId if client exists and it's different
+      if (clientExists) {
+        const currentClientId = selectedClientId?.toString() || selectedClientId;
+        if (currentClientId !== clientIdStr) {
+          setSelectedClientId(clientIdStr);
+        }
+        setPendingClientId(null);
+      } else if (pendingClientId) {
+        // Client not found yet, but keep the pending ID
+        // This might happen if clients are still loading
+        const currentClientId = selectedClientId?.toString() || selectedClientId;
+        if (currentClientId !== clientIdStr) {
+          setSelectedClientId(clientIdStr);
+        }
+      }
+    }
+  }, [showForm, editingTask, pendingClientId, clients, selectedClientId]);
 
   const handleCreateClient = () => {
     setShowClientForm(true);
@@ -396,20 +443,89 @@ export const Tasks = () => {
 
   const handleEdit = (task) => {
     setEditingTask(task);
-    setSelectedClientId(task.clientId?._id || task.clientId || "");
-    setSelectedPackageId(task.packageId?._id || task.packageId || "");
+    
+    // Extract and convert IDs to strings
+    const clientId = task.clientId?._id?.toString() || task.clientId?.toString() || task.clientId || "";
+    const packageId = task.packageId?._id?.toString() || task.packageId?.toString() || task.packageId || "";
+    
     // Handle both single employee (old format) and array (new format)
     const assignedEmployees = Array.isArray(task.assignedTo)
-      ? task.assignedTo.map((emp) => emp._id || emp)
+      ? task.assignedTo.map((emp) => {
+          const empId = emp._id?.toString() || emp._id || emp;
+          return typeof empId === 'string' ? empId : empId?.toString() || empId;
+        })
       : task.assignedTo
-      ? [task.assignedTo._id || task.assignedTo]
+      ? [task.assignedTo._id?.toString() || task.assignedTo._id || task.assignedTo?.toString() || task.assignedTo]
       : [];
+    
+    // Handle services and activities - convert to strings
+    const serviceIds = task.services?.map((s) => {
+      const serviceId = typeof s === 'object' ? (s._id?.toString() || s._id) : s;
+      return typeof serviceId === 'string' ? serviceId : serviceId?.toString() || serviceId;
+    }) || [];
+    
+    const activityIds = task.activities?.map((a) => {
+      const activityId = typeof a === 'object' ? (a._id?.toString() || a._id) : a;
+      return typeof activityId === 'string' ? activityId : activityId?.toString() || activityId;
+    }) || [];
+    
+    setSelectedClientId(clientId);
+    setSelectedPackageId(packageId);
     setSelectedEmployees(assignedEmployees);
-    // Handle services and activities
-    const serviceIds = task.services?.map((s) => (typeof s === 'object' ? s._id : s)) || [];
-    const activityIds = task.activities?.map((a) => (typeof a === 'object' ? a._id : a)) || [];
     setSelectedServices(serviceIds);
     setSelectedActivities(activityIds);
+    setShowForm(true);
+  };
+
+  const handleCopy = (task) => {
+    // Copy task data but reset status to TODO and remove _id
+    setEditingTask(null); // Not editing, creating a new task
+    
+    // Extract and convert IDs to strings
+    const clientId = task.clientId?._id?.toString() || task.clientId?.toString() || task.clientId || "";
+    const packageId = task.packageId?._id?.toString() || task.packageId?.toString() || task.packageId || "";
+    
+    // Handle both single employee (old format) and array (new format)
+    const assignedEmployees = Array.isArray(task.assignedTo)
+      ? task.assignedTo.map((emp) => {
+          const empId = emp._id?.toString() || emp._id || emp;
+          return typeof empId === 'string' ? empId : empId?.toString() || empId;
+        })
+      : task.assignedTo
+      ? [task.assignedTo._id?.toString() || task.assignedTo._id || task.assignedTo?.toString() || task.assignedTo]
+      : [];
+    
+    // Handle services and activities - convert to strings
+    const serviceIds = task.services?.map((s) => {
+      const serviceId = typeof s === 'object' ? (s._id?.toString() || s._id) : s;
+      return typeof serviceId === 'string' ? serviceId : serviceId?.toString() || serviceId;
+    }) || [];
+    
+    const activityIds = task.activities?.map((a) => {
+      const activityId = typeof a === 'object' ? (a._id?.toString() || a._id) : a;
+      return typeof activityId === 'string' ? activityId : activityId?.toString() || activityId;
+    }) || [];
+    
+    setCopiedTaskData({
+      name: `${task.name} (Copy)`,
+      description: task.description || "",
+      priority: task.priority || "MEDIUM",
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "",
+    });
+    
+    // Set pending client ID to be set after form opens and clients are loaded
+    if (clientId) {
+      setPendingClientId(clientId);
+    }
+    
+    // Set state values - ensure they're strings
+    setSelectedClientId(clientId);
+    setSelectedPackageId(packageId);
+    setSelectedEmployees(assignedEmployees);
+    setSelectedServices(serviceIds);
+    setSelectedActivities(activityIds);
+    
+    // Open form after state is set
     setShowForm(true);
   };
 
@@ -733,6 +849,7 @@ export const Tasks = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onTaskClick={handleTaskClick}
+            onCopy={handleCopy}
             onStartTimer={(taskId) => {
               const task = tasks.find(t => t._id === taskId);
               return handleStartTimerForTask(taskId, task);
@@ -1090,6 +1207,16 @@ export const Tasks = () => {
                                 <Pencil className="h-3 w-3 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopy(task);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Copy className="h-3 w-3 mr-2" />
+                                Copy
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={(e) => {
@@ -1132,7 +1259,15 @@ export const Tasks = () => {
         />
 
         {/* Task Form Dialog */}
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog
+          open={showForm}
+          onOpenChange={(open) => {
+            setShowForm(open);
+            if (!open) {
+              resetForm();
+            }
+          }}
+        >
           <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -1159,6 +1294,7 @@ export const Tasks = () => {
                       Client *
                     </label>
                     <SelectSearch
+                      key={`client-${selectedClientId || 'empty'}-${showForm}`}
                       options={clients}
                       value={selectedClientId}
                       onChange={(value) => {
@@ -1248,7 +1384,7 @@ export const Tasks = () => {
                     name="name"
                     type="text"
                     required
-                    defaultValue={editingTask?.name}
+                    defaultValue={copiedTaskData?.name || editingTask?.name}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -1263,7 +1399,7 @@ export const Tasks = () => {
                     id="description"
                     name="description"
                     rows={3}
-                    defaultValue={editingTask?.description}
+                    defaultValue={copiedTaskData?.description || editingTask?.description}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -1311,7 +1447,7 @@ export const Tasks = () => {
                     <select
                       id="priority"
                       name="priority"
-                      defaultValue={editingTask?.priority || "MEDIUM"}
+                      defaultValue={copiedTaskData?.priority || editingTask?.priority || "MEDIUM"}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="LOW">Low</option>
@@ -1333,11 +1469,12 @@ export const Tasks = () => {
                     name="dueDate"
                     type="date"
                     defaultValue={
-                      editingTask?.dueDate
+                      copiedTaskData?.dueDate ||
+                      (editingTask?.dueDate
                         ? new Date(editingTask.dueDate)
                             .toISOString()
                             .split("T")[0]
-                        : ""
+                        : "")
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
@@ -1384,13 +1521,12 @@ export const Tasks = () => {
             <form onSubmit={handleClientSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="clientName" className="text-sm font-medium text-gray-700">
-                  Name *
+                  Name
                 </label>
                 <input
                   id="clientName"
                   name="name"
                   type="text"
-                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
@@ -1478,19 +1614,33 @@ export const Tasks = () => {
                 >
                   Copy from Existing Package (Optional)
                 </label>
-                <select
-                  id="templatePackage"
-                  value={templatePackageId}
-                  onChange={(e) => handleTemplatePackageSelect(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Select a package to copy...</option>
-                  {(allPackagesData?.data?.packages || []).map((pkg) => (
-                    <option key={pkg._id} value={pkg._id}>
-                      {pkg.name} {pkg.clientId?.name ? `(${pkg.clientId.name})` : ""}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">
+                      Filter by Type
+                    </label>
+                    <select
+                      value={packageTypeFilter}
+                      onChange={(e) => {
+                        setPackageTypeFilter(e.target.value);
+                        setTemplatePackageId(""); // Reset selection when filter changes
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">All Types</option>
+                      <option value="RECURRING">Recurring</option>
+                      <option value="ONE_TIME">One Time</option>
+                    </select>
+                  </div>
+                  <SelectSearch
+                    options={formattedTemplatePackages}
+                    value={templatePackageId}
+                    onChange={(value) => handleTemplatePackageSelect(value)}
+                    placeholder="Search and select package to copy..."
+                    searchPlaceholder="Search packages..."
+                    emptyMessage="No packages found"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

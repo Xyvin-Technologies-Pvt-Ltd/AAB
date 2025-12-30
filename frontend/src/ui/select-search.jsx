@@ -25,8 +25,12 @@ export const SelectSearch = ({
     option.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get selected option name
-  const selectedOption = options.find((opt) => opt._id === value);
+  // Get selected option name - convert both to strings for comparison
+  const selectedOption = options.find((opt) => {
+    const optId = opt._id?.toString() || opt._id;
+    const valueStr = value?.toString() || value;
+    return optId === valueStr;
+  });
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -86,13 +90,20 @@ export const SelectSearch = ({
         </span>
         <div className="flex items-center gap-1">
           {value && !disabled && (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               onClick={handleClear}
-              className="hover:bg-gray-100 rounded-full p-0.5"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleClear(e);
+                }
+              }}
+              className="hover:bg-gray-100 rounded-full p-0.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
             >
               <X className="h-3 w-3 text-gray-500" />
-            </button>
+            </div>
           )}
           <ChevronDown
             className={cn(
@@ -144,7 +155,9 @@ export const SelectSearch = ({
             ) : (
               <div className="p-1">
                 {filteredOptions.map((option) => {
-                  const isSelected = value === option._id;
+                  const optId = option._id?.toString() || option._id;
+                  const valueStr = value?.toString() || value;
+                  const isSelected = optId === valueStr;
                   return (
                     <div
                       key={option._id}

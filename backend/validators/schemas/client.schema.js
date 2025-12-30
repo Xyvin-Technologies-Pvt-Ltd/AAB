@@ -1,14 +1,12 @@
 import Joi from 'joi';
 
 export const createClientSchema = Joi.object({
-  name: Joi.string().trim().required().messages({
-    'any.required': 'Client name is required',
-  }),
-  contactPerson: Joi.string().trim().allow('', null),
-  email: Joi.string().email().trim().allow('', null).messages({
+  name: Joi.string().trim().allow('', null).optional(),
+  contactPerson: Joi.string().trim().allow('', null).optional(),
+  email: Joi.string().email().trim().allow('', null).optional().messages({
     'string.email': 'Please provide a valid email',
   }),
-  phone: Joi.string().trim().allow('', null),
+  phone: Joi.string().trim().allow('', null).optional(),
   documents: Joi.array().items(
     Joi.object({
       name: Joi.string().required(),
@@ -16,8 +14,8 @@ export const createClientSchema = Joi.object({
       key: Joi.string().required(),
       uploadedAt: Joi.date(),
     })
-  ),
-  status: Joi.string().valid('ACTIVE', 'INACTIVE').default('ACTIVE'),
+  ).optional(),
+  status: Joi.string().valid('ACTIVE', 'INACTIVE').default('ACTIVE').optional(),
 });
 
 export const updateClientSchema = Joi.object({
@@ -71,8 +69,8 @@ export const businessInfoSchema = Joi.object({
   vatTaxPeriods: Joi.array()
     .items(
       Joi.object({
-        startDate: Joi.date().required(),
-        endDate: Joi.date().required(),
+        startDate: Joi.date().allow(null).optional(),
+        endDate: Joi.date().allow(null).optional(),
       })
     )
     .optional(),
@@ -94,23 +92,21 @@ export const businessInfoSchema = Joi.object({
 });
 
 export const personSchema = Joi.object({
-  name: Joi.string().trim().required().messages({
-    'any.required': 'Name is required',
-  }),
+  name: Joi.string().trim().allow('', null).optional(),
   role: Joi.string().valid('PARTNER', 'MANAGER').optional().messages({
     'any.only': 'Role must be either PARTNER or MANAGER',
   }),
   emiratesId: Joi.object({
-    number: Joi.string().trim().allow('', null),
-    issueDate: Joi.date().allow(null),
-    expiryDate: Joi.date().allow(null),
-    verified: Joi.boolean().default(false),
+    number: Joi.string().trim().allow('', null).optional(),
+    issueDate: Joi.date().allow(null).optional(),
+    expiryDate: Joi.date().allow(null).optional(),
+    verified: Joi.boolean().default(false).optional(),
   }).optional(),
   passport: Joi.object({
-    number: Joi.string().trim().allow('', null),
-    issueDate: Joi.date().allow(null),
-    expiryDate: Joi.date().allow(null),
-    verified: Joi.boolean().default(false),
+    number: Joi.string().trim().allow('', null).optional(),
+    issueDate: Joi.date().allow(null).optional(),
+    expiryDate: Joi.date().allow(null).optional(),
+    verified: Joi.boolean().default(false).optional(),
   }).optional(),
   // For managers: link to partner if they are the same person
   linkedPartnerId: Joi.string().trim().allow('', null).optional(),
@@ -174,9 +170,9 @@ export const bulkCreateClientSchema = Joi.object({
     turnover: Joi.array()
       .items(
         Joi.object({
-          year: Joi.number().integer().min(2000).max(2100).required(),
-          amount: Joi.number().min(0).required(),
-          currency: Joi.string().default('AED'),
+          year: Joi.number().integer().min(2000).max(2100).allow(null).optional(),
+          amount: Joi.number().min(0).allow(null).optional(),
+          currency: Joi.string().default('AED').optional(),
         })
       )
       .optional(),

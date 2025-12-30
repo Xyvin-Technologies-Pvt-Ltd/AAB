@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/layout/AppLayout';
 import { packagesApi } from '@/api/packages';
@@ -6,16 +7,27 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { LoaderWithText } from '@/components/Loader';
 import { Avatar } from '@/components/Avatar';
+import { Pagination } from '@/components/Pagination';
+import { SearchInput } from '@/components/SearchInput';
 
 export const Packages = () => {
   const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
   const { data: packagesData, isLoading } = useQuery({
-    queryKey: ['packages'],
-    queryFn: () => packagesApi.getAll({ limit: 100 }),
+    queryKey: ['packages', page, search],
+    queryFn: () => packagesApi.getAll({ page, limit, search }),
   });
 
   const packages = packagesData?.data?.packages || [];
+  const pagination = packagesData?.data?.pagination;
+
+  const handleSearchChange = (value) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   const handleRowClick = (pkg) => {
     if (pkg.clientId?._id || pkg.clientId) {
@@ -31,6 +43,17 @@ export const Packages = () => {
           <h1 className="text-xl font-bold text-gray-900">Packages</h1>
           <p className="text-xs text-gray-600 mt-0.5">View all client packages</p>
         </div>
+
+        {/* Search */}
+        <Card>
+          <div className="p-2">
+            <SearchInput
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Search packages..."
+            />
+          </div>
+        </Card>
 
         {isLoading ? (
           <Card>
@@ -121,6 +144,9 @@ export const Packages = () => {
                 </tbody>
               </table>
             </div>
+            {pagination && (
+              <Pagination pagination={pagination} onPageChange={setPage} />
+            )}
           </Card>
         )}
       </div>

@@ -37,6 +37,8 @@ export const Clients = () => {
   const [editingClient, setEditingClient] = useState(null);
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
   const [filters, setFilters] = useState({
     search: '',
     vatMonths: [],
@@ -48,13 +50,14 @@ export const Clients = () => {
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['clients', filters],
+    queryKey: ['clients', filters, page],
     queryFn: () => {
       const params = {
         search: filters.search || undefined,
         status: filters.status || undefined,
         packageId: filters.packageId || undefined,
-        limit: 100,
+        page,
+        limit,
       };
       
       // Handle vatMonths array - send as comma-separated string or multiple params
@@ -214,6 +217,14 @@ export const Clients = () => {
   };
 
   let clients = data?.data?.clients || [];
+  const pagination = data?.data?.pagination || { page: 1, limit, total: 0, pages: 1 };
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    setSearch(newFilters.search || '');
+    setPage(1); // Reset to first page when filters change
+  };
 
   // Apply sorting
   if (sortField) {
@@ -299,8 +310,10 @@ export const Clients = () => {
                   placeholder="Search clients..."
                   value={search}
                   onChange={(e) => {
-                    setSearch(e.target.value);
-                    setFilters({ ...filters, search: e.target.value });
+                    const newSearch = e.target.value;
+                    setSearch(newSearch);
+                    setFilters({ ...filters, search: newSearch });
+                    setPage(1); // Reset to first page when search changes
                   }}
                   className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
@@ -560,6 +573,63 @@ export const Clients = () => {
                 </tbody>
               </table>
             </div>
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <span>
+                    Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
+                    {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
+                    {pagination.total} clients
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={pagination.page === 1}
+                    className="h-7 px-2 text-xs"
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+                      let pageNum;
+                      if (pagination.pages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pagination.page <= 3) {
+                        pageNum = i + 1;
+                      } else if (pagination.page >= pagination.pages - 2) {
+                        pageNum = pagination.pages - 4 + i;
+                      } else {
+                        pageNum = pagination.page - 2 + i;
+                      }
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pagination.page === pageNum ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setPage(pageNum)}
+                          className="h-7 w-7 px-0 text-xs"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+                    disabled={pagination.page === pagination.pages}
+                    className="h-7 px-2 text-xs"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         )}
 
@@ -577,13 +647,12 @@ export const Clients = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium text-gray-700">
-                  Name *
+                  Name
                 </label>
                 <input
                   id="name"
                   name="name"
                   type="text"
-                  required
                   defaultValue={editingClient?.name}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
@@ -674,10 +743,7 @@ export const Clients = () => {
           open={showFilterDrawer}
           onOpenChange={setShowFilterDrawer}
           filters={filters}
-          onFilterChange={(newFilters) => {
-            setFilters(newFilters);
-            setSearch(newFilters.search || '');
-          }}
+          onFilterChange={handleFilterChange}
           packages={packages}
         />
       </div>

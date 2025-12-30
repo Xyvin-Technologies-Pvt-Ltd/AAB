@@ -80,8 +80,9 @@ const personSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
+      default: null,
     },
     role: {
       type: String,
@@ -163,9 +164,11 @@ const clientSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Client name is required'],
+      required: false,
       unique: true,
+      sparse: true, // Allows multiple null/empty values while maintaining uniqueness for non-empty values
       trim: true,
+      default: null,
     },
     nameArabic: {
       type: String,

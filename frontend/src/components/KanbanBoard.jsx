@@ -25,7 +25,7 @@ const columns = [
   { id: "DONE", title: "Done" },
 ];
 
-const SortableTaskCard = ({ task, onEdit, onDelete, onTaskClick, onStartTimer, onPauseTimer, onResumeTimer, onCompleteTimer, runningTimerId, isTimerRunning, isTimerPaused }) => {
+const SortableTaskCard = ({ task, onEdit, onDelete, onTaskClick, onStartTimer, onPauseTimer, onResumeTimer, onCompleteTimer, runningTimerId, isTimerRunning, isTimerPaused, onCopy }) => {
   const {
     attributes,
     listeners,
@@ -57,13 +57,14 @@ const SortableTaskCard = ({ task, onEdit, onDelete, onTaskClick, onStartTimer, o
         runningTimerId={runningTimerId}
         isTimerRunning={isTimerRunning}
         isTimerPaused={isTimerPaused}
+        onCopy={onCopy}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
   );
 };
 
-const KanbanColumn = ({ column, tasks, onEdit, onDelete, onTaskClick, onStartTimer, onPauseTimer, onResumeTimer, onCompleteTimer, runningTimerId, isTimerRunning, isTimerPaused }) => {
+const KanbanColumn = ({ column, tasks, onEdit, onDelete, onTaskClick, onStartTimer, onPauseTimer, onResumeTimer, onCompleteTimer, runningTimerId, isTimerRunning, isTimerPaused, onCopy }) => {
   const taskIds = tasks.map((task) => task._id);
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${column.id}`,
@@ -130,6 +131,7 @@ const KanbanColumn = ({ column, tasks, onEdit, onDelete, onTaskClick, onStartTim
                     runningTimerId={runningTimerId}
                     isTimerRunning={isTimerRunning}
                     isTimerPaused={isTimerPaused}
+                    onCopy={onCopy}
                   />
                 ))}
               </div>
@@ -154,6 +156,7 @@ export const KanbanBoard = ({
   runningTimerId,
   isTimerRunning,
   isTimerPaused,
+  onCopy,
 }) => {
   const [localTasks, setLocalTasks] = useState(tasks);
   const [activeId, setActiveId] = useState(null);
@@ -284,6 +287,7 @@ export const KanbanBoard = ({
             runningTimerId={runningTimerId}
             isTimerRunning={isTimerRunning}
             isTimerPaused={isTimerPaused}
+            onCopy={onCopy}
           />
         ))}
       </div>

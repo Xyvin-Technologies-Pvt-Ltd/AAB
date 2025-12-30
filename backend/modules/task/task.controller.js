@@ -19,6 +19,8 @@ export const getTasks = async (req, res, next) => {
       assignedTo: req.query.assignedTo,
       priority: req.query.priority,
       search: req.query.search,
+      dateFrom: req.query.dateFrom,
+      dateTo: req.query.dateTo,
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,
     };

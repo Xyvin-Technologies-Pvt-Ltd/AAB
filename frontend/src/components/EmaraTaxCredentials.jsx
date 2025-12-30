@@ -25,15 +25,15 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
     enabled: !!clientId,
   });
 
-  // Update formData when credentials are loaded
+  // Update formData when credentials are loaded (only when not editing)
   useEffect(() => {
-    if (credentialsData) {
+    if (credentialsData && !isEditing) {
       setFormData({
         username: credentialsData.username || "",
         password: "",
       });
     }
-  }, [credentialsData]);
+  }, [credentialsData, isEditing]);
 
   const updateMutation = useMutation({
     mutationFn: (data) => clientsApi.updateEmaraTaxCredentials(clientId, data),
@@ -153,6 +153,7 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
             <p className="text-xs text-gray-500 mb-1">Username</p>
             {isEditing ? (
               <input
+                key="emara-username-input"
                 type="text"
                 value={formData.username}
                 onChange={(e) =>
@@ -171,6 +172,7 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
             <p className="text-xs text-gray-500 mb-1">Password</p>
             {isEditing ? (
               <input
+                key="emara-password-input"
                 type="text"
                 value={formData.password}
                 onChange={(e) =>

@@ -12,6 +12,8 @@ import { MonthlyTrendChart } from '@/components/charts/MonthlyTrendChart';
 import { ArrowLeft, Filter, X } from 'lucide-react';
 import { LoaderWithText } from '@/components/Loader';
 import { Avatar } from '@/components/Avatar';
+import { Pagination } from '@/components/Pagination';
+import { SearchInput } from '@/components/SearchInput';
 
 export const ClientAnalytics = () => {
   const { clientId } = useParams();
@@ -24,6 +26,9 @@ export const ClientAnalytics = () => {
     startDate: '',
     endDate: '',
   });
+  const [packageSearch, setPackageSearch] = useState('');
+  const [packagePage, setPackagePage] = useState(1);
+  const packageLimit = 5;
 
   const { data: analyticsData, isLoading } = useQuery({
     queryKey: ['analytics', 'client', clientId, filters],
@@ -230,7 +235,43 @@ export const ClientAnalytics = () => {
           {analytics.packageBreakdown && analytics.packageBreakdown.length > 0 && (
             <div className="bg-white rounded-lg shadow p-5">
               <h2 className="text-lg font-semibold mb-3">Package Breakdown</h2>
-              <div className="overflow-x-auto">
+              
+              {/* Search */}
+              <div className="mb-3">
+                <SearchInput
+                  value={packageSearch}
+                  onChange={(value) => {
+                    setPackageSearch(value);
+                    setPackagePage(1);
+                  }}
+                  placeholder="Search packages..."
+                />
+              </div>
+
+              {/* Client-side filtering and pagination */}
+              {(() => {
+                const filteredPackages = analytics.packageBreakdown.filter((pkg) => {
+                  if (!packageSearch) return true;
+                  const searchLower = packageSearch.toLowerCase();
+                  return (
+                    pkg.name?.toLowerCase().includes(searchLower) ||
+                    pkg.type?.toLowerCase().includes(searchLower)
+                  );
+                });
+                
+                const packageTotal = filteredPackages.length;
+                const packageSkip = (packagePage - 1) * packageLimit;
+                const paginatedPackages = filteredPackages.slice(packageSkip, packageSkip + packageLimit);
+                const packagePagination = {
+                  page: packagePage,
+                  limit: packageLimit,
+                  total: packageTotal,
+                  pages: Math.ceil(packageTotal / packageLimit),
+                };
+
+                return (
+                  <>
+                    <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -244,7 +285,7 @@ export const ClientAnalytics = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {analytics.packageBreakdown.map((pkg) => (
+                    {paginatedPackages.map((pkg) => (
                       <tr
                         key={pkg.packageId}
                         onClick={() => navigate(`/analytics/package/${pkg.packageId}`)}
@@ -275,6 +316,17 @@ export const ClientAnalytics = () => {
                   </tbody>
                 </table>
               </div>
+              {packagePagination.pages > 1 && (
+                <div className="mt-3">
+                  <Pagination
+                    pagination={packagePagination}
+                    onPageChange={setPackagePage}
+                  />
+                </div>
+              )}
+                  </>
+                );
+              })()}
             </div>
           )}
 

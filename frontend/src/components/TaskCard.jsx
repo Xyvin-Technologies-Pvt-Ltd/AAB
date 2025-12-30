@@ -8,6 +8,7 @@ import {
   Pause,
   Check,
   MoreVertical,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/ui/button";
 import { Avatar } from "@/components/Avatar";
@@ -47,6 +48,7 @@ export const TaskCard = ({
   runningTimerId,
   isTimerRunning,
   isTimerPaused,
+  onCopy,
 }) => {
   const priority = task.priority || "MEDIUM";
   const isOverdue =
@@ -304,6 +306,16 @@ export const TaskCard = ({
               >
                 <Pencil className="h-3 w-3 mr-2" />
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCopy?.(task);
+                }}
+                className="cursor-pointer"
+              >
+                <Copy className="h-3 w-3 mr-2" />
+                Copy
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

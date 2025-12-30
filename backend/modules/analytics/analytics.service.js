@@ -24,6 +24,9 @@ export const getPackageProfitability = async (filters = {}, user = null) => {
     startDate,
     endDate,
     _accessibleEmployeeIds,
+    page = 1,
+    limit = 10,
+    search = '',
   } = filters;
 
   const query = {};
@@ -38,6 +41,13 @@ export const getPackageProfitability = async (filters = {}, user = null) => {
   }
   if (billingFrequency) {
     query.billingFrequency = billingFrequency;
+  }
+
+  // Add search filter
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: 'i' } },
+    ];
   }
 
   const packages = await Package.find(query).populate('clientId', 'name');
@@ -136,7 +146,35 @@ export const getPackageProfitability = async (filters = {}, user = null) => {
   );
 
   // Filter out null results (from access control)
-  return results.filter((r) => r !== null);
+  const filteredResults = results.filter((r) => r !== null);
+
+  // Apply search filter on results (client name, package name)
+  let finalResults = filteredResults;
+  if (search) {
+    const searchLower = search.toLowerCase();
+    finalResults = filteredResults.filter((r) => {
+      return (
+        r.packageName?.toLowerCase().includes(searchLower) ||
+        r.clientName?.toLowerCase().includes(searchLower)
+      );
+    });
+  }
+
+  // Pagination
+  const total = finalResults.length;
+  const skip = (page - 1) * limit;
+  const paginatedResults = finalResults.slice(skip, skip + limit);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    results: paginatedResults,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      pages: totalPages,
+    },
+  };
 };
 
 /**
@@ -151,11 +189,19 @@ export const getClientProfitability = async (filters = {}, user = null) => {
     startDate,
     endDate,
     _accessibleEmployeeIds,
+    page = 1,
+    limit = 10,
+    search = '',
   } = filters;
 
   const query = {};
   if (clientId) {
     query._id = clientId;
+  }
+
+  // Add search filter
+  if (search) {
+    query.name = { $regex: search, $options: 'i' };
   }
 
   const clients = await Client.find(query);
@@ -284,14 +330,41 @@ export const getClientProfitability = async (filters = {}, user = null) => {
     })
   );
 
-  return results;
+  // Filter out null results
+  const filteredResults = results.filter((r) => r !== null);
+
+  // Pagination
+  const total = filteredResults.length;
+  const skip = (page - 1) * limit;
+  const paginatedResults = filteredResults.slice(skip, skip + limit);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    results: paginatedResults,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      pages: totalPages,
+    },
+  };
 };
 
 /**
  * Get employee utilization analytics
  */
 export const getEmployeeUtilization = async (filters = {}, user = null) => {
-  const { clientId, packageId, employeeId, startDate, endDate, _accessibleEmployeeIds } = filters;
+  const {
+    clientId,
+    packageId,
+    employeeId,
+    startDate,
+    endDate,
+    _accessibleEmployeeIds,
+    page = 1,
+    limit = 10,
+    search = '',
+  } = filters;
 
   const timeEntryQuery = {};
   if (startDate || endDate) {
@@ -435,7 +508,30 @@ export const getEmployeeUtilization = async (filters = {}, user = null) => {
     };
   });
 
-  return results;
+  // Apply search filter
+  let filteredResults = results;
+  if (search) {
+    const searchLower = search.toLowerCase();
+    filteredResults = results.filter((r) => {
+      return r.employeeName?.toLowerCase().includes(searchLower);
+    });
+  }
+
+  // Pagination
+  const total = filteredResults.length;
+  const skip = (page - 1) * limit;
+  const paginatedResults = filteredResults.slice(skip, skip + limit);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    results: paginatedResults,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      pages: totalPages,
+    },
+  };
 };
 
 /**

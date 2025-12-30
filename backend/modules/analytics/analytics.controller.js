@@ -17,6 +17,9 @@ export const getPackageProfitability = async (req, res, next) => {
       billingFrequency: req.query.billingFrequency,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
+      page: req.query.page,
+      limit: req.query.limit,
+      search: req.query.search,
     };
 
     // Apply team filtering for MANAGER role
@@ -45,6 +48,9 @@ export const getClientProfitability = async (req, res, next) => {
       billingFrequency: req.query.billingFrequency,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
+      page: req.query.page,
+      limit: req.query.limit,
+      search: req.query.search,
     };
 
     // Apply team filtering for MANAGER role
@@ -72,6 +78,9 @@ export const getEmployeeUtilization = async (req, res, next) => {
       employeeId: req.query.employeeId,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
+      page: req.query.page,
+      limit: req.query.limit,
+      search: req.query.search,
     };
 
     // Apply team filtering for MANAGER role
