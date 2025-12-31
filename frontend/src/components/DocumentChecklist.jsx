@@ -1394,7 +1394,7 @@ export const DocumentChecklist = ({
 
       {/* Add Partner Dialog */}
       <Dialog open={showPartnerForm} onOpenChange={setShowPartnerForm}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[1200px]">
           <DialogHeader>
             <DialogTitle>Add Partner</DialogTitle>
             <DialogDescription>
@@ -1419,7 +1419,7 @@ export const DocumentChecklist = ({
                     documentType: e.target.value,
                   })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 disabled={processingPartnerDocument}
               >
                 <option value="PASSPORT">Passport</option>
@@ -1438,7 +1438,7 @@ export const DocumentChecklist = ({
                 type="file"
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 onChange={(e) => setPartnerFile(e.target.files?.[0] || null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 disabled={processingPartnerDocument}
               />
               {partnerFile && (
@@ -1494,7 +1494,7 @@ export const DocumentChecklist = ({
 
       {/* Add Manager Dialog */}
       <Dialog open={showManagerForm} onOpenChange={setShowManagerForm}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[1200px]">
           <DialogHeader>
             <DialogTitle>Add Manager</DialogTitle>
             <DialogDescription>
@@ -1586,7 +1586,7 @@ export const DocumentChecklist = ({
                           }
                         }
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select a partner...</option>
                       {partners.map((partner) => (
@@ -1619,7 +1619,7 @@ export const DocumentChecklist = ({
                       name: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter manager name"
                 />
               </div>
@@ -1642,7 +1642,7 @@ export const DocumentChecklist = ({
                       name: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter manager name"
                 />
               </div>
@@ -1665,7 +1665,7 @@ export const DocumentChecklist = ({
                         documentType: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     disabled={processingManagerDocument}
                   >
                     <option value="PASSPORT">Passport</option>
@@ -1686,7 +1686,7 @@ export const DocumentChecklist = ({
                     onChange={(e) =>
                       setManagerFile(e.target.files?.[0] || null)
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     disabled={processingManagerDocument}
                   />
                   {managerFile && (
@@ -1750,7 +1750,7 @@ export const DocumentChecklist = ({
         open={showPartnerCopyDialog}
         onOpenChange={setShowPartnerCopyDialog}
       >
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[1200px]">
           <DialogHeader>
             <DialogTitle>Is any partner the same as manager?</DialogTitle>
             <DialogDescription className="text-xs">
@@ -1870,7 +1870,7 @@ const ExtractedDataDialog = ({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base">
             Extracted Data - {document?.category?.replace(/_/g, " ")}

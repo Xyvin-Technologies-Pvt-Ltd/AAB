@@ -130,10 +130,10 @@ export const getPackages = async (filters = {}) => {
         ...pkg,
         clientId: pkg.clientData
           ? {
-              _id: pkg.clientData._id,
-              name: pkg.clientData.name,
-              status: pkg.clientData.status,
-            }
+            _id: pkg.clientData._id,
+            name: pkg.clientData.name,
+            status: pkg.clientData.status,
+          }
           : null,
         services: pkg.servicesData?.map((service) => ({
           _id: service._id,

@@ -97,7 +97,7 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[1200px]">
         <DialogHeader>
           <DialogTitle>Change Password</DialogTitle>
           <DialogDescription>
@@ -118,7 +118,7 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
               type="password"
               value={formData.currentPassword}
               onChange={(e) => handleChange("currentPassword", e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+              className={`w-full px-3 py-1 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.currentPassword ? "border-red-500" : "border-gray-300"
               }`}
               disabled={isLoading}
@@ -140,7 +140,7 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
               type="password"
               value={formData.newPassword}
               onChange={(e) => handleChange("newPassword", e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+              className={`w-full px-3 py-1 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.newPassword ? "border-red-500" : "border-gray-300"
               }`}
               disabled={isLoading}
@@ -162,7 +162,7 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
               type="password"
               value={formData.confirmPassword}
               onChange={(e) => handleChange("confirmPassword", e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+              className={`w-full px-3 py-1 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.confirmPassword ? "border-red-500" : "border-gray-300"
               }`}
               disabled={isLoading}

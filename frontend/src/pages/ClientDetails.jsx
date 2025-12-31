@@ -1318,7 +1318,7 @@ export const ClientDetails = () => {
 
         {/* Package Form Dialog */}
         <Dialog open={showPackageForm} onOpenChange={setShowPackageForm}>
-          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingPackage ? "Edit Package" : "Add New Package"}
@@ -1335,7 +1335,7 @@ export const ClientDetails = () => {
               className="space-y-4"
             >
               {!editingPackage && (
-                <div className="space-y-2">
+                <div className="space-y-2 mb-6">
                   <label
                     htmlFor="templatePackage"
                     className="text-sm font-medium text-gray-700"
@@ -1353,7 +1353,7 @@ export const ClientDetails = () => {
                           setPackageTypeFilter(e.target.value);
                           setTemplatePackageId(""); // Reset selection when filter changes
                         }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                       >
                         <option value="">All Types</option>
                         <option value="RECURRING">Recurring</option>
@@ -1371,7 +1371,7 @@ export const ClientDetails = () => {
                   </div>
                 </div>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label
                     htmlFor="name"
@@ -1385,7 +1385,7 @@ export const ClientDetails = () => {
                     type="text"
                     required
                     defaultValue={editingPackage?.name}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1401,7 +1401,7 @@ export const ClientDetails = () => {
                     required
                     value={packageType}
                     onChange={(e) => setPackageType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="RECURRING">Recurring</option>
                     <option value="ONE_TIME">One Time</option>
@@ -1420,7 +1420,7 @@ export const ClientDetails = () => {
                       name="billingFrequency"
                       required={packageType === "RECURRING"}
                       defaultValue={editingPackage?.billingFrequency}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select</option>
                       <option value="MONTHLY">Monthly</option>
@@ -1429,6 +1429,36 @@ export const ClientDetails = () => {
                     </select>
                   </div>
                 )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Services
+                  </label>
+                  <MultiSelect
+                    options={services}
+                    selected={selectedServices}
+                    onChange={setSelectedServices}
+                    placeholder="Select services..."
+                    searchPlaceholder="Search services..."
+                    emptyMessage="No services found"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Activities
+                  </label>
+                  <MultiSelect
+                    options={activities}
+                    selected={selectedActivities}
+                    onChange={setSelectedActivities}
+                    placeholder="Select activities..."
+                    searchPlaceholder="Search activities..."
+                    emptyMessage="No activities found"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label
                     htmlFor="contractValue"
@@ -1443,7 +1473,7 @@ export const ClientDetails = () => {
                     step="0.01"
                     required
                     defaultValue={editingPackage?.contractValue}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     placeholder="0.00"
                   />
                 </div>
@@ -1466,7 +1496,7 @@ export const ClientDetails = () => {
                             .split("T")[0]
                         : ""
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 {editingPackage && (
@@ -1506,7 +1536,7 @@ export const ClientDetails = () => {
                                   .split("T")[0]
                               : ""
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
                     )}
@@ -1529,41 +1559,13 @@ export const ClientDetails = () => {
                             ?.status
                         : "ACTIVE")
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     key={`status-${templatePackageId}`}
                   >
                     <option value="ACTIVE">Active</option>
                     <option value="INACTIVE">Inactive</option>
                     <option value="COMPLETED">Completed</option>
                   </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Services
-                  </label>
-                  <MultiSelect
-                    options={services}
-                    selected={selectedServices}
-                    onChange={setSelectedServices}
-                    placeholder="Select services..."
-                    searchPlaceholder="Search services..."
-                    emptyMessage="No services found"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Activities
-                  </label>
-                  <MultiSelect
-                    options={activities}
-                    selected={selectedActivities}
-                    onChange={setSelectedActivities}
-                    placeholder="Select activities..."
-                    searchPlaceholder="Search activities..."
-                    emptyMessage="No activities found"
-                  />
                 </div>
               </div>
               <DialogFooter>

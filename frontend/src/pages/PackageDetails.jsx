@@ -238,7 +238,9 @@ export const PackageDetails = () => {
                     <p className="text-xs text-gray-500 mb-1">
                       Billing Frequency
                     </p>
-                    <p className="text-sm font-medium">{pkg.billingFrequency}</p>
+                    <p className="text-sm font-medium">
+                      {pkg.billingFrequency}
+                    </p>
                   </div>
                 )}
                 <div>
@@ -273,9 +275,7 @@ export const PackageDetails = () => {
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Start Date</p>
                   <p className="text-sm font-medium">
-                    {pkg.startDate
-                      ? formatDateDDMMYYYY(pkg.startDate)
-                      : "-"}
+                    {pkg.startDate ? formatDateDDMMYYYY(pkg.startDate) : "-"}
                   </p>
                 </div>
                 <div>
@@ -350,9 +350,7 @@ export const PackageDetails = () => {
                 <div className="flex flex-wrap gap-2">
                   {pkg.services.map((service) => (
                     <Badge
-                      key={
-                        typeof service === "object" ? service._id : service
-                      }
+                      key={typeof service === "object" ? service._id : service}
                       variant="outline"
                       className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border-blue-200"
                     >
@@ -381,9 +379,7 @@ export const PackageDetails = () => {
                       variant="outline"
                       className="text-xs px-2 py-1 bg-purple-50 text-purple-700 border-purple-200"
                     >
-                      {typeof activity === "object"
-                        ? activity.name
-                        : activity}
+                      {typeof activity === "object" ? activity.name : activity}
                     </Badge>
                   ))}
                 </div>
@@ -396,7 +392,7 @@ export const PackageDetails = () => {
 
         {/* Edit Package Dialog */}
         <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
-          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Package</DialogTitle>
               <DialogDescription>
@@ -408,7 +404,7 @@ export const PackageDetails = () => {
               onSubmit={handlePackageSubmit}
               className="space-y-4"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label
                     htmlFor="name"
@@ -422,7 +418,7 @@ export const PackageDetails = () => {
                     type="text"
                     required
                     defaultValue={pkg.name}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -438,7 +434,7 @@ export const PackageDetails = () => {
                     required
                     value={packageType}
                     onChange={(e) => setPackageType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="RECURRING">Recurring</option>
                     <option value="ONE_TIME">One Time</option>
@@ -457,7 +453,7 @@ export const PackageDetails = () => {
                       name="billingFrequency"
                       required={packageType === "RECURRING"}
                       defaultValue={pkg.billingFrequency}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select</option>
                       <option value="MONTHLY">Monthly</option>
@@ -480,7 +476,7 @@ export const PackageDetails = () => {
                     step="0.01"
                     required
                     defaultValue={pkg.contractValue}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     placeholder="0.00"
                   />
                 </div>
@@ -501,7 +497,7 @@ export const PackageDetails = () => {
                         ? new Date(pkg.startDate).toISOString().split("T")[0]
                         : ""
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -538,7 +534,7 @@ export const PackageDetails = () => {
                             ? new Date(pkg.endDate).toISOString().split("T")[0]
                             : ""
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
                   )}
@@ -554,7 +550,7 @@ export const PackageDetails = () => {
                     id="status"
                     name="status"
                     defaultValue={pkg.status}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="ACTIVE">Active</option>
                     <option value="INACTIVE">Inactive</option>
@@ -612,4 +608,3 @@ export const PackageDetails = () => {
     </AppLayout>
   );
 };
-

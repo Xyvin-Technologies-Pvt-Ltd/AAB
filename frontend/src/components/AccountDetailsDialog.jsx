@@ -146,7 +146,7 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[1200px]">
         <DialogHeader>
           <DialogTitle>Account Details</DialogTitle>
           <DialogDescription>
@@ -219,7 +219,7 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
               type="text"
               value={formData.name}
               onChange={(e) => handleChange("name", e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+              className={`w-full px-3 py-1 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.name ? "border-red-500" : "border-gray-300"
               }`}
               disabled={isLoading}
@@ -242,7 +242,7 @@ export const AccountDetailsDialog = ({ open, onOpenChange }) => {
               type="date"
               value={formData.dateOfBirth}
               onChange={(e) => handleChange("dateOfBirth", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               disabled={isLoading}
               max={new Date().toISOString().split("T")[0]} // Prevent future dates
             />

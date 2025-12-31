@@ -774,7 +774,7 @@ export const TimeEntries = () => {
                         value={miscDescription}
                         onChange={(e) => setMiscDescription(e.target.value)}
                         placeholder="What are you working on?"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -788,7 +788,7 @@ export const TimeEntries = () => {
                             setMiscClientId(e.target.value);
                             setMiscPackageId("");
                           }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         >
                           <option value="">Select Client</option>
                           {clients.map((client) => (
@@ -806,7 +806,7 @@ export const TimeEntries = () => {
                           value={miscPackageId}
                           onChange={(e) => setMiscPackageId(e.target.value)}
                           disabled={!miscClientId}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+                          className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
                         >
                           <option value="">Select Package</option>
                           {miscPackages.map((pkg) => (
@@ -1213,7 +1213,7 @@ export const TimeEntries = () => {
 
         {/* Edit Time Entry Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[1200px]">
             <DialogHeader>
               <DialogTitle>Edit Time Entry</DialogTitle>
               <DialogDescription>
@@ -1248,7 +1248,7 @@ export const TimeEntries = () => {
                       }
                     }}
                     required
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
@@ -1284,7 +1284,7 @@ export const TimeEntries = () => {
                         }
                       }}
                       required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <div>
@@ -1318,7 +1318,7 @@ export const TimeEntries = () => {
                         }
                       }}
                       required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
@@ -1328,7 +1328,7 @@ export const TimeEntries = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Calculated Duration
                   </label>
-                  <div className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-900 font-medium font-mono">
+                  <div className="w-full px-3 py-1 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-900 font-medium font-mono">
                     {String(calculatedDuration.hours).padStart(2, "0")}:{String(calculatedDuration.minutes).padStart(2, "0")}:{String(calculatedDuration.seconds).padStart(2, "0")}
                   </div>
                   {timeValidationError && (
@@ -1346,7 +1346,7 @@ export const TimeEntries = () => {
                       name="miscellaneousDescription"
                       defaultValue={editingEntry.miscellaneousDescription || ""}
                       required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                 ) : (
@@ -1381,7 +1381,7 @@ export const TimeEntries = () => {
                         packageId: "", // Reset package when client changes
                       }));
                     }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Select Client</option>
                     {clients.map((client) => (
@@ -1401,7 +1401,7 @@ export const TimeEntries = () => {
                     onChange={(e) => {
                       setEditFormData((prev) => ({ ...prev, packageId: e.target.value }));
                     }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Select Package</option>
                     {packages
@@ -1426,7 +1426,7 @@ export const TimeEntries = () => {
                     name="description"
                     defaultValue={editingEntry.description || ""}
                     rows={3}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 

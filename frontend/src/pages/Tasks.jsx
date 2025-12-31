@@ -1482,7 +1482,7 @@ export const Tasks = () => {
             }
           }}
         >
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingTask ? "Edit Task" : "Create New Task"}
@@ -1495,11 +1495,11 @@ export const Tasks = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Project Details */}
-              <div className="space-y-4">
+              <div className="space-y-4 mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
                   Project Details
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <label
                       htmlFor="clientId"
@@ -1731,7 +1731,7 @@ export const Tasks = () => {
                     type="text"
                     required
                     defaultValue={copiedTaskData?.name || editingTask?.name}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1748,7 +1748,7 @@ export const Tasks = () => {
                     defaultValue={
                       copiedTaskData?.description || editingTask?.description
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 {editingTask && (
@@ -1800,7 +1800,7 @@ export const Tasks = () => {
                         editingTask?.priority ||
                         "MEDIUM"
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="LOW">Low</option>
                       <option value="MEDIUM">Medium</option>
@@ -1828,7 +1828,7 @@ export const Tasks = () => {
                             .split("T")[0]
                         : "")
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
@@ -1863,7 +1863,7 @@ export const Tasks = () => {
 
         {/* Client Creation Dialog */}
         <Dialog open={showClientForm} onOpenChange={setShowClientForm}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Client</DialogTitle>
               <DialogDescription>
@@ -1882,7 +1882,7 @@ export const Tasks = () => {
                   id="clientName"
                   name="name"
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
               <div className="space-y-2">
@@ -1896,7 +1896,7 @@ export const Tasks = () => {
                   id="contactPerson"
                   name="contactPerson"
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
               <div className="space-y-2">
@@ -1910,7 +1910,7 @@ export const Tasks = () => {
                   id="clientEmail"
                   name="email"
                   type="email"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
               <div className="space-y-2">
@@ -1924,7 +1924,7 @@ export const Tasks = () => {
                   id="clientPhone"
                   name="phone"
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
               <div className="space-y-2">
@@ -1938,7 +1938,7 @@ export const Tasks = () => {
                   id="clientStatus"
                   name="status"
                   defaultValue="ACTIVE"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="ACTIVE">Active</option>
                   <option value="INACTIVE">Inactive</option>
@@ -1963,7 +1963,7 @@ export const Tasks = () => {
 
         {/* Package Creation Dialog */}
         <Dialog open={showPackageForm} onOpenChange={setShowPackageForm}>
-          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Package</DialogTitle>
               <DialogDescription>
@@ -1975,7 +1975,7 @@ export const Tasks = () => {
               onSubmit={handlePackageSubmit}
               className="space-y-4"
             >
-              <div className="space-y-2">
+              <div className="space-y-2 mb-6">
                 <label
                   htmlFor="templatePackage"
                   className="text-sm font-medium text-gray-700"
@@ -1993,7 +1993,7 @@ export const Tasks = () => {
                         setPackageTypeFilter(e.target.value);
                         setTemplatePackageId(""); // Reset selection when filter changes
                       }}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">All Types</option>
                       <option value="RECURRING">Recurring</option>
@@ -2010,7 +2010,7 @@ export const Tasks = () => {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label
                     htmlFor="packageName"
@@ -2023,7 +2023,7 @@ export const Tasks = () => {
                     name="name"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -2039,7 +2039,7 @@ export const Tasks = () => {
                     required
                     value={packageType}
                     onChange={(e) => setPackageType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="RECURRING">Recurring</option>
                     <option value="ONE_TIME">One Time</option>
@@ -2057,7 +2057,7 @@ export const Tasks = () => {
                       id="billingFrequency"
                       name="billingFrequency"
                       required={packageType === "RECURRING"}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select</option>
                       <option value="MONTHLY">Monthly</option>
@@ -2066,56 +2066,6 @@ export const Tasks = () => {
                     </select>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="contractValue"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Contract Value (AED) *
-                  </label>
-                  <input
-                    id="contractValue"
-                    name="contractValue"
-                    type="number"
-                    step="0.01"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="startDate"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Start Date *
-                  </label>
-                  <input
-                    id="startDate"
-                    name="startDate"
-                    type="date"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="packageStatus"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Status
-                  </label>
-                  <select
-                    id="packageStatus"
-                    name="status"
-                    defaultValue="ACTIVE"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="COMPLETED">Completed</option>
-                  </select>
-                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -2143,6 +2093,58 @@ export const Tasks = () => {
                     searchPlaceholder="Search activities..."
                     emptyMessage="No activities found"
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="contractValue"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Contract Value (AED) *
+                  </label>
+                  <input
+                    id="contractValue"
+                    name="contractValue"
+                    type="number"
+                    step="0.01"
+                    required
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="startDate"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Start Date *
+                  </label>
+                  <input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    required
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="packageStatus"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Status
+                  </label>
+                  <select
+                    id="packageStatus"
+                    name="status"
+                    defaultValue="ACTIVE"
+                    className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="COMPLETED">Completed</option>
+                  </select>
                 </div>
               </div>
               <DialogFooter>

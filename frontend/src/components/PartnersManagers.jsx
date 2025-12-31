@@ -383,7 +383,7 @@ export const PartnersManagers = ({
 
       {/* Edit Dialog - Shows document links */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[1200px]">
           <DialogHeader>
             <DialogTitle>
               Edit {editingPerson?.name} -{" "}

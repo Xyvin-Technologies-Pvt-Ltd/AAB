@@ -444,7 +444,7 @@ export const Employees = () => {
 
         {/* Form Dialog */}
         <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingEmployee ? "Edit Employee" : "Add New Employee"}
@@ -529,7 +529,7 @@ export const Employees = () => {
                 <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
                   Basic Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <label
                       htmlFor="name"
@@ -543,7 +543,7 @@ export const Employees = () => {
                       type="text"
                       required
                       defaultValue={editingEmployee?.name}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-2">
@@ -558,7 +558,7 @@ export const Employees = () => {
                       name="email"
                       type="email"
                       defaultValue={editingEmployee?.email}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
@@ -574,7 +574,7 @@ export const Employees = () => {
                       type="text"
                       placeholder="e.g., Senior Developer, Manager"
                       defaultValue={editingEmployee?.designation}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -600,7 +600,7 @@ export const Employees = () => {
                       step="0.01"
                       min="0"
                       defaultValue={editingEmployee?.hourlyRate}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-2">
@@ -618,7 +618,7 @@ export const Employees = () => {
                       min="0"
                       required
                       defaultValue={editingEmployee?.monthlyCost}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-2">
@@ -635,7 +635,7 @@ export const Employees = () => {
                       min="1"
                       max="744"
                       defaultValue={editingEmployee?.monthlyWorkingHours}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -669,7 +669,7 @@ export const Employees = () => {
                   defaultValue={
                     editingEmployee?.isActive !== false ? "true" : "false"
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="true">Active</option>
                   <option value="false">Inactive</option>

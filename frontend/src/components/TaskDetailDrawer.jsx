@@ -142,7 +142,7 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-4">
+      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto p-4">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-lg leading-tight">{taskData.name}</DialogTitle>
           <DialogDescription className="text-xs text-gray-500 mt-0.5">

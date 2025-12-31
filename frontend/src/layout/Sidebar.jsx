@@ -116,7 +116,11 @@ export const Sidebar = () => {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-indigo-700">
             <div className="flex items-center space-x-3">
-              <img src={logoImg} alt="Authentic Accounting" className="h-10 object-contain" />
+              <img
+                src={logoImg}
+                alt="Authentic Accounting"
+                className="h-10 object-contain"
+              />
             </div>
             <Button
               variant="ghost"

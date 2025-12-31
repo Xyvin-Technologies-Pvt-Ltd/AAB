@@ -1,27 +1,27 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ToastProvider } from './ui/toast';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { Login } from './pages/Login';
-import { ForgotPassword } from './pages/ForgotPassword';
-import { ResetPassword } from './pages/ResetPassword';
-import { Dashboard } from './pages/Dashboard';
-import { Clients } from './pages/Clients';
-import { ClientDetails } from './pages/ClientDetails';
-import { Packages } from './pages/Packages';
-import { PackageDetails } from './pages/PackageDetails';
-import { Tasks } from './pages/Tasks';
-import { Employees } from './pages/Employees';
-import { EmployeeDetails } from './pages/EmployeeDetails';
-import { TimeEntries } from './pages/TimeEntries';
-import { Analytics } from './pages/Analytics';
-import { PackageAnalytics } from './pages/PackageAnalytics';
-import { ClientAnalytics } from './pages/ClientAnalytics';
-import { EmployeeAnalytics } from './pages/EmployeeAnalytics';
-import { Calendar } from './pages/Calendar';
-import { Alerts } from './pages/Alerts';
-import { Settings } from './pages/Settings';
-import { Teams } from './pages/Teams';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "./ui/toast";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Login } from "./pages/Login";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { ResetPassword } from "./pages/ResetPassword";
+import { Dashboard } from "./pages/Dashboard";
+import { Clients } from "./pages/Clients";
+import { ClientDetails } from "./pages/ClientDetails";
+import { Packages } from "./pages/Packages";
+import { PackageDetails } from "./pages/PackageDetails";
+import { Tasks } from "./pages/Tasks";
+import { Employees } from "./pages/Employees";
+import { EmployeeDetails } from "./pages/EmployeeDetails";
+import { TimeEntries } from "./pages/TimeEntries";
+import { Analytics } from "./pages/Analytics";
+import { PackageAnalytics } from "./pages/PackageAnalytics";
+import { ClientAnalytics } from "./pages/ClientAnalytics";
+import { EmployeeAnalytics } from "./pages/EmployeeAnalytics";
+import { Calendar } from "./pages/Calendar";
+import { Alerts } from "./pages/Alerts";
+import { Settings } from "./pages/Settings";
+import { Teams } from "./pages/Teams";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,7 +92,7 @@ function App() {
             <Route
               path="/employees"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <Employees />
                 </ProtectedRoute>
               }
@@ -100,7 +100,7 @@ function App() {
             <Route
               path="/employees/:id"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <EmployeeDetails />
                 </ProtectedRoute>
               }
@@ -116,7 +116,7 @@ function App() {
             <Route
               path="/analytics"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <Analytics />
                 </ProtectedRoute>
               }
@@ -124,7 +124,7 @@ function App() {
             <Route
               path="/analytics/package/:packageId"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <PackageAnalytics />
                 </ProtectedRoute>
               }
@@ -132,7 +132,7 @@ function App() {
             <Route
               path="/analytics/client/:clientId"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <ClientAnalytics />
                 </ProtectedRoute>
               }
@@ -140,7 +140,7 @@ function App() {
             <Route
               path="/analytics/employee/:employeeId"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <EmployeeAnalytics />
                 </ProtectedRoute>
               }
@@ -164,7 +164,7 @@ function App() {
             <Route
               path="/settings"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <Settings />
                 </ProtectedRoute>
               }
@@ -172,7 +172,7 @@ function App() {
             <Route
               path="/teams"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <Teams />
                 </ProtectedRoute>
               }

@@ -1,42 +1,42 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { AppLayout } from '@/layout/AppLayout';
-import { analyticsApi } from '@/api/analytics';
-import { clientsApi } from '@/api/clients';
-import { packagesApi } from '@/api/packages';
-import { formatCurrency } from '@/utils/currencyFormat';
-import { Badge } from '@/ui/badge';
-import { Button } from '@/ui/button';
-import { UtilizationChart } from '@/components/charts/UtilizationChart';
-import { TimeDistributionChart } from '@/components/charts/TimeDistributionChart';
-import { ArrowLeft, Filter, X } from 'lucide-react';
-import { LoaderWithText } from '@/components/Loader';
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { AppLayout } from "@/layout/AppLayout";
+import { analyticsApi } from "@/api/analytics";
+import { clientsApi } from "@/api/clients";
+import { packagesApi } from "@/api/packages";
+import { formatCurrency } from "@/utils/currencyFormat";
+import { Badge } from "@/ui/badge";
+import { Button } from "@/ui/button";
+import { UtilizationChart } from "@/components/charts/UtilizationChart";
+import { TimeDistributionChart } from "@/components/charts/TimeDistributionChart";
+import { ArrowLeft, Filter, X } from "lucide-react";
+import { LoaderWithText } from "@/components/Loader";
 
 export const EmployeeAnalytics = () => {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    clientId: '',
-    packageId: '',
-    startDate: '',
-    endDate: '',
+    clientId: "",
+    packageId: "",
+    startDate: "",
+    endDate: "",
   });
 
   const { data: analyticsData, isLoading } = useQuery({
-    queryKey: ['analytics', 'employee', employeeId, filters],
+    queryKey: ["analytics", "employee", employeeId, filters],
     queryFn: () => analyticsApi.getEmployeeAnalytics(employeeId, filters),
     enabled: !!employeeId,
   });
 
   const { data: clientsData } = useQuery({
-    queryKey: ['clients'],
+    queryKey: ["clients"],
     queryFn: () => clientsApi.getAll({ limit: 10000 }),
   });
 
   const { data: packagesData } = useQuery({
-    queryKey: ['packages'],
+    queryKey: ["packages"],
     queryFn: () => packagesApi.getAll({ limit: 10000 }),
   });
 
@@ -46,10 +46,10 @@ export const EmployeeAnalytics = () => {
 
   const handleClearFilters = () => {
     setFilters({
-      clientId: '',
-      packageId: '',
-      startDate: '',
-      endDate: '',
+      clientId: "",
+      packageId: "",
+      startDate: "",
+      endDate: "",
     });
   };
 
@@ -71,7 +71,9 @@ export const EmployeeAnalytics = () => {
     return (
       <AppLayout>
         <div className="px-4 py-6 sm:px-0">
-          <div className="text-center py-8 text-gray-500">Employee not found</div>
+          <div className="text-center py-8 text-gray-500">
+            Employee not found
+          </div>
         </div>
       </AppLayout>
     );
@@ -82,7 +84,11 @@ export const EmployeeAnalytics = () => {
       <div className="px-4 py-6 sm:px-0">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/analytics')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/analytics")}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
@@ -91,7 +97,10 @@ export const EmployeeAnalytics = () => {
               <p className="text-sm text-gray-500 mt-1">Employee Analytics</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+          >
             <Filter className="h-4 w-4 mr-2" />
             Filters
             {activeFilterCount > 0 && (
@@ -108,21 +117,33 @@ export const EmployeeAnalytics = () => {
               <h3 className="font-semibold">Filters</h3>
               <div className="flex items-center gap-2">
                 {activeFilterCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearFilters}
+                  >
                     Clear All
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowFilters(false)}
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Client
+                </label>
                 <select
                   value={filters.clientId}
-                  onChange={(e) => setFilters({ ...filters, clientId: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, clientId: e.target.value })
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                 >
                   <option value="">All Clients</option>
@@ -134,10 +155,14 @@ export const EmployeeAnalytics = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Package</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Package
+                </label>
                 <select
                   value={filters.packageId}
-                  onChange={(e) => setFilters({ ...filters, packageId: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, packageId: e.target.value })
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                 >
                   <option value="">All Packages</option>
@@ -149,20 +174,28 @@ export const EmployeeAnalytics = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Date
+                </label>
                 <input
                   type="date"
                   value={filters.startDate}
-                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, startDate: e.target.value })
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Date
+                </label>
                 <input
                   type="date"
                   value={filters.endDate}
-                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, endDate: e.target.value })
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
@@ -174,23 +207,33 @@ export const EmployeeAnalytics = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
           <div className="bg-white rounded-lg shadow p-3">
             <p className="text-xs text-gray-500 mb-1">Monthly Salary</p>
-            <p className="text-base font-semibold">{formatCurrency(analytics.employee.monthlyCost)}</p>
+            <p className="text-base font-semibold">
+              {formatCurrency(analytics.employee.monthlyCost)}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow p-3">
             <p className="text-xs text-gray-500 mb-1">Hourly Rate</p>
-            <p className="text-base font-semibold">{formatCurrency(analytics.employee.hourlyRate)}</p>
+            <p className="text-base font-semibold">
+              {formatCurrency(analytics.employee.hourlyRate)}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow p-3">
             <p className="text-xs text-gray-500 mb-1">Hours Logged</p>
-            <p className="text-base font-semibold">{(analytics.summary?.totalHours || 0).toFixed(1)} hrs</p>
+            <p className="text-base font-semibold">
+              {(analytics.summary?.totalHours || 0).toFixed(1)} hrs
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow p-3">
             <p className="text-xs text-gray-500 mb-1">Utilization %</p>
-            <p className="text-base font-semibold">{(analytics.summary?.utilizationRate || 0).toFixed(1)}%</p>
+            <p className="text-base font-semibold">
+              {(analytics.summary?.utilizationRate || 0).toFixed(1)}%
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow p-3">
             <p className="text-xs text-gray-500 mb-1">Cost Contribution</p>
-            <p className="text-base font-semibold">{formatCurrency(analytics.summary?.costContribution || 0)}</p>
+            <p className="text-base font-semibold">
+              {formatCurrency(analytics.summary?.costContribution || 0)}
+            </p>
           </div>
         </div>
 
@@ -201,38 +244,51 @@ export const EmployeeAnalytics = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="p-3 bg-gray-50 rounded">
                 <p className="text-xs text-gray-500 mb-1">Monthly Salary</p>
-                <p className="text-xl font-semibold">{formatCurrency(analytics.salaryVsEarned.monthlySalary)}</p>
+                <p className="text-xl font-semibold">
+                  {formatCurrency(analytics.salaryVsEarned.monthlySalary)}
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded">
-                <p className="text-xs text-gray-500 mb-1">Cost Based on Hours</p>
-                <p className="text-xl font-semibold">{formatCurrency(analytics.salaryVsEarned.costBasedOnHours)}</p>
+                <p className="text-xs text-gray-500 mb-1">
+                  Cost Based on Hours
+                </p>
+                <p className="text-xl font-semibold">
+                  {formatCurrency(analytics.salaryVsEarned.costBasedOnHours)}
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded">
                 <p className="text-xs text-gray-500 mb-1">Ratio</p>
-                <p className="text-xl font-semibold">{analytics.salaryVsEarned.ratio.toFixed(1)}%</p>
+                <p className="text-xl font-semibold">
+                  {analytics.salaryVsEarned.ratio.toFixed(1)}%
+                </p>
               </div>
             </div>
           </div>
         )}
 
         {/* Charts Side by Side */}
-        {(analytics.monthlyTrends && analytics.monthlyTrends.length > 0) || (analytics.timeDistribution && analytics.timeDistribution.length > 0) ? (
+        {(analytics.monthlyTrends && analytics.monthlyTrends.length > 0) ||
+        (analytics.timeDistribution &&
+          analytics.timeDistribution.length > 0) ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Monthly Utilization Trend */}
             {analytics.monthlyTrends && analytics.monthlyTrends.length > 0 && (
               <div className="bg-white rounded-lg shadow p-5">
-                <h2 className="text-lg font-semibold mb-4">Monthly Utilization</h2>
+                <h2 className="text-lg font-semibold mb-4">
+                  Monthly Utilization
+                </h2>
                 <UtilizationChart data={analytics.monthlyTrends} />
               </div>
             )}
 
             {/* Time Distribution */}
-            {analytics.timeDistribution && analytics.timeDistribution.length > 0 && (
-              <div className="bg-white rounded-lg shadow p-5">
-                <h2 className="text-lg font-semibold mb-4">Time by Client</h2>
-                <TimeDistributionChart data={analytics.timeDistribution} />
-              </div>
-            )}
+            {analytics.timeDistribution &&
+              analytics.timeDistribution.length > 0 && (
+                <div className="bg-white rounded-lg shadow p-5">
+                  <h2 className="text-lg font-semibold mb-4">Time by Client</h2>
+                  <TimeDistributionChart data={analytics.timeDistribution} />
+                </div>
+              )}
           </div>
         ) : null}
 
@@ -244,14 +300,20 @@ export const EmployeeAnalytics = () => {
               <h2 className="text-lg font-semibold mb-3">Top Clients</h2>
               <div className="space-y-2">
                 {analytics.topClients.map((client, idx) => (
-                  <div key={client.clientId} className="flex items-center justify-between p-2.5 bg-gray-50 rounded">
+                  <div
+                    key={client.clientId}
+                    className="flex items-center justify-between p-2.5 bg-gray-50 rounded"
+                  >
                     <div>
                       <p className="text-sm font-medium">{client.name}</p>
                       <p className="text-xs text-gray-500">
-                        {client.hours} hrs • {client.tasks} tasks • {formatCurrency(client.cost)}
+                        {client.hours} hrs • {client.tasks} tasks •{" "}
+                        {formatCurrency(client.cost)}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="text-xs">{idx + 1}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {idx + 1}
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -264,14 +326,20 @@ export const EmployeeAnalytics = () => {
               <h2 className="text-lg font-semibold mb-3">Top Packages</h2>
               <div className="space-y-2">
                 {analytics.topPackages.map((pkg, idx) => (
-                  <div key={pkg.packageId} className="flex items-center justify-between p-2.5 bg-gray-50 rounded">
+                  <div
+                    key={pkg.packageId}
+                    className="flex items-center justify-between p-2.5 bg-gray-50 rounded"
+                  >
                     <div>
                       <p className="text-sm font-medium">{pkg.name}</p>
                       <p className="text-xs text-gray-500">
-                        {pkg.hours} hrs • {pkg.tasks} tasks • {formatCurrency(pkg.cost)}
+                        {pkg.hours} hrs • {pkg.tasks} tasks •{" "}
+                        {formatCurrency(pkg.cost)}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="text-xs">{idx + 1}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {idx + 1}
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -284,14 +352,19 @@ export const EmployeeAnalytics = () => {
               <h2 className="text-lg font-semibold mb-3">Top Tasks</h2>
               <div className="space-y-2">
                 {analytics.topTasks.map((task, idx) => (
-                  <div key={task.taskId} className="flex items-center justify-between p-2.5 bg-gray-50 rounded">
+                  <div
+                    key={task.taskId}
+                    className="flex items-center justify-between p-2.5 bg-gray-50 rounded"
+                  >
                     <div>
                       <p className="text-sm font-medium">{task.name}</p>
                       <p className="text-xs text-gray-500">
                         {task.hours} hrs • {formatCurrency(task.cost)}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="text-xs">{idx + 1}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {idx + 1}
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -307,12 +380,24 @@ export const EmployeeAnalytics = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Date</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Client</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Package</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Task</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Hours</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">Cost</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
+                      Date
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
+                      Client
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
+                      Package
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
+                      Task
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
+                      Hours
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
+                      Cost
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -325,7 +410,9 @@ export const EmployeeAnalytics = () => {
                       <td className="px-3 py-2 text-sm">{entry.packageName}</td>
                       <td className="px-3 py-2 text-sm">{entry.taskName}</td>
                       <td className="px-3 py-2 text-sm">{entry.hours} hrs</td>
-                      <td className="px-3 py-2 text-sm">{formatCurrency(entry.cost)}</td>
+                      <td className="px-3 py-2 text-sm">
+                        {formatCurrency(entry.cost)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -337,4 +424,3 @@ export const EmployeeAnalytics = () => {
     </AppLayout>
   );
 };
-

@@ -123,7 +123,7 @@ Example Client 3,VAT,Not Active,user3@example.com,Password789,Mar Jun Sep Dec`;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bulk Upload Clients</DialogTitle>
           <DialogDescription>

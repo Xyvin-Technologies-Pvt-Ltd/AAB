@@ -300,7 +300,7 @@ export const Teams = () => {
 
         {/* Create/Edit Dialog */}
         <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="sm:max-w-[1200px]">
             <DialogHeader>
               <DialogTitle>
                 {editingTeam ? "Edit Team" : "Create Team"}
@@ -321,7 +321,7 @@ export const Teams = () => {
                   name="name"
                   required
                   defaultValue={editingTeam?.name}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
@@ -333,7 +333,7 @@ export const Teams = () => {
                   value={selectedManagerId}
                   onChange={(e) => setSelectedManagerId(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">Select Manager</option>
                   {employees.map((emp) => (
@@ -367,7 +367,7 @@ export const Teams = () => {
                   defaultValue={
                     editingTeam?.isActive !== false ? "true" : "false"
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="true">Active</option>
                   <option value="false">Inactive</option>
