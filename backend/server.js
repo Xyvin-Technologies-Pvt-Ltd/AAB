@@ -12,7 +12,7 @@ const startServer = async () => {
     await connectDatabase();
 
     // Start server
-    const server = app.listen(serverConfig.port, () => {
+    const server = app.listen(serverConfig.port,'0.0.0.0', () => {
       logger.info(
         `Server running in ${serverConfig.nodeEnv} mode on port ${serverConfig.port}`
       );
