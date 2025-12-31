@@ -48,6 +48,7 @@ import { useTimer } from "@/hooks/useTimer";
 import { format } from "date-fns";
 import { Play, Pause, Check } from "lucide-react";
 import { LoaderWithText } from "@/components/Loader";
+import { useAuthStore } from "@/store/authStore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,9 +85,11 @@ export const Tasks = () => {
   const [showAddActivityDropdown, setShowAddActivityDropdown] = useState(false);
   const [tempServiceSelection, setTempServiceSelection] = useState("");
   const [tempActivitySelection, setTempActivitySelection] = useState("");
+  const [taskViewFilter, setTaskViewFilter] = useState("myTasks"); // 'myTasks' or 'allTasks'
   const packageFormRef = useRef(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user, isAdmin } = useAuthStore();
 
   // Use centralized timer hook
   const {
@@ -103,9 +106,27 @@ export const Tasks = () => {
     stopTimerMutation,
   } = useTimer();
 
+  // Build effective filters - include assignedTo for non-admin users by default
+  const effectiveFilters = { ...filters };
+
+  // For non-admin users, filter by assigned tasks by default unless viewing all tasks
+  if (!isAdmin() && user?.employeeId) {
+    if (taskViewFilter === "myTasks") {
+      // Show only assigned tasks
+      const employeeIdStr =
+        user.employeeId?._id?.toString() ||
+        user.employeeId?.toString() ||
+        user.employeeId;
+      effectiveFilters.assignedTo = employeeIdStr;
+    } else if (taskViewFilter === "allTasks") {
+      // Show all tasks - remove assignedTo filter
+      delete effectiveFilters.assignedTo;
+    }
+  }
+
   const { data: tasksData, isLoading } = useQuery({
-    queryKey: ["tasks", filters],
-    queryFn: () => tasksApi.getAll({ ...filters, limit: 1000 }),
+    queryKey: ["tasks", effectiveFilters],
+    queryFn: () => tasksApi.getAll({ ...effectiveFilters, limit: 1000 }),
   });
 
   const { data: clientsData } = useQuery({
@@ -802,6 +823,37 @@ export const Tasks = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Task View Filter - Only show for non-admin users */}
+            {!isAdmin() && user?.employeeId && (
+              <div className="flex items-center gap-2 border rounded-lg p-1 bg-white">
+                <Button
+                  variant={taskViewFilter === "myTasks" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => {
+                    setTaskViewFilter("myTasks");
+                    // Clear any manual assignedTo filter - will be set automatically
+                    const newFilters = { ...filters };
+                    delete newFilters.assignedTo;
+                    setFilters(newFilters);
+                  }}
+                >
+                  My Tasks
+                </Button>
+                <Button
+                  variant={taskViewFilter === "allTasks" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => {
+                    setTaskViewFilter("allTasks");
+                    // Clear assignedTo filter to show all tasks
+                    const newFilters = { ...filters };
+                    delete newFilters.assignedTo;
+                    setFilters(newFilters);
+                  }}
+                >
+                  All Tasks
+                </Button>
+              </div>
+            )}
             <div className="flex items-center gap-1 border rounded-lg p-1">
               <Button
                 variant={viewMode === "kanban" ? "default" : "ghost"}

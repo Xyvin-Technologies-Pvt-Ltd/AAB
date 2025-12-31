@@ -7,13 +7,17 @@ import { createEmployeeSchema, updateEmployeeSchema } from '../../validators/sch
 
 const router = express.Router();
 
-// All routes require authentication and admin role
+// All routes require authentication
 router.use(authenticate);
+
+// GET routes - allow all authenticated users (needed for task assignment)
+router.get('/', employeeController.getEmployees);
+router.get('/:id', employeeController.getEmployeeById);
+
+// Write operations - admin only
 router.use(authorize('ADMIN'));
 
 router.post('/', validate(createEmployeeSchema), employeeController.createEmployee);
-router.get('/', employeeController.getEmployees);
-router.get('/:id', employeeController.getEmployeeById);
 router.put('/:id', validate(updateEmployeeSchema), employeeController.updateEmployee);
 router.delete('/:id', employeeController.deleteEmployee);
 
