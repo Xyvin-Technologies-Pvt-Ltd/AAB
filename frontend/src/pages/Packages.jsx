@@ -30,9 +30,8 @@ export const Packages = () => {
   };
 
   const handleRowClick = (pkg) => {
-    if (pkg.clientId?._id || pkg.clientId) {
-      const clientId = typeof pkg.clientId === 'object' ? pkg.clientId._id : pkg.clientId;
-      navigate(`/clients/${clientId}`);
+    if (pkg._id) {
+      navigate(`/packages/${pkg._id}`);
     }
   };
 

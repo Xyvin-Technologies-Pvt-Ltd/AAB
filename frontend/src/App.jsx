@@ -9,6 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Clients } from './pages/Clients';
 import { ClientDetails } from './pages/ClientDetails';
 import { Packages } from './pages/Packages';
+import { PackageDetails } from './pages/PackageDetails';
 import { Tasks } from './pages/Tasks';
 import { Employees } from './pages/Employees';
 import { EmployeeDetails } from './pages/EmployeeDetails';
@@ -69,6 +70,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Packages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/packages/:id"
+              element={
+                <ProtectedRoute>
+                  <PackageDetails />
                 </ProtectedRoute>
               }
             />

@@ -12,6 +12,7 @@ import {
   Bell,
   Users2,
   LogOut,
+  Package,
 } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useUIStore } from "@/store/uiStore";
@@ -42,6 +43,12 @@ const allMenuItems = [
     path: "/tasks",
     label: "Tasks",
     icon: CheckSquare,
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/packages",
+    label: "Packages",
+    icon: Package,
     roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
   },
   {

@@ -49,15 +49,15 @@ export const Clients = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['clients', filters, page],
+  // Fetch all clients for client-side filtering and pagination
+  // Apply server-side filters (status, packageId, vatMonths) but fetch all matching records
+  const { data: allClientsData, isLoading } = useQuery({
+    queryKey: ['clients', 'all', filters.status, filters.packageId, filters.vatMonths?.join(',')],
     queryFn: () => {
       const params = {
-        search: filters.search || undefined,
+        limit: 10000, // Fetch all clients matching the server-side filters
         status: filters.status || undefined,
         packageId: filters.packageId || undefined,
-        page,
-        limit,
       };
       
       // Handle vatMonths array - send as comma-separated string or multiple params
@@ -216,19 +216,25 @@ export const Clients = () => {
       : <ArrowDown className="h-3 w-3 ml-1 text-indigo-600" />;
   };
 
-  let clients = data?.data?.clients || [];
-  const pagination = data?.data?.pagination || { page: 1, limit, total: 0, pages: 1 };
+  // Get all clients from the query
+  let allClients = allClientsData?.data?.clients || [];
 
-  // Reset to page 1 when filters change
-  const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
-    setSearch(newFilters.search || '');
-    setPage(1); // Reset to first page when filters change
-  };
+  // Apply client-side search filter
+  if (filters.search) {
+    const searchLower = filters.search.toLowerCase();
+    allClients = allClients.filter((client) => {
+      return (
+        client.name?.toLowerCase().includes(searchLower) ||
+        client.contactPerson?.toLowerCase().includes(searchLower) ||
+        client.email?.toLowerCase().includes(searchLower) ||
+        client.phone?.toLowerCase().includes(searchLower)
+      );
+    });
+  }
 
   // Apply sorting
   if (sortField) {
-    clients = [...clients].sort((a, b) => {
+    allClients = [...allClients].sort((a, b) => {
       let aValue, bValue;
 
       switch (sortField) {
@@ -269,6 +275,24 @@ export const Clients = () => {
       return 0;
     });
   }
+
+  // Apply client-side pagination
+  const total = allClients.length;
+  const skip = (page - 1) * limit;
+  const clients = allClients.slice(skip, skip + limit);
+  const pagination = {
+    page,
+    limit,
+    total,
+    pages: Math.ceil(total / limit),
+  };
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    setSearch(newFilters.search || '');
+    setPage(1); // Reset to first page when filters change
+  };
 
   return (
     <AppLayout>

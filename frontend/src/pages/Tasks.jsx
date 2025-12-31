@@ -80,6 +80,10 @@ export const Tasks = () => {
   );
   const [templatePackageId, setTemplatePackageId] = useState("");
   const [packageTypeFilter, setPackageTypeFilter] = useState("");
+  const [showAddServiceDropdown, setShowAddServiceDropdown] = useState(false);
+  const [showAddActivityDropdown, setShowAddActivityDropdown] = useState(false);
+  const [tempServiceSelection, setTempServiceSelection] = useState("");
+  const [tempActivitySelection, setTempActivitySelection] = useState("");
   const packageFormRef = useRef(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -356,6 +360,10 @@ export const Tasks = () => {
     setSelectedEmployees([]);
     setSelectedServices([]);
     setSelectedActivities([]);
+    setShowAddServiceDropdown(false);
+    setShowAddActivityDropdown(false);
+    setTempServiceSelection("");
+    setTempActivitySelection("");
   };
 
   // Ensure client is selected when form opens with copied data and clients are loaded
@@ -701,12 +709,38 @@ export const Tasks = () => {
     }
   };
 
-  const handleEmployeeToggle = (employeeId) => {
-    setSelectedEmployees((prev) =>
-      prev.includes(employeeId)
-        ? prev.filter((id) => id !== employeeId)
-        : [...prev, employeeId]
-    );
+  const handleAddService = () => {
+    if (tempServiceSelection) {
+      const serviceIdStr =
+        tempServiceSelection?.toString() || tempServiceSelection;
+      // Check if service is already selected (compare as strings)
+      const isAlreadySelected = selectedServices.some((id) => {
+        const idStr = id?.toString() || id;
+        return idStr === serviceIdStr;
+      });
+      if (!isAlreadySelected) {
+        setSelectedServices([...selectedServices, serviceIdStr]);
+      }
+      setTempServiceSelection("");
+      setShowAddServiceDropdown(false);
+    }
+  };
+
+  const handleAddActivity = () => {
+    if (tempActivitySelection) {
+      const activityIdStr =
+        tempActivitySelection?.toString() || tempActivitySelection;
+      // Check if activity is already selected (compare as strings)
+      const isAlreadySelected = selectedActivities.some((id) => {
+        const idStr = id?.toString() || id;
+        return idStr === activityIdStr;
+      });
+      if (!isAlreadySelected) {
+        setSelectedActivities([...selectedActivities, activityIdStr]);
+      }
+      setTempActivitySelection("");
+      setShowAddActivityDropdown(false);
+    }
   };
 
   const handleSort = (key) => {
@@ -1453,6 +1487,10 @@ export const Tasks = () => {
                         // Reset services and activities when package changes
                         setSelectedServices([]);
                         setSelectedActivities([]);
+                        setShowAddServiceDropdown(false);
+                        setShowAddActivityDropdown(false);
+                        setTempServiceSelection("");
+                        setTempActivitySelection("");
                       }}
                       placeholder="Search and select package..."
                       searchPlaceholder="Search packages..."
@@ -1470,29 +1508,155 @@ export const Tasks = () => {
                     <label className="text-sm font-medium text-gray-700">
                       Services
                     </label>
-                    <MultiSelect
-                      options={filteredServices}
-                      selected={selectedServices}
-                      onChange={setSelectedServices}
-                      placeholder="Select services..."
-                      searchPlaceholder="Search services..."
-                      emptyMessage="No services found"
-                      disabled={!selectedPackageId && !editingTask}
-                    />
+                    {selectedPackageId && filteredServices.length === 0 ? (
+                      <div className="space-y-2">
+                        <div className="text-sm text-gray-500 py-2 px-3 border border-gray-300 rounded-lg bg-gray-50">
+                          No services found in this package
+                        </div>
+                        {showAddServiceDropdown ? (
+                          <div className="space-y-2">
+                            <SelectSearch
+                              options={availableServices}
+                              value={tempServiceSelection}
+                              onChange={setTempServiceSelection}
+                              placeholder="Select a service to add..."
+                              searchPlaceholder="Search services..."
+                              emptyMessage="No services found"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleAddService}
+                                disabled={!tempServiceSelection}
+                              >
+                                Add Service
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setShowAddServiceDropdown(false);
+                                  setTempServiceSelection("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowAddServiceDropdown(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Service
+                          </Button>
+                        )}
+                        {selectedServices.length > 0 && (
+                          <div className="mt-2">
+                            <MultiSelect
+                              options={availableServices}
+                              selected={selectedServices}
+                              onChange={setSelectedServices}
+                              placeholder="Selected services..."
+                              searchPlaceholder="Search services..."
+                              emptyMessage="No services selected"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <MultiSelect
+                        options={filteredServices}
+                        selected={selectedServices}
+                        onChange={setSelectedServices}
+                        placeholder="Select services..."
+                        searchPlaceholder="Search services..."
+                        emptyMessage="No services found"
+                        disabled={!selectedPackageId && !editingTask}
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
                       Activities
                     </label>
-                    <MultiSelect
-                      options={filteredActivities}
-                      selected={selectedActivities}
-                      onChange={setSelectedActivities}
-                      placeholder="Select activities..."
-                      searchPlaceholder="Search activities..."
-                      emptyMessage="No activities found"
-                      disabled={!selectedPackageId && !editingTask}
-                    />
+                    {selectedPackageId && filteredActivities.length === 0 ? (
+                      <div className="space-y-2">
+                        <div className="text-sm text-gray-500 py-2 px-3 border border-gray-300 rounded-lg bg-gray-50">
+                          No activities found in this package
+                        </div>
+                        {showAddActivityDropdown ? (
+                          <div className="space-y-2">
+                            <SelectSearch
+                              options={availableActivities}
+                              value={tempActivitySelection}
+                              onChange={setTempActivitySelection}
+                              placeholder="Select an activity to add..."
+                              searchPlaceholder="Search activities..."
+                              emptyMessage="No activities found"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleAddActivity}
+                                disabled={!tempActivitySelection}
+                              >
+                                Add Activity
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setShowAddActivityDropdown(false);
+                                  setTempActivitySelection("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowAddActivityDropdown(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Activity
+                          </Button>
+                        )}
+                        {selectedActivities.length > 0 && (
+                          <div className="mt-2">
+                            <MultiSelect
+                              options={availableActivities}
+                              selected={selectedActivities}
+                              onChange={setSelectedActivities}
+                              placeholder="Selected activities..."
+                              searchPlaceholder="Search activities..."
+                              emptyMessage="No activities selected"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <MultiSelect
+                        options={filteredActivities}
+                        selected={selectedActivities}
+                        onChange={setSelectedActivities}
+                        placeholder="Select activities..."
+                        searchPlaceholder="Search activities..."
+                        emptyMessage="No activities found"
+                        disabled={!selectedPackageId && !editingTask}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
