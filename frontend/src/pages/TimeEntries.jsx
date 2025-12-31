@@ -122,12 +122,12 @@ export const TimeEntries = () => {
 
   const { data: employeesData } = useQuery({
     queryKey: ["employees"],
-    queryFn: () => employeesApi.getAll({ limit: 100 }),
+    queryFn: () => employeesApi.getAll({ limit: 10000 }),
   });
 
   const { data: clientsData } = useQuery({
     queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 100 }),
+    queryFn: () => clientsApi.getAll({ limit: 10000 }),
   });
 
   // Fetch tasks for searchable dropdown
@@ -153,7 +153,7 @@ export const TimeEntries = () => {
 
   const { data: miscPackagesData } = useQuery({
     queryKey: ["packages", miscClientId],
-    queryFn: () => packagesApi.getAll({ clientId: miscClientId, limit: 100 }),
+    queryFn: () => packagesApi.getAll({ clientId: miscClientId, limit: 10000 }),
     enabled: !!miscClientId,
   });
 

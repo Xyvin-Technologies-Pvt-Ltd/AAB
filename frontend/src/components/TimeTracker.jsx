@@ -36,20 +36,20 @@ export const TimeTracker = () => {
 
   const { data: clientsData } = useQuery({
     queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 100 }),
+    queryFn: () => clientsApi.getAll({ limit: 10000 }),
   });
 
   const { data: packagesData } = useQuery({
     queryKey: ["packages", selectedClientId],
     queryFn: () =>
-      packagesApi.getAll({ clientId: selectedClientId, limit: 100 }),
+      packagesApi.getAll({ clientId: selectedClientId, limit: 10000 }),
     enabled: !!selectedClientId,
   });
 
   const { data: tasksData } = useQuery({
     queryKey: ["tasks", selectedPackageId, isEmployee ? employeeId : null],
     queryFn: () => {
-      const params = { packageId: selectedPackageId, limit: 100 };
+      const params = { packageId: selectedPackageId, limit: 10000 };
       // If user is an employee, filter by assignedTo
       if (isEmployee && employeeId) {
         params.assignedTo = employeeId;

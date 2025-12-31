@@ -101,12 +101,12 @@ export const ClientDetails = () => {
 
   const { data: servicesData } = useQuery({
     queryKey: ["services"],
-    queryFn: () => servicesApi.getAll({ limit: 100 }),
+    queryFn: () => servicesApi.getAll({ limit: 10000 }),
   });
 
   const { data: activitiesData } = useQuery({
     queryKey: ["activities"],
-    queryFn: () => activitiesApi.getAll({ limit: 100 }),
+    queryFn: () => activitiesApi.getAll({ limit: 10000 }),
   });
 
   // Fetch all packages for template dropdown

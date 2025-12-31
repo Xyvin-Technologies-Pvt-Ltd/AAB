@@ -38,12 +38,12 @@ export const ClientAnalytics = () => {
 
   const { data: employeesData } = useQuery({
     queryKey: ['employees'],
-    queryFn: () => employeesApi.getAll({ limit: 100 }),
+    queryFn: () => employeesApi.getAll({ limit: 10000 }),
   });
 
   const { data: packagesData } = useQuery({
     queryKey: ['packages'],
-    queryFn: () => packagesApi.getAll({ limit: 100 }),
+    queryFn: () => packagesApi.getAll({ limit: 10000 }),
   });
 
   const employees = employeesData?.data?.employees || [];

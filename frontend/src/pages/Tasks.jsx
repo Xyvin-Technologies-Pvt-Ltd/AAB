@@ -106,7 +106,7 @@ export const Tasks = () => {
 
   const { data: clientsData } = useQuery({
     queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 100 }),
+    queryFn: () => clientsApi.getAll({ limit: 10000 }),
   });
 
   const { data: packagesData } = useQuery({
@@ -124,7 +124,7 @@ export const Tasks = () => {
           selectedClientId ||
           editingTask?.clientId?._id ||
           editingTask?.clientId,
-        limit: 100,
+        limit: 10000,
       }),
     enabled: !!(
       filters.clientId ||
@@ -136,18 +136,18 @@ export const Tasks = () => {
 
   const { data: employeesData } = useQuery({
     queryKey: ["employees"],
-    queryFn: () => employeesApi.getAll({ limit: 100 }),
+    queryFn: () => employeesApi.getAll({ limit: 10000 }),
   });
 
   const { data: servicesData } = useQuery({
     queryKey: ["services"],
-    queryFn: () => servicesApi.getAll({ limit: 100 }),
+    queryFn: () => servicesApi.getAll({ limit: 10000 }),
     enabled: true,
   });
 
   const { data: activitiesData } = useQuery({
     queryKey: ["activities"],
-    queryFn: () => activitiesApi.getAll({ limit: 100 }),
+    queryFn: () => activitiesApi.getAll({ limit: 10000 }),
     enabled: true,
   });
 
