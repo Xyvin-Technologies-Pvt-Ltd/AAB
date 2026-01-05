@@ -59,7 +59,7 @@ export const TimeEntries = () => {
   });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const limit = 25;
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [editingEntry, setEditingEntry] = useState(null);

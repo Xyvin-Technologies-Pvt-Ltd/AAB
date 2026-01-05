@@ -37,7 +37,7 @@ export const Employees = () => {
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const limit = 25;
 
   const { data, isLoading } = useQuery({
     queryKey: ["employees", page, search],

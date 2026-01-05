@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
 import { clientsApi } from "@/api/clients";
 import { packagesApi } from "@/api/packages";
+import { analyticsApi } from "@/api/analytics";
 import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
 import {
@@ -27,6 +28,7 @@ import {
   ArrowUp,
   ArrowDown,
   Filter,
+  Download,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -41,6 +43,7 @@ import { useToast } from "@/hooks/useToast";
 import { useNavigate } from "react-router-dom";
 import { LoaderWithText } from "@/components/Loader";
 import { Avatar } from "@/components/Avatar";
+import { formatCurrency } from "@/utils/currencyFormat";
 
 export const Clients = () => {
   const [search, setSearch] = useState("");
@@ -51,7 +54,7 @@ export const Clients = () => {
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState("asc");
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit] = useState(25);
   const [filters, setFilters] = useState({
     search: "",
     vatMonths: [],
@@ -91,6 +94,23 @@ export const Clients = () => {
   const { data: packagesData } = useQuery({
     queryKey: ["packages"],
     queryFn: () => packagesApi.getAll({ limit: 1000 }),
+  });
+
+  // Fetch client profitability data for profit column
+  const { data: clientProfitabilityData } = useQuery({
+    queryKey: ["analytics", "clients", "all"],
+    queryFn: () => analyticsApi.getClientProfitability({ page: 1, limit: 10000 }),
+  });
+
+  // Create a map of client profitability for quick lookup
+  const clientProfitabilityMap = {};
+  const allClientProfits = clientProfitabilityData?.data?.results ?? (Array.isArray(clientProfitabilityData?.data) ? clientProfitabilityData.data : []);
+  allClientProfits.forEach((clientProfit) => {
+    clientProfitabilityMap[clientProfit.clientId] = {
+      totalRevenue: clientProfit.totalCycleRevenue || clientProfit.totalRevenue || 0,
+      totalCost: clientProfit.totalCycleCost || clientProfit.totalCost || 0,
+      totalProfit: (clientProfit.totalCycleRevenue || clientProfit.totalRevenue || 0) - (clientProfit.totalCycleCost || clientProfit.totalCost || 0),
+    };
   });
 
   // Group packages by client ID
@@ -330,6 +350,172 @@ export const Clients = () => {
     setPage(1); // Reset to first page when filters change
   };
 
+  // Export clients to CSV
+  const handleExportCSV = () => {
+    try {
+      // Get all clients from query data
+      let clientsToExport = allClientsData?.data?.clients || [];
+
+      // Apply client-side search filter (same as in the component)
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        clientsToExport = clientsToExport.filter((client) => {
+          return (
+            client.name?.toLowerCase().includes(searchLower) ||
+            client.contactPerson?.toLowerCase().includes(searchLower) ||
+            client.email?.toLowerCase().includes(searchLower) ||
+            client.phone?.toLowerCase().includes(searchLower)
+          );
+        });
+      }
+
+      if (clientsToExport.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No clients to export",
+          type: "warning",
+        });
+        return;
+      }
+
+      // Define CSV headers with meaningful names
+      const headers = [
+        "Client Name",
+        "Name (Arabic)",
+        "Contact Person",
+        "Email",
+        "Phone",
+        "Status",
+        "Address",
+        "Emirate",
+        "TRN",
+        "CTRN",
+        "VAT Return Cycle",
+        "License Number",
+        "License Start Date",
+        "License Expiry Date",
+        "Corporate Tax Due Date",
+        "Remarks",
+        "EmaraTax Username",
+        "Total Documents",
+        "Partners Count",
+        "Managers Count",
+        "Monthly Revenue (AED)",
+        "Yearly Revenue (AED)",
+        "Total Revenue (AED)",
+        "Created At",
+        "Updated At",
+      ];
+
+      // Convert clients to CSV rows
+      const csvRows = clientsToExport.map((client) => {
+        const clientPackages = packagesByClient[client._id] || [];
+        const monthlyPackages = clientPackages.filter(
+          (pkg) => pkg.billingFrequency === "MONTHLY" || pkg.billingFrequency === "QUARTERLY"
+        );
+        const yearlyPackages = clientPackages.filter(
+          (pkg) => pkg.billingFrequency === "YEARLY"
+        );
+
+        // Calculate monthly revenue (including quarterly as monthly equivalent)
+        const monthlyRevenue = monthlyPackages.reduce((sum, pkg) => {
+          const value = pkg.billingFrequency === "QUARTERLY" 
+            ? (pkg.contractValue || 0) / 3 
+            : (pkg.contractValue || 0);
+          return sum + value;
+        }, 0);
+
+        // Calculate yearly revenue
+        const yearlyRevenue = yearlyPackages.reduce(
+          (sum, pkg) => sum + (pkg.contractValue || 0),
+          0
+        );
+
+        // Format dates
+        const formatDate = (date) => {
+          if (!date) return "";
+          return new Date(date).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          });
+        };
+
+        // Get VAT cycle (use existing helper, replace "-" with empty string for CSV)
+        const vatCycleValue = formatVATCycle(client);
+        const vatCycle = vatCycleValue === "-" ? "" : vatCycleValue;
+
+        return [
+          client.name || "",
+          client.nameArabic || "",
+          client.contactPerson || "",
+          client.email || "",
+          client.phone || "",
+          client.status || "",
+          client.businessInfo?.address || "",
+          client.businessInfo?.emirate || "",
+          client.businessInfo?.trn || "",
+          client.businessInfo?.ctrn || "",
+          client.businessInfo?.vatReturnCycle || vatCycle || "",
+          client.businessInfo?.licenseNumber || "",
+          formatDate(client.businessInfo?.licenseStartDate),
+          formatDate(client.businessInfo?.licenseExpiryDate),
+          formatDate(client.businessInfo?.corporateTaxDueDate),
+          client.businessInfo?.remarks || "",
+          client.emaraTaxAccount?.username || "",
+          (client.documents?.length || 0).toString(),
+          (client.partners?.length || 0).toString(),
+          (client.managers?.length || 0).toString(),
+          monthlyRevenue.toFixed(2),
+          yearlyRevenue.toFixed(2),
+          (monthlyRevenue + yearlyRevenue).toFixed(2),
+          formatDate(client.createdAt),
+          formatDate(client.updatedAt),
+        ];
+      });
+
+      // Escape CSV values (handle commas, quotes, newlines)
+      const escapeCSV = (value) => {
+        if (value === null || value === undefined) return "";
+        const stringValue = String(value);
+        if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+
+      // Create CSV content
+      const csvContent = [
+        headers.map(escapeCSV).join(","),
+        ...csvRows.map((row) => row.map(escapeCSV).join(",")),
+      ].join("\n");
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `clients_export_${new Date().toISOString().split("T")[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Success",
+        description: `Exported ${clientsToExport.length} clients to CSV`,
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to export clients to CSV",
+        type: "destructive",
+      });
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-3">
@@ -341,6 +527,16 @@ export const Clients = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              onClick={handleExportCSV}
+              size="sm"
+              variant="outline"
+              className="border-green-600 text-green-600 hover:bg-green-50"
+              disabled={isLoading || !allClientsData?.data?.clients?.length}
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Export CSV
+            </Button>
             <Button
               onClick={() => setShowBulkUpload(true)}
               size="sm"
@@ -462,7 +658,16 @@ export const Clients = () => {
                       </div>
                     </th>
                     <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
-                      Packages
+                      Monthly
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Quarterly
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Yearly
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider">
+                      Profit (Overall)
                     </th>
                     <th
                       className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-900 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
@@ -481,7 +686,7 @@ export const Clients = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {clients.length === 0 ? (
                     <tr>
-                      <td colSpan="10" className="px-2 py-8 text-center">
+                      <td colSpan="13" className="px-2 py-8 text-center">
                         <p className="text-xs text-gray-500">
                           No clients found
                         </p>
@@ -490,6 +695,20 @@ export const Clients = () => {
                   ) : (
                     clients.map((client) => {
                       const clientPackages = packagesByClient[client._id] || [];
+                      // Filter packages by billing frequency
+                      const monthlyPackages = clientPackages.filter(
+                        (pkg) => pkg.billingFrequency === "MONTHLY"
+                      );
+                      const quarterlyPackages = clientPackages.filter(
+                        (pkg) => pkg.billingFrequency === "QUARTERLY"
+                      );
+                      const yearlyPackages = clientPackages.filter(
+                        (pkg) => pkg.billingFrequency === "YEARLY"
+                      );
+                      
+                      // Get client profit from profitability map
+                      const clientProfit = clientProfitabilityMap[client._id] || { totalProfit: 0 };
+                      
                       return (
                         <tr
                           key={client._id}
@@ -548,29 +767,89 @@ export const Clients = () => {
                             </div>
                           </td>
                           <td className="px-2 py-1.5">
-                            <div className="flex flex-wrap gap-1">
-                              {clientPackages.length === 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {monthlyPackages.length === 0 ? (
                                 <span className="text-xs text-gray-400">-</span>
                               ) : (
-                                clientPackages.slice(0, 2).map((pkg) => (
-                                  <Badge
-                                    key={pkg._id}
-                                    variant="outline"
-                                    className="text-[10px] px-1.5 py-0.5"
-                                    title={pkg.name}
-                                  >
-                                    {truncateText(pkg.name, 10)}
-                                  </Badge>
-                                ))
+                                monthlyPackages.map((pkg) => {
+                                  const displayValue = pkg.contractValue || 0;
+                                  return (
+                                    <div
+                                      key={pkg._id}
+                                      className="text-xs"
+                                      title={`${pkg.name}: ${formatCurrency(displayValue)}`}
+                                    >
+                                      <span className="font-medium text-gray-900">
+                                        {truncateText(pkg.name, 15)}
+                                      </span>
+                                      <span className="text-blue-600 font-semibold ml-1">
+                                        ({formatCurrency(displayValue)})
+                                      </span>
+                                    </div>
+                                  );
+                                })
                               )}
-                              {clientPackages.length > 2 && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] px-1.5 py-0.5"
-                                >
-                                  +{clientPackages.length - 2}
-                                </Badge>
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <div className="flex flex-col gap-0.5">
+                              {quarterlyPackages.length === 0 ? (
+                                <span className="text-xs text-gray-400">-</span>
+                              ) : (
+                                quarterlyPackages.map((pkg) => {
+                                  const displayValue = pkg.contractValue || 0;
+                                  return (
+                                    <div
+                                      key={pkg._id}
+                                      className="text-xs"
+                                      title={`${pkg.name}: ${formatCurrency(displayValue)}`}
+                                    >
+                                      <span className="font-medium text-gray-900">
+                                        {truncateText(pkg.name, 15)}
+                                      </span>
+                                      <span className="text-purple-600 font-semibold ml-1">
+                                        ({formatCurrency(displayValue)})
+                                      </span>
+                                    </div>
+                                  );
+                                })
                               )}
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <div className="flex flex-col gap-0.5">
+                              {yearlyPackages.length === 0 ? (
+                                <span className="text-xs text-gray-400">-</span>
+                              ) : (
+                                yearlyPackages.map((pkg) => {
+                                  const displayValue = pkg.contractValue || 0;
+                                  return (
+                                    <div
+                                      key={pkg._id}
+                                      className="text-xs"
+                                      title={`${pkg.name}: ${formatCurrency(displayValue)}`}
+                                    >
+                                      <span className="font-medium text-gray-900">
+                                        {truncateText(pkg.name, 15)}
+                                      </span>
+                                      <span className="text-green-600 font-semibold ml-1">
+                                        ({formatCurrency(displayValue)})
+                                      </span>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <div
+                              className={`text-xs font-medium ${
+                                clientProfit.totalProfit >= 0
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {formatCurrency(clientProfit.totalProfit)}
                             </div>
                           </td>
                           <td className="px-2 py-1.5">
