@@ -934,27 +934,19 @@ export const TimeEntries = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider" style={{maxWidth: '120px'}}>
                     Date
                   </th>
-                  {!isEmployee && (
-                    <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                      Employee
-                    </th>
-                  )}
-                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Client
+                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider" style={{maxWidth: '150px'}}>
+                    {!isEmployee ? 'Client / Employee' : 'Client'}
                   </th>
-                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Package
+                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider" style={{maxWidth: '150px'}}>
+                    Package / Task
                   </th>
-                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                    Task
-                  </th>
-                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider" style={{maxWidth: '80px'}}>
                     Time
                   </th>
-                  <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-900 uppercase tracking-wider" style={{width: '120px'}}>
                     Actions
                   </th>
                 </tr>
@@ -963,7 +955,7 @@ export const TimeEntries = () => {
                 {groupedEntries.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={isEmployee ? 6 : 7}
+                      colSpan={5}
                       className="px-2 py-8 text-center text-xs text-gray-500"
                     >
                       No time entries found
@@ -978,35 +970,39 @@ export const TimeEntries = () => {
                     // Helper function to render entry row
                     const renderEntryRow = (entry, isNested = false) => (
                       <tr key={entry._id} className={isNested ? "bg-gray-50" : ""}>
-                        <td className={`px-2 py-1.5 whitespace-nowrap text-xs ${isNested ? "pl-8 text-gray-600" : "text-gray-900"}`}>
+                        <td className={`px-2 py-1.5 text-xs ${isNested ? "pl-8 text-gray-600" : "text-gray-900"}`} style={{maxWidth: '120px'}}>
                           {isNested && (
                             <span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
                           )}
-                          {new Date(entry.date).toLocaleDateString()}
+                          <div className="truncate">{new Date(entry.date).toLocaleDateString()}</div>
                           {entry.startTime && (
-                            <div className="text-[10px] text-gray-500 mt-0.5">
+                            <div className="text-[10px] text-gray-500 mt-0.5 truncate">
                               {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               {entry.endTime && ` - ${new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                             </div>
                           )}
                         </td>
-                        {!isEmployee && (
-                          <td className={`px-2 py-1.5 whitespace-nowrap text-xs ${isNested ? "text-gray-500" : "text-gray-500"}`}>
-                            {entry.employeeId?.name || "-"}
-                          </td>
-                        )}
-                        <td className={`px-2 py-1.5 whitespace-nowrap text-xs ${isNested ? "text-gray-500" : "text-gray-500"}`}>
-                          {entry.clientId?.name || "-"}
+                        <td className={`px-2 py-1.5 text-xs ${isNested ? "text-gray-500" : "text-gray-500"}`} style={{maxWidth: '150px'}}>
+                          <div className="truncate" title={entry.clientId?.name || "-"}>
+                            {entry.clientId?.name || "-"}
+                          </div>
+                          {!isEmployee && (
+                            <div className="text-[10px] text-gray-400 mt-0.5 truncate" title={entry.employeeId?.name || "-"}>
+                              {entry.employeeId?.name || "-"}
+                            </div>
+                          )}
                         </td>
-                        <td className={`px-2 py-1.5 whitespace-nowrap text-xs ${isNested ? "text-gray-500" : "text-gray-500"}`}>
-                          {entry.packageId?.name || "-"}
+                        <td className={`px-2 py-1.5 text-xs ${isNested ? "text-gray-500" : "text-gray-500"}`} style={{maxWidth: '150px'}}>
+                          <div className="truncate" title={entry.packageId?.name || "-"}>
+                            {entry.packageId?.name || "-"}
+                          </div>
+                          <div className="text-[10px] text-gray-400 mt-0.5 truncate" title={entry.isMiscellaneous ? (entry.miscellaneousDescription || "Miscellaneous") : (entry.taskId?.name || "-")}>
+                            {entry.isMiscellaneous
+                              ? entry.miscellaneousDescription || "Miscellaneous"
+                              : entry.taskId?.name || "-"}
+                          </div>
                         </td>
-                        <td className={`px-2 py-1.5 whitespace-nowrap text-xs ${isNested ? "text-gray-500" : "text-gray-500"}`}>
-                          {entry.isMiscellaneous
-                            ? entry.miscellaneousDescription || "Miscellaneous"
-                            : entry.taskId?.name || "-"}
-                        </td>
-                        <td className={`px-2 py-1.5 whitespace-nowrap text-xs ${isNested ? "text-gray-500" : "text-gray-500 font-medium"} font-mono`}>
+                        <td className={`px-2 py-1.5 whitespace-nowrap text-xs ${isNested ? "text-gray-500" : "text-gray-500 font-medium"} font-mono`} style={{maxWidth: '80px'}}>
                           {formatTimeFromSeconds(entry.minutesSpent, false)}
                         </td>
                         <td className="px-2 py-1.5 whitespace-nowrap text-right text-xs font-medium" onClick={(e) => e.stopPropagation()}>
@@ -1131,37 +1127,41 @@ export const TimeEntries = () => {
                           className="bg-gray-50 hover:bg-gray-100 cursor-pointer"
                           onClick={() => toggleGroup(group.key)}
                         >
-                          <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
+                          <td className="px-2 py-1.5 text-xs font-medium text-gray-900" style={{maxWidth: '120px'}}>
                             <div className="flex items-center gap-2">
                               <ChevronDown
-                                className={`h-3.5 w-3.5 text-gray-500 transition-transform ${
+                                className={`h-3.5 w-3.5 text-gray-500 transition-transform flex-shrink-0 ${
                                   isExpanded ? "rotate-180" : ""
                                 }`}
                               />
-                              <div>
-                                <div>{dateRange}</div>
+                              <div className="truncate">
+                                <div className="truncate">{dateRange}</div>
                                 <div className="text-[10px] text-gray-500">{group.entries.length} entries</div>
                               </div>
                             </div>
                           </td>
-                          {!isEmployee && (
-                            <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-500">
-                              {firstEntry.employeeId?.name || "-"}
-                            </td>
-                          )}
-                          <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-500">
-                            {firstEntry.clientId?.name || "-"}
+                          <td className="px-2 py-1.5 text-xs text-gray-500" style={{maxWidth: '150px'}}>
+                            <div className="truncate" title={firstEntry.clientId?.name || "-"}>
+                              {firstEntry.clientId?.name || "-"}
+                            </div>
+                            {!isEmployee && (
+                              <div className="text-[10px] text-gray-400 mt-0.5 truncate" title={firstEntry.employeeId?.name || "-"}>
+                                {firstEntry.employeeId?.name || "-"}
+                              </div>
+                            )}
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap text-xs text-gray-500">
-                            {firstEntry.packageId?.name || "-"}
+                          <td className="px-2 py-1.5 text-xs text-gray-500" style={{maxWidth: '150px'}}>
+                            <div className="truncate" title={firstEntry.packageId?.name || "-"}>
+                              {firstEntry.packageId?.name || "-"}
+                            </div>
+                            <div className="text-[10px] text-gray-400 mt-0.5 truncate font-medium text-gray-900" title={group.taskName}>
+                              {group.taskName}
+                            </div>
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
-                            {group.taskName}
-                          </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap text-xs font-semibold text-gray-900 font-mono">
+                          <td className="px-2 py-1.5 whitespace-nowrap text-xs font-semibold text-gray-900 font-mono" style={{maxWidth: '80px'}}>
                             {formatTimeFromSeconds(group.totalTime, false)}
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap text-right text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-right text-xs font-medium" style={{width: '120px'}} onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                             {!firstEntry.isMiscellaneous && firstEntry.taskId?._id && (
                               <Button
