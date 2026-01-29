@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+// store 
 
 const getStoredAuth = () => {
   const token = localStorage.getItem('token');
