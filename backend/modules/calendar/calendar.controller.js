@@ -19,6 +19,16 @@ export const revokeToken = async (req, res, next) => {
   }
 };
 
+const EMPTY_ICS =
+  'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//AAcounting//Empty//EN\r\nEND:VCALENDAR';
+
+const sendIcs = (res, ics) => {
+  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="calendar.ics"');
+  res.setHeader('Cache-Control', 'no-cache, max-age=0');
+  return res.send(ics);
+};
+
 export const getFeed = async (req, res, next) => {
   try {
     let token = req.params.token || '';
@@ -26,17 +36,14 @@ export const getFeed = async (req, res, next) => {
       token = token.slice(0, -4);
     }
     if (!token) {
-      return errorResponse(res, 400, 'Invalid feed token');
+      return sendIcs(res, EMPTY_ICS);
     }
     const ics = await calendarService.getFeedIcs(token);
     if (!ics) {
-      return errorResponse(res, 404, 'Calendar feed not found or token invalid');
+      return sendIcs(res, EMPTY_ICS);
     }
-    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="calendar.ics"');
-    res.setHeader('Cache-Control', 'no-cache, max-age=0');
-    return res.send(ics);
+    return sendIcs(res, ics);
   } catch (error) {
-    next(error);
+    return sendIcs(res, EMPTY_ICS);
   }
 };

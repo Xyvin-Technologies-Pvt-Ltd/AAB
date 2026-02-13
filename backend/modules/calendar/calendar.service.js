@@ -38,7 +38,7 @@ export const revokeToken = async (user) => {
  * Get iCal feed for a token. Returns ICS string or null if token invalid.
  */
 export const getFeedIcs = async (token) => {
-  const user = await User.findOne({ calendarToken: token }).select('employeeId');
+  const user = await User.findOne({ calendarToken: token }).select('+calendarToken employeeId');
   if (!user) return null;
 
   // Every user (including admin) only sees tasks assigned to themselves
@@ -66,15 +66,12 @@ export const getFeedIcs = async (token) => {
 
   const cal = ical({ name: 'AAcounting Calendar' });
   cal.prodId({ company: 'AAcounting', product: 'Calendar Feed', language: 'EN' });
+  cal.method('PUBLISH');
 
   for (const ev of events) {
-    const start = new Date(ev.start);
-    const end = ev.end ? new Date(ev.end) : new Date(ev.start);
-    end.setDate(end.getDate() + 1);
     cal.createEvent({
       id: ev.id,
-      start,
-      end,
+      start: new Date(ev.start),
       allDay: true,
       summary: ev.title,
       description: [ev.type, ev.clientName, ev.metadata ? JSON.stringify(ev.metadata) : ''].filter(Boolean).join('\n'),
@@ -83,10 +80,6 @@ export const getFeedIcs = async (token) => {
 
   for (const task of tasks) {
     const dueDate = task.dueDate ? new Date(task.dueDate) : new Date(task.createdAt);
-    const start = new Date(dueDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
     const clientName = task.clientId?.name || '';
     const summary = task.name || 'Task';
     const description = [
@@ -96,9 +89,8 @@ export const getFeedIcs = async (token) => {
       clientName ? `Client: ${clientName}` : '',
     ].filter(Boolean).join('\n');
     cal.createEvent({
-      id: task._id?.toString?.() || task.id || `task-${start.getTime()}`,
-      start,
-      end,
+      id: task._id?.toString?.() || task.id || `task-${dueDate.getTime()}`,
+      start: dueDate,
       allDay: true,
       summary,
       description,

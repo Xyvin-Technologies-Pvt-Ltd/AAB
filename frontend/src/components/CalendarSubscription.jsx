@@ -51,11 +51,11 @@ export const CalendarSubscription = () => {
     <Card className="p-4">
       <div className="flex items-center gap-2 mb-3">
         <Calendar className="h-5 w-5 text-gray-600" />
-        <h3 className="font-semibold text-gray-900">Subscribe on your phone</h3>
+        <h3 className="font-semibold text-gray-900">Subscribe to calendar</h3>
       </div>
       <p className="text-sm text-gray-600 mb-4">
-        Add this calendar to your Android or iPhone so tasks and compliance
-        events appear in your device calendar.
+        Add this calendar to your phone or Outlook so tasks and compliance
+        events appear in your calendar.
       </p>
 
       {!feedUrl ? (
@@ -92,6 +92,14 @@ export const CalendarSubscription = () => {
               <li>
                 <strong>Android (Google Calendar):</strong> Settings → Add
                 calendar → From URL → paste URL
+              </li>
+              <li>
+                <strong>Outlook (web):</strong> Calendar → Add calendar →
+                Subscribe from web → paste URL
+              </li>
+              <li>
+                <strong>Outlook (desktop):</strong> Calendar view → Add
+                calendar → Subscribe from web → paste URL
               </li>
             </ul>
           </div>
