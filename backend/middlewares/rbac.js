@@ -20,8 +20,8 @@ export const checkResourceAccess = (user, resource, action = 'view') => {
   const permissions = {
     analytics: {
       ADMIN: ['view', 'edit', 'delete'],
-      MANAGER: [], // Only admin can access analytics
-      EMPLOYEE: [], // Employees cannot access analytics
+      MANAGER: ['view'], // Can view team analytics
+      EMPLOYEE: ['view'], // Can view own analytics
     },
     settings: {
       ADMIN: ['view', 'edit', 'delete'],

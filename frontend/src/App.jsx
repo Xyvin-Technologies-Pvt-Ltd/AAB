@@ -116,7 +116,7 @@ function App() {
             <Route
               path="/analytics"
               element={
-                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "EMPLOYEE"]}>
                   <Analytics />
                 </ProtectedRoute>
               }
@@ -124,7 +124,7 @@ function App() {
             <Route
               path="/analytics/package/:packageId"
               element={
-                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "EMPLOYEE"]}>
                   <PackageAnalytics />
                 </ProtectedRoute>
               }
@@ -132,7 +132,7 @@ function App() {
             <Route
               path="/analytics/client/:clientId"
               element={
-                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "EMPLOYEE"]}>
                   <ClientAnalytics />
                 </ProtectedRoute>
               }
@@ -140,7 +140,7 @@ function App() {
             <Route
               path="/analytics/employee/:employeeId"
               element={
-                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <ProtectedRoute allowedRoles={["ADMIN", "MANAGER", "EMPLOYEE"]}>
                   <EmployeeAnalytics />
                 </ProtectedRoute>
               }

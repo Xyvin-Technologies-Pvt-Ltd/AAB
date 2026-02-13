@@ -9,6 +9,7 @@ export const getPackageProfitability = async (req, res, next) => {
       return errorResponse(res, 403, 'Access denied. You do not have permission to view analytics.');
     }
 
+    const viewMode = req.query.viewMode;
     const filters = {
       packageId: req.query.packageId,
       clientId: req.query.clientId,
@@ -22,6 +23,10 @@ export const getPackageProfitability = async (req, res, next) => {
       search: req.query.search,
     };
 
+    // ADMIN with viewMode=my: restrict to own data
+    if (req.user.role === 'ADMIN' && viewMode === 'my' && req.user.employeeId) {
+      filters.employeeId = req.user.employeeId.toString();
+    }
     // Apply team filtering for MANAGER role
     if (req.user.role === 'MANAGER') {
       filters._accessibleEmployeeIds = await getUserAccessibleEmployeeIds(req.user);
@@ -41,6 +46,7 @@ export const getClientProfitability = async (req, res, next) => {
       return errorResponse(res, 403, 'Access denied. You do not have permission to view analytics.');
     }
 
+    const viewMode = req.query.viewMode;
     const filters = {
       clientId: req.query.clientId,
       employeeId: req.query.employeeId,
@@ -53,6 +59,10 @@ export const getClientProfitability = async (req, res, next) => {
       search: req.query.search,
     };
 
+    // ADMIN with viewMode=my: restrict to own data
+    if (req.user.role === 'ADMIN' && viewMode === 'my' && req.user.employeeId) {
+      filters.employeeId = req.user.employeeId.toString();
+    }
     // Apply team filtering for MANAGER role
     if (req.user.role === 'MANAGER') {
       filters._accessibleEmployeeIds = await getUserAccessibleEmployeeIds(req.user);
@@ -72,6 +82,7 @@ export const getEmployeeUtilization = async (req, res, next) => {
       return errorResponse(res, 403, 'Access denied. You do not have permission to view analytics.');
     }
 
+    const viewMode = req.query.viewMode;
     const filters = {
       clientId: req.query.clientId,
       packageId: req.query.packageId,
@@ -83,6 +94,10 @@ export const getEmployeeUtilization = async (req, res, next) => {
       search: req.query.search,
     };
 
+    // ADMIN with viewMode=my: restrict to own data
+    if (req.user.role === 'ADMIN' && viewMode === 'my' && req.user.employeeId) {
+      filters.employeeId = req.user.employeeId.toString();
+    }
     // Apply team filtering for MANAGER role
     if (req.user.role === 'MANAGER') {
       filters._accessibleEmployeeIds = await getUserAccessibleEmployeeIds(req.user);
@@ -124,6 +139,7 @@ export const getPackageAnalytics = async (req, res, next) => {
       return errorResponse(res, 403, 'Access denied. You do not have permission to view analytics.');
     }
 
+    const viewMode = req.query.viewMode;
     const filters = {
       employeeId: req.query.employeeId,
       taskId: req.query.taskId,
@@ -131,6 +147,10 @@ export const getPackageAnalytics = async (req, res, next) => {
       endDate: req.query.endDate,
     };
 
+    // ADMIN with viewMode=my: restrict to own data
+    if (req.user.role === 'ADMIN' && viewMode === 'my' && req.user.employeeId) {
+      filters.employeeId = req.user.employeeId.toString();
+    }
     if (req.user.role === 'MANAGER') {
       filters._accessibleEmployeeIds = await getUserAccessibleEmployeeIds(req.user);
     }
@@ -148,6 +168,7 @@ export const getClientAnalytics = async (req, res, next) => {
       return errorResponse(res, 403, 'Access denied. You do not have permission to view analytics.');
     }
 
+    const viewMode = req.query.viewMode;
     const filters = {
       employeeId: req.query.employeeId,
       packageId: req.query.packageId,
@@ -156,6 +177,10 @@ export const getClientAnalytics = async (req, res, next) => {
       endDate: req.query.endDate,
     };
 
+    // ADMIN with viewMode=my: restrict to own data
+    if (req.user.role === 'ADMIN' && viewMode === 'my' && req.user.employeeId) {
+      filters.employeeId = req.user.employeeId.toString();
+    }
     if (req.user.role === 'MANAGER') {
       filters._accessibleEmployeeIds = await getUserAccessibleEmployeeIds(req.user);
     }
@@ -173,6 +198,7 @@ export const getEmployeeAnalytics = async (req, res, next) => {
       return errorResponse(res, 403, 'Access denied. You do not have permission to view analytics.');
     }
 
+    const viewMode = req.query.viewMode;
     const filters = {
       clientId: req.query.clientId,
       packageId: req.query.packageId,
@@ -180,6 +206,10 @@ export const getEmployeeAnalytics = async (req, res, next) => {
       endDate: req.query.endDate,
     };
 
+    // ADMIN with viewMode=my: restrict to own data
+    if (req.user.role === 'ADMIN' && viewMode === 'my' && req.user.employeeId) {
+      filters.employeeId = req.user.employeeId.toString();
+    }
     if (req.user.role === 'MANAGER') {
       filters._accessibleEmployeeIds = await getUserAccessibleEmployeeIds(req.user);
     }

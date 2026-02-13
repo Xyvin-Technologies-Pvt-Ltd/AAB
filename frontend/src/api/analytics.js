@@ -1,6 +1,7 @@
 import api from './axios';
 
 export const analyticsApi = {
+  // params may include viewMode: 'my' | 'all' (for admin toggle)
   getPackageProfitability: async (params = {}) => {
     // Always include page and limit, filter out only undefined/null/empty string for other params
     const cleanParams = {
@@ -16,6 +17,7 @@ export const analyticsApi = {
     return response.data;
   },
 
+  // params may include viewMode: 'my' | 'all' (for admin toggle)
   getClientProfitability: async (params = {}) => {
     // Always include page and limit, filter out only undefined/null/empty string for other params
     const cleanParams = {
@@ -31,6 +33,7 @@ export const analyticsApi = {
     return response.data;
   },
 
+  // params may include viewMode: 'my' | 'all' (for admin toggle)
   getEmployeeUtilization: async (params = {}) => {
     // Always include page and limit, filter out only undefined/null/empty string for other params
     const cleanParams = {
@@ -59,6 +62,7 @@ export const analyticsApi = {
     return response.data;
   },
 
+  // params may include viewMode: 'my' | 'all' (for admin toggle)
   getPackageAnalytics: async (packageId, params = {}) => {
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
@@ -67,6 +71,7 @@ export const analyticsApi = {
     return response.data;
   },
 
+  // params may include viewMode: 'my' | 'all' (for admin toggle)
   getClientAnalytics: async (clientId, params = {}) => {
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
@@ -75,6 +80,7 @@ export const analyticsApi = {
     return response.data;
   },
 
+  // params may include viewMode: 'my' | 'all' (for admin toggle)
   getEmployeeAnalytics: async (employeeId, params = {}) => {
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')

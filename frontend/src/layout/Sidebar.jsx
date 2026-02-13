@@ -73,7 +73,7 @@ const allMenuItems = [
     path: "/analytics",
     label: "Analytics",
     icon: BarChart3,
-    roles: ["ADMIN", "MANAGER"],
+    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
   },
   { path: "/teams", label: "Teams", icon: Users2, roles: ["ADMIN"] },
 ];

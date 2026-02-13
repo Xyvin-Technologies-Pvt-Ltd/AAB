@@ -5,51 +5,79 @@ import { AppLayout } from "@/layout/AppLayout";
 import { analyticsApi } from "@/api/analytics";
 import { formatCurrency } from "@/utils/currencyFormat";
 import { Badge } from "@/ui/badge";
+import { Button } from "@/ui/button";
 import { LoaderWithText } from "@/components/Loader";
 import { Avatar } from "@/components/Avatar";
 import { Pagination } from "@/components/Pagination";
 import { SearchInput } from "@/components/SearchInput";
 import { Card } from "@/ui/card";
 import { StatCard } from "@/components/StatCard";
+import { useAuthStore } from "@/store/authStore";
 import { TrendingUp, DollarSign, TrendingDown, Percent } from "lucide-react";
 
 export const Analytics = () => {
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState("packages");
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const limit = 25;
+  // Admin only: 'my' = own analytics, 'all' = see all
+  const [viewMode, setViewMode] = useState("all");
 
-  // Analytics queries with pagination and search
+  const isEmployee = user?.role === "EMPLOYEE";
+  // Employees only see Employee Utilization; treat their view as that tab
+  const effectiveTab = isEmployee ? "employees" : activeTab;
+
+  const apiParams = useMemo(() => {
+    const base = { page, limit, search };
+    if (user?.role === "ADMIN") {
+      base.viewMode = viewMode;
+    }
+    return base;
+  }, [page, limit, search, user?.role, viewMode]);
+
+  const allApiParams = useMemo(() => {
+    const base = { page: 1, limit: 10000, search };
+    if (user?.role === "ADMIN") {
+      base.viewMode = viewMode;
+    }
+    return base;
+  }, [search, user?.role, viewMode]);
+
+  // Analytics queries with pagination and search (packages/clients disabled for employees)
   const { data: packageData, isLoading: packagesLoading } = useQuery({
-    queryKey: ["analytics", "packages", page, search],
+    queryKey: ["analytics", "packages", page, search, viewMode],
     queryFn: () =>
-      analyticsApi.getPackageProfitability({ page, limit, search }),
+      analyticsApi.getPackageProfitability({ ...apiParams, page, limit }),
+    enabled: !isEmployee,
   });
 
   const { data: clientData, isLoading: clientsLoading } = useQuery({
-    queryKey: ["analytics", "clients", page, search],
-    queryFn: () => analyticsApi.getClientProfitability({ page, limit, search }),
+    queryKey: ["analytics", "clients", page, search, viewMode],
+    queryFn: () =>
+      analyticsApi.getClientProfitability({ ...apiParams, page, limit }),
+    enabled: !isEmployee,
   });
 
   const { data: employeeData, isLoading: employeesLoading } = useQuery({
-    queryKey: ["analytics", "employees", page, search],
-    queryFn: () => analyticsApi.getEmployeeUtilization({ page, limit, search }),
+    queryKey: ["analytics", "employees", page, search, viewMode],
+    queryFn: () =>
+      analyticsApi.getEmployeeUtilization({ ...apiParams, page, limit }),
   });
 
   // Fetch all data for KPI calculations (without pagination)
   const { data: allPackagesData, isLoading: allPackagesLoading } = useQuery({
-    queryKey: ["analytics", "packages", "all", search],
+    queryKey: ["analytics", "packages", "all", search, viewMode],
     queryFn: () =>
-      analyticsApi.getPackageProfitability({ page: 1, limit: 10000, search }),
-    enabled: activeTab === "packages" || activeTab === "clients",
+      analyticsApi.getPackageProfitability(allApiParams),
+    enabled: !isEmployee && (effectiveTab === "packages" || effectiveTab === "clients"),
   });
 
   const { data: allClientsData, isLoading: allClientsLoading } = useQuery({
-    queryKey: ["analytics", "clients", "all", search],
-    queryFn: () =>
-      analyticsApi.getClientProfitability({ page: 1, limit: 10000, search }),
-    enabled: activeTab === "clients",
+    queryKey: ["analytics", "clients", "all", search, viewMode],
+    queryFn: () => analyticsApi.getClientProfitability(allApiParams),
+    enabled: !isEmployee && effectiveTab === "clients",
   });
 
   // Handle response format - check if it's the new paginated format or old format
@@ -76,7 +104,7 @@ export const Analytics = () => {
       allClientsData?.data?.results ??
       (Array.isArray(allClientsData?.data) ? allClientsData.data : []);
 
-    if (activeTab === "packages") {
+    if (effectiveTab === "packages") {
       const totalRevenue = allPackagesList.reduce((sum, pkg) => {
         const revenue =
           pkg.totalCycleRevenue || pkg.cycleRevenue || pkg.revenue || 0;
@@ -97,7 +125,7 @@ export const Analytics = () => {
         overallMargin,
         isLoading: allPackagesLoading,
       };
-    } else if (activeTab === "clients") {
+    } else if (effectiveTab === "clients") {
       const totalRevenue = allClientsList.reduce((sum, client) => {
         const revenue = client.totalCycleRevenue || client.totalRevenue || 0;
         return sum + revenue;
@@ -126,7 +154,7 @@ export const Analytics = () => {
       isLoading: false,
     };
   }, [
-    activeTab,
+    effectiveTab,
     allPackagesData,
     allClientsData,
     allPackagesLoading,
@@ -143,10 +171,28 @@ export const Analytics = () => {
       <div className="px-4 py-6 sm:px-0">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Analytics</h1>
+          {user?.role === "ADMIN" && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === "my" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("my")}
+              >
+                My Analytics
+              </Button>
+              <Button
+                variant={viewMode === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("all")}
+              >
+                See All
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* KPI Cards */}
-        {(activeTab === "packages" || activeTab === "clients") && (
+        {(effectiveTab === "packages" || effectiveTab === "clients") && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard
               title="Overall Profitability"
@@ -161,7 +207,7 @@ export const Analytics = () => {
             />
             <StatCard
               title={
-                activeTab === "clients"
+                effectiveTab === "clients"
                   ? "Client Profitability"
                   : "Package Profitability"
               }
@@ -190,34 +236,38 @@ export const Analytics = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
-              <button
-                onClick={() => {
-                  setActiveTab("packages");
-                  setPage(1);
-                  setSearch("");
-                }}
-                className={`py-3 px-4 text-xs font-medium border-b-2 ${
-                  activeTab === "packages"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Package Profitability
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("clients");
-                  setPage(1);
-                  setSearch("");
-                }}
-                className={`py-3 px-4 text-xs font-medium border-b-2 ${
-                  activeTab === "clients"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Client Profitability
-              </button>
+              {!isEmployee && (
+                <>
+                  <button
+                    onClick={() => {
+                      setActiveTab("packages");
+                      setPage(1);
+                      setSearch("");
+                    }}
+                    className={`py-3 px-4 text-xs font-medium border-b-2 ${
+                      activeTab === "packages"
+                        ? "border-indigo-500 text-indigo-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    Package Profitability
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("clients");
+                      setPage(1);
+                      setSearch("");
+                    }}
+                    className={`py-3 px-4 text-xs font-medium border-b-2 ${
+                      activeTab === "clients"
+                        ? "border-indigo-500 text-indigo-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    Client Profitability
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => {
                   setActiveTab("employees");
@@ -225,7 +275,7 @@ export const Analytics = () => {
                   setSearch("");
                 }}
                 className={`py-3 px-4 text-xs font-medium border-b-2 ${
-                  activeTab === "employees"
+                  effectiveTab === "employees"
                     ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
@@ -242,15 +292,15 @@ export const Analytics = () => {
                 value={search}
                 onChange={handleSearchChange}
                 placeholder={
-                  activeTab === "packages"
+                  effectiveTab === "packages"
                     ? "Search packages..."
-                    : activeTab === "clients"
+                    : effectiveTab === "clients"
                     ? "Search clients..."
                     : "Search employees..."
                 }
               />
             </div>
-            {activeTab === "packages" && (
+            {effectiveTab === "packages" && (
               <div>
                 {packagesLoading ? (
                   <div className="py-8">
@@ -385,7 +435,7 @@ export const Analytics = () => {
               </div>
             )}
 
-            {activeTab === "clients" && (
+            {effectiveTab === "clients" && (
               <div>
                 {clientsLoading ? (
                   <div className="py-8">
@@ -502,7 +552,7 @@ export const Analytics = () => {
               </div>
             )}
 
-            {activeTab === "employees" && (
+            {effectiveTab === "employees" && (
               <div>
                 {employeesLoading ? (
                   <div className="py-8">

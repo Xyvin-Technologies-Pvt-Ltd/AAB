@@ -1485,12 +1485,16 @@ export const getEmployeeAnalytics = async (employeeId, filters = {}, user = null
     throw new Error('Employee not found');
   }
 
-  // Check access
-  if (user && user.role === 'MANAGER' && _accessibleEmployeeIds && !_accessibleEmployeeIds.includes(employeeId)) {
+  // Check access (compare as strings - employeeId from URL is string, user.employeeId may be ObjectId)
+  const employeeIdStr = employeeId && (typeof employeeId === 'string' ? employeeId : employeeId.toString());
+  if (user && user.role === 'MANAGER' && _accessibleEmployeeIds && !_accessibleEmployeeIds.includes(employeeIdStr)) {
     throw new Error('Access denied');
   }
-  if (user && user.role === 'EMPLOYEE' && user.employeeId !== employeeId) {
-    throw new Error('Access denied');
+  if (user && user.role === 'EMPLOYEE') {
+    const userEmpId = user.employeeId != null ? String(user.employeeId) : null;
+    if (userEmpId !== employeeIdStr) {
+      throw new Error('Access denied');
+    }
   }
 
   const hourlyRate = getEmployeeHourlyRate(employee);

@@ -20,6 +20,7 @@ import {
   User,
   Building2,
 } from "lucide-react";
+import { CalendarSubscription } from "@/components/CalendarSubscription";
 
 // Event type colors
 const eventTypeColors = {
@@ -246,6 +247,8 @@ export const Calendar = () => {
             </Button>
           </div>
         </div>
+
+        <CalendarSubscription />
 
         {/* Calendar */}
         {isLoading ? (
