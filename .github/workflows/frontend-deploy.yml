@@ -36,56 +36,40 @@ jobs:
           npm ci
           npm run build
 
-      # 4️⃣ Set SSH credentials
-      - name: Set SSH credentials
-        id: ssh-creds
+      # 4️⃣ Setup SSH (same as backend)
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+
+      # 5️⃣ Add Lightsail host to known hosts
+      - name: Add Lightsail host to known hosts
         run: |
-          # LIGHTSAIL_HOST_F contains only the IP address
-          SSH_HOST="${{ secrets.LIGHTSAIL_HOST_F }}"
-          SSH_USERNAME="ubuntu"
-          echo "username=$SSH_USERNAME" >> $GITHUB_OUTPUT
-          echo "host=$SSH_HOST" >> $GITHUB_OUTPUT
-          echo "✅ Using username: $SSH_USERNAME"
-          echo "✅ Using host: $SSH_HOST"
+          LIGHTSAIL_HOST_ONLY=$(echo ${{ secrets.LIGHTSAIL_HOST }} | sed 's/.*@//')
+          ssh-keyscan -H ${LIGHTSAIL_HOST_ONLY} >> ~/.ssh/known_hosts
 
-      # 5️⃣ Prepare temp directory on Lightsail
-      - name: Prepare Lightsail temp directory
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ steps.ssh-creds.outputs.host }}
-          username: ${{ steps.ssh-creds.outputs.username }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 30s
-          script: |
-            rm -rf ~/deploy-temp
-            mkdir -p ~/deploy-temp
-            chmod 775 ~/deploy-temp
-            echo "✅ Temp directory prepared"
+      # 6️⃣ Test SSH Connection
+      - name: Test SSH Connection
+        run: |
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${{ secrets.LIGHTSAIL_HOST }} "echo 'SSH connection successful'"
 
-      # 6️⃣ Upload build using rsync
+      # 7️⃣ Prepare temp directory and upload build
+      - name: Prepare temp directory on Lightsail
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_HOST }} "rm -rf ~/deploy-temp && mkdir -p ~/deploy-temp && chmod 775 ~/deploy-temp"
+          echo "✅ Temp directory prepared"
+
+      # 8️⃣ Upload build using rsync
       - name: Upload build to Lightsail
-        uses: burnett01/rsync-deployments@5.2.1
-        with:
-          switches: -avzr --delete
-          path: frontend/dist/
-          remote_path: ~/deploy-temp/
-          remote_host: ${{ steps.ssh-creds.outputs.host }}
-          remote_user: ${{ steps.ssh-creds.outputs.username }}
-          remote_key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+        run: |
+          LIGHTSAIL_HOST_ONLY=$(echo ${{ secrets.LIGHTSAIL_HOST }} | sed 's/.*@//')
+          rsync -avzr --delete frontend/dist/ ${{ secrets.LIGHTSAIL_HOST }}:~/deploy-temp/
+          echo "✅ Build uploaded"
 
-      # 7️⃣ Deploy to Nginx web root
+      # 9️⃣ Deploy to Nginx web root
       - name: Deploy to Nginx
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ steps.ssh-creds.outputs.host }}
-          username: ${{ steps.ssh-creds.outputs.username }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 30s
-          script: |
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_HOST }} << 'ENDSSH'
             sudo rm -rf /var/www/html/*
             sudo mkdir -p /var/www/html
             sudo cp -R ~/deploy-temp/* /var/www/html/
@@ -97,10 +81,11 @@ jobs:
             sudo systemctl restart nginx
 
             echo "✅ Frontend deployment completed!"
+          ENDSSH
 
-      # 8️⃣ Verify Deployment
+      # 🔟 Verify Deployment
       - name: Verify Deployment
         run: |
           sleep 3
-          SSH_HOST="${{ steps.ssh-creds.outputs.host }}"
-          curl -f --max-time 10 http://${SSH_HOST} || echo "Frontend deployment completed. Verify manually if needed."
+          LIGHTSAIL_HOST_ONLY=$(echo ${{ secrets.LIGHTSAIL_HOST }} | sed 's/.*@//')
+          curl -f --max-time 10 http://${LIGHTSAIL_HOST_ONLY} || echo "Frontend deployment completed. Verify manually if needed."
