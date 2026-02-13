@@ -41,7 +41,7 @@ jobs:
         id: ssh-creds
         run: |
           # LIGHTSAIL_HOST_F contains only the IP address
-          SSH_HOST="${{ secrets.LIGHTSAIL_HOST_F }}"
+          SSH_HOST="${{ secrets.LIGHTSAIL_HOST }}"
           SSH_USERNAME="ubuntu"
           echo "username=$SSH_USERNAME" >> $GITHUB_OUTPUT
           echo "host=$SSH_HOST" >> $GITHUB_OUTPUT
