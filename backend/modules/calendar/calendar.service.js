@@ -5,7 +5,11 @@ import * as clientService from '../client/client.service.js';
 import * as taskService from '../task/task.service.js';
 
 const getBaseUrl = () => {
-  const base = process.env.API_BASE_URL || process.env.BACKEND_URL;
+  // Public URL of this API so calendar apps (phones) can fetch the feed. Set in production.
+  const base =
+    process.env.API_BASE_URL ||
+    process.env.BACKEND_URL ||
+    process.env.FRONTEND_URL;
   if (base) return base.replace(/\/$/, '');
   const port = process.env.PORT || 5000;
   return `http://localhost:${port}`;
