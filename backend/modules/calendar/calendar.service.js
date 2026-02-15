@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import ical from 'ical-generator';
 import User from '../auth/auth.model.js';
-import * as clientService from '../client/client.service.js';
 import * as taskService from '../task/task.service.js';
 
 const getBaseUrl = () => {
@@ -51,10 +50,7 @@ export const getFeedIcs = async (token) => {
   endDate.setFullYear(endDate.getFullYear() + 2);
   endDate.setHours(23, 59, 59, 999);
 
-  const [events, allTasks] = await Promise.all([
-    clientService.getCalendarEvents(startDate, endDate, null),
-    taskService.getCalendarTasks(startDate, endDate, null),
-  ]);
+  const allTasks = await taskService.getCalendarTasks(startDate, endDate, null);
 
   const tasks = myEmployeeId
     ? allTasks.filter((task) => {
@@ -67,16 +63,6 @@ export const getFeedIcs = async (token) => {
   const cal = ical({ name: 'AAcounting Calendar' });
   cal.prodId({ company: 'AAcounting', product: 'Calendar Feed', language: 'EN' });
   cal.method('PUBLISH');
-
-  for (const ev of events) {
-    cal.createEvent({
-      id: ev.id,
-      start: new Date(ev.start),
-      allDay: true,
-      summary: ev.title,
-      description: [ev.type, ev.clientName, ev.metadata ? JSON.stringify(ev.metadata) : ''].filter(Boolean).join('\n'),
-    });
-  }
 
   for (const task of tasks) {
     const dueDate = task.dueDate ? new Date(task.dueDate) : new Date(task.createdAt);
