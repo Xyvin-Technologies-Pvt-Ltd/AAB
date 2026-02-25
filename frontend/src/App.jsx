@@ -22,6 +22,9 @@ import { Calendar } from "./pages/Calendar";
 import { Alerts } from "./pages/Alerts";
 import { Settings } from "./pages/Settings";
 import { Teams } from "./pages/Teams";
+import { Invoices } from "./pages/Invoices";
+import { CreateInvoice } from "./pages/CreateInvoice";
+import { InvoiceDetails } from "./pages/InvoiceDetails";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -174,6 +177,30 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <Teams />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <Invoices />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/create"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <CreateInvoice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/:id"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <InvoiceDetails />
                 </ProtectedRoute>
               }
             />

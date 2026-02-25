@@ -65,6 +65,7 @@ import serviceRoutes from './modules/service/service.route.js';
 import activityRoutes from './modules/activity/activity.route.js';
 import teamRoutes from './modules/team/team.route.js';
 import calendarRoutes from './modules/calendar/calendar.route.js';
+import invoiceRoutes from './modules/invoice/invoice.route.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
@@ -78,6 +79,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 // 404 handler
 app.use((req, res) => {

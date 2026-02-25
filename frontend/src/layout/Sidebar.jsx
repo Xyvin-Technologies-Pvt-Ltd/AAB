@@ -13,6 +13,7 @@ import {
   Users2,
   LogOut,
   Package,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useUIStore } from "@/store/uiStore";
@@ -68,6 +69,12 @@ const allMenuItems = [
     label: "Time Entries",
     icon: Clock,
     roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
+  },
+  {
+    path: "/invoices",
+    label: "Invoices",
+    icon: FileText,
+    roles: ["ADMIN"],
   },
   {
     path: "/analytics",

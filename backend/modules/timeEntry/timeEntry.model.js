@@ -68,6 +68,11 @@ const timeEntrySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    invoiceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Invoice',
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -80,6 +85,7 @@ timeEntrySchema.index({ packageId: 1, date: -1 });
 timeEntrySchema.index({ clientId: 1, date: -1 });
 timeEntrySchema.index({ employeeId: 1, isRunning: 1 });
 timeEntrySchema.index({ employeeId: 1, isPaused: 1 });
+timeEntrySchema.index({ invoiceId: 1 });
 
 const TimeEntry = mongoose.model('TimeEntry', timeEntrySchema);
 
