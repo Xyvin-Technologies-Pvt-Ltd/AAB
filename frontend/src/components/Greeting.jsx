@@ -1,47 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Sun, Moon } from "lucide-react";
+
+function getGreeting(hour) {
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
+  if (hour >= 17 && hour < 21) return "Good evening";
+  return "Good night";
+}
 
 export const Greeting = ({ name }) => {
   const [time, setTime] = useState(new Date());
-  const [greeting, setGreeting] = useState("");
-  const [isDay, setIsDay] = useState(true);
 
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setTime(now);
-      
-      const hour = now.getHours();
-      
-      // Determine greeting based on time of day
-      if (hour >= 5 && hour < 12) {
-        setGreeting("Good morning");
-      } else if (hour >= 12 && hour < 17) {
-        setGreeting("Good afternoon");
-      } else if (hour >= 17 && hour < 21) {
-        setGreeting("Good evening");
-      } else {
-        setGreeting("Good night");
-      }
-      
-      // Determine if it's day or night (6 AM - 6 PM is day)
-      setIsDay(hour >= 6 && hour < 18);
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-
+    const interval = setInterval(() => setTime(new Date()), 60_000);
     return () => clearInterval(interval);
   }, []);
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-  };
+  const hour = time.getHours();
+  const greeting = useMemo(() => getGreeting(hour), [hour]);
+  const isDay = hour >= 6 && hour < 18;
+
+  const formattedTime = time.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 
   return (
     <div className="flex items-center gap-3">
@@ -55,7 +38,7 @@ export const Greeting = ({ name }) => {
           <span className="text-sm font-medium text-gray-900">
             {greeting}, {name}
           </span>
-          <span className="text-xs text-gray-500">{formatTime(time)}</span>
+          <span className="text-xs text-gray-500">{formattedTime}</span>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import logger from '../helpers/logger.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -6,14 +7,13 @@ dotenv.config();
 export const emailConfig = {
   host: process.env.EMAIL_HOST || 'mail.aaccounting.me',
   port: parseInt(process.env.EMAIL_PORT) || 465,
-  secure: true, // true for 465, false for other ports
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER || 'it@aaccounting.me',
     pass: process.env.EMAIL_PASS,
   },
 };
 
-// Create reusable transporter
 export const transporter = nodemailer.createTransport({
   host: emailConfig.host,
   port: emailConfig.port,
@@ -24,12 +24,11 @@ export const transporter = nodemailer.createTransport({
   },
 });
 
-// Verify connection configuration
-transporter.verify((error, success) => {
+transporter.verify((error) => {
   if (error) {
-    console.error('Email server connection error:', error);
+    logger.error('Email server connection error:', error);
   } else {
-    console.log('Email server is ready to send messages');
+    logger.info('Email server is ready to send messages');
   }
 });
 

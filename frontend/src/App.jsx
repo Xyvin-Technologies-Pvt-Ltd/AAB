@@ -1,45 +1,68 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "./ui/toast";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { Login } from "./pages/Login";
-import { ForgotPassword } from "./pages/ForgotPassword";
-import { ResetPassword } from "./pages/ResetPassword";
-import { Dashboard } from "./pages/Dashboard";
-import { Clients } from "./pages/Clients";
-import { ClientDetails } from "./pages/ClientDetails";
-import { Packages } from "./pages/Packages";
-import { PackageDetails } from "./pages/PackageDetails";
-import { Tasks } from "./pages/Tasks";
-import { Employees } from "./pages/Employees";
-import { EmployeeDetails } from "./pages/EmployeeDetails";
-import { TimeEntries } from "./pages/TimeEntries";
-import { Analytics } from "./pages/Analytics";
-import { PackageAnalytics } from "./pages/PackageAnalytics";
-import { ClientAnalytics } from "./pages/ClientAnalytics";
-import { EmployeeAnalytics } from "./pages/EmployeeAnalytics";
-import { Calendar } from "./pages/Calendar";
-import { Alerts } from "./pages/Alerts";
-import { Settings } from "./pages/Settings";
-import { Teams } from "./pages/Teams";
-import { Invoices } from "./pages/Invoices";
-import { CreateInvoice } from "./pages/CreateInvoice";
-import { InvoiceDetails } from "./pages/InvoiceDetails";
+import { Loader } from "./components/Loader";
+import { setOnUnauthorized } from "./api/axios";
+import { useAuthStore } from "./store/authStore";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
+const Login = lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword").then(m => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import("./pages/ResetPassword").then(m => ({ default: m.ResetPassword })));
+const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
+const Clients = lazy(() => import("./pages/Clients").then(m => ({ default: m.Clients })));
+const ClientDetails = lazy(() => import("./pages/ClientDetails").then(m => ({ default: m.ClientDetails })));
+const Packages = lazy(() => import("./pages/Packages").then(m => ({ default: m.Packages })));
+const PackageDetails = lazy(() => import("./pages/PackageDetails").then(m => ({ default: m.PackageDetails })));
+const Tasks = lazy(() => import("./pages/Tasks").then(m => ({ default: m.Tasks })));
+const Employees = lazy(() => import("./pages/Employees").then(m => ({ default: m.Employees })));
+const EmployeeDetails = lazy(() => import("./pages/EmployeeDetails").then(m => ({ default: m.EmployeeDetails })));
+const TimeEntries = lazy(() => import("./pages/TimeEntries").then(m => ({ default: m.TimeEntries })));
+const Analytics = lazy(() => import("./pages/Analytics").then(m => ({ default: m.Analytics })));
+const PackageAnalytics = lazy(() => import("./pages/PackageAnalytics").then(m => ({ default: m.PackageAnalytics })));
+const ClientAnalytics = lazy(() => import("./pages/ClientAnalytics").then(m => ({ default: m.ClientAnalytics })));
+const EmployeeAnalytics = lazy(() => import("./pages/EmployeeAnalytics").then(m => ({ default: m.EmployeeAnalytics })));
+const Calendar = lazy(() => import("./pages/Calendar").then(m => ({ default: m.Calendar })));
+const Alerts = lazy(() => import("./pages/Alerts").then(m => ({ default: m.Alerts })));
+const Settings = lazy(() => import("./pages/Settings").then(m => ({ default: m.Settings })));
+const Teams = lazy(() => import("./pages/Teams").then(m => ({ default: m.Teams })));
+const Invoices = lazy(() => import("./pages/Invoices").then(m => ({ default: m.Invoices })));
+const CreateInvoice = lazy(() => import("./pages/CreateInvoice").then(m => ({ default: m.CreateInvoice })));
+const InvoiceDetails = lazy(() => import("./pages/InvoiceDetails").then(m => ({ default: m.InvoiceDetails })));
+const NotFound = lazy(() => import("./pages/NotFound").then(m => ({ default: m.NotFound })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
+      staleTime: 30 * 1000,
     },
   },
 });
 
+function AuthRedirectHandler() {
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      logout();
+      navigate("/login", { replace: true });
+    });
+  }, [navigate, logout]);
+  return null;
+}
+
 function App() {
   return (
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
+          <AuthRedirectHandler />
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader /></div>}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -205,10 +228,13 @@ function App() {
               }
             />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </ToastProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

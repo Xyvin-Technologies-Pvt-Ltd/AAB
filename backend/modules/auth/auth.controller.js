@@ -1,6 +1,5 @@
 import { successResponse, errorResponse } from '../../helpers/response.js';
 import * as authService from './auth.service.js';
-import { updateAccountDetailsSchema } from '../../validators/schemas/auth.schema.js';
 
 export const register = async (req, res, next) => {
   try {
@@ -14,7 +13,6 @@ export const register = async (req, res, next) => {
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    console.log(email, password);
     const result = await authService.loginUser(email, password);
     return successResponse(res, 200, 'Login successful', result);
   } catch (error) {
@@ -47,24 +45,9 @@ export const changePassword = async (req, res, next) => {
 
 export const updateAccountDetails = async (req, res, next) => {
   try {
-    // Validate request body
-    const { error, value } = updateAccountDetailsSchema.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
-
-    if (error) {
-      const errors = error.details.map((detail) => detail.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation Error',
-        errors,
-      });
-    }
-
     const updateData = {
-      name: value.name,
-      dateOfBirth: value.dateOfBirth ? new Date(value.dateOfBirth) : null,
+      name: req.body.name,
+      dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : null,
     };
     const profileImageFile = req.file || null;
     const user = await authService.updateAccountDetails(

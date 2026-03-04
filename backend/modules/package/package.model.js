@@ -84,7 +84,9 @@ packageSchema.virtual('monthlyRevenue').get(function () {
   }
 });
 
-// Ensure virtuals are included in JSON
+packageSchema.index({ clientId: 1 });
+packageSchema.index({ status: 1 });
+
 packageSchema.set('toJSON', { virtuals: true });
 packageSchema.set('toObject', { virtuals: true });
 

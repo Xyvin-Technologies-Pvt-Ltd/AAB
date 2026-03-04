@@ -2,6 +2,7 @@ import Employee from './employee.model.js';
 import User from '../auth/auth.model.js';
 import { sendWelcomeEmail } from '../../helpers/emailService.js';
 import crypto from 'crypto';
+import logger from '../../helpers/logger.js';
 
 /**
  * Generate a secure random password
@@ -60,8 +61,7 @@ export const createEmployee = async (employeeData) => {
       try {
         await sendWelcomeEmail(employee.email, generatedPassword, employee.name);
       } catch (error) {
-        // Log error but don't fail employee creation
-        console.error('Error sending welcome email:', error);
+        logger.error('Error sending welcome email:', error);
       }
     }
   }

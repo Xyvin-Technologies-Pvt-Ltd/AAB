@@ -18,14 +18,16 @@ const startServer = async () => {
       );
     });
 
-    // Graceful shutdown
-    process.on('SIGTERM', () => {
-      logger.info('SIGTERM signal received: closing HTTP server');
+    const gracefulShutdown = (signal) => {
+      logger.info(`${signal} signal received: closing HTTP server`);
       server.close(() => {
         logger.info('HTTP server closed');
         process.exit(0);
       });
-    });
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   } catch (error) {
     logger.error(`Failed to start server: ${error.message}`);
     process.exit(1);

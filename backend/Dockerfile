@@ -44,8 +44,8 @@ RUN mkdir -p logs && chown -R nodejs:nodejs logs
 # Switch to non-root user
 USER nodejs
 
-# Expose port
-EXPOSE 5001
+# Expose port (matches PORT env var; defaults to 5000 in config/server.js)
+EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \

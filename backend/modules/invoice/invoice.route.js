@@ -3,7 +3,7 @@ import { validate } from '../../middlewares/validator.js';
 import { authenticate } from '../../middlewares/auth.js';
 import { authorize } from '../../middlewares/auth.js';
 import * as invoiceController from './invoice.controller.js';
-import { createInvoiceSchema, updateInvoiceSchema } from '../../validators/schemas/invoice.schema.js';
+import { createInvoiceSchema, updateInvoiceSchema, updateInvoiceStatusSchema } from '../../validators/schemas/invoice.schema.js';
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.post('/', validate(createInvoiceSchema), invoiceController.createInvoice)
 router.get('/', invoiceController.getInvoices);
 router.get('/:id', invoiceController.getInvoiceById);
 router.put('/:id', validate(updateInvoiceSchema), invoiceController.updateInvoice);
-router.patch('/:id/status', invoiceController.updateInvoiceStatus);
+router.patch('/:id/status', validate(updateInvoiceStatusSchema), invoiceController.updateInvoiceStatus);
 router.delete('/:id', invoiceController.deleteInvoice);
 
 export default router;

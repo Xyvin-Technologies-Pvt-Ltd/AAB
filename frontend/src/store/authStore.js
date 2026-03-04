@@ -1,14 +1,18 @@
 import { create } from 'zustand';
-// store 
+import { subscribeWithSelector } from 'zustand/middleware';
 
 const getStoredAuth = () => {
-  const token = localStorage.getItem('token');
-  const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : null;
-  return { token, user, isAuthenticated: !!token };
+  try {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    return { token, user, isAuthenticated: !!token };
+  } catch {
+    return { token: null, user: null, isAuthenticated: false };
+  }
 };
 
-export const useAuthStore = create((set, get) => {
+export const useAuthStore = create(subscribeWithSelector((set, get) => {
   const stored = getStoredAuth();
   return {
     user: stored.user,
@@ -102,5 +106,5 @@ export const useAuthStore = create((set, get) => {
       return rolePermissions.includes(action);
     },
   };
-});
+}));
 

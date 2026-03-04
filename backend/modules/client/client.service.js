@@ -4,6 +4,7 @@ import { parseVATReturnMonth } from '../../helpers/vatMonthParser.js';
 import { bulkCreateClientSchema } from '../../validators/schemas/client.schema.js';
 import Package from '../package/package.model.js';
 import logger from '../../helpers/logger.js';
+import { encrypt, decrypt } from '../../helpers/encryption.js';
 
 /**
  * Format date to dd/mm/yyyy format
@@ -58,8 +59,7 @@ export const getClients = async (filters = {}) => {
     }
   }
 
-  // Get all clients matching basic filters (without pagination first)
-  let allClients = await Client.find(query).sort({ createdAt: -1 });
+  let allClients = await Client.find(query).sort({ createdAt: -1 }).lean();
 
   // Filter by VAT months if provided
   if (vatMonths && Array.isArray(vatMonths) && vatMonths.length > 0) {
@@ -136,6 +136,9 @@ export const getClientById = async (clientId) => {
   if (!client) {
     throw new Error('Client not found');
   }
+  if (client.emaraTaxAccount?.password) {
+    client.emaraTaxAccount.password = decrypt(client.emaraTaxAccount.password);
+  }
   return client;
 };
 
@@ -197,8 +200,7 @@ export const removeDocument = async (clientId, documentId) => {
     const { deleteFile } = await import('../../helpers/s3Storage.js');
     await deleteFile(document.key);
   } catch (s3Error) {
-    // Log error but continue with DB deletion
-    console.error('S3 deletion failed:', s3Error);
+    logger.error('S3 deletion failed:', s3Error);
   }
 
   // Remove document from array
@@ -440,7 +442,7 @@ export const removePerson = async (clientId, personId, role) => {
       try {
         await deleteFile(doc.key);
       } catch (s3Error) {
-        console.error('S3 deletion failed for', doc.key, s3Error);
+        logger.error('S3 deletion failed for', doc.key, s3Error);
       }
       // Remove from documents array
       client.documents.pull(doc._id);
@@ -467,7 +469,7 @@ export const removePerson = async (clientId, personId, role) => {
         try {
           await deleteFile(doc.key);
         } catch (s3Error) {
-          console.error('S3 deletion failed for', doc.key, s3Error);
+          logger.error('S3 deletion failed for', doc.key, s3Error);
         }
         client.documents.pull(doc._id);
       }
@@ -723,17 +725,11 @@ export const updateEmaraTaxCredentials = async (clientId, credentials) => {
     client.emaraTaxAccount.username = credentials.username;
   }
 
-  // Handle password update:
-  // - undefined: don't update password (keep existing)
-  // - null or empty string: clear password
-  // - string: update password (plain text)
   if (credentials.password !== undefined) {
     if (credentials.password === null || credentials.password === '') {
-      // Clear password
       client.emaraTaxAccount.password = null;
     } else {
-      // Update password (plain text)
-      client.emaraTaxAccount.password = credentials.password;
+      client.emaraTaxAccount.password = encrypt(credentials.password);
     }
   }
 
@@ -1348,7 +1344,7 @@ export const bulkCreateClientsFromCSV = async (fileBuffer) => {
           status: clientStatus,
           emaraTaxAccount: {
             username: emaraTaxUsername.trim() || null,
-            password: emaraTaxPassword || null,
+            password: emaraTaxPassword ? encrypt(emaraTaxPassword) : null,
           },
           businessInfo: {
             vatReturnCycle: vatData.vatReturnCycle,

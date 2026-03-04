@@ -665,7 +665,7 @@ export const startMiscellaneousTimer = async (timerData, userId, userRole) => {
     }
     // Convert string to ObjectId if needed
     if (typeof timerData.employeeId === 'string') {
-      timerData.employeeId = mongoose.Types.ObjectId(timerData.employeeId);
+      timerData.employeeId = new mongoose.Types.ObjectId(timerData.employeeId);
     }
   }
 

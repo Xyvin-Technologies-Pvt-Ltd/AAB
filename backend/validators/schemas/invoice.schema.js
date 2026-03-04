@@ -28,3 +28,7 @@ export const updateInvoiceSchema = Joi.object({
   dueDate: Joi.date(),
   notes: Joi.string().trim().allow(''),
 });
+
+export const updateInvoiceStatusSchema = Joi.object({
+  status: Joi.string().valid('DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED').required(),
+});

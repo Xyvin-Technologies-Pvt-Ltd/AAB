@@ -1,15 +1,13 @@
 import OpenAI from 'openai';
+import logger from '../helpers/logger.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const apiKey = process.env.OPENAI_API_KEY;
 
-// Log warning if API key is missing (but don't expose the key value)
 if (!apiKey) {
-    console.error('[OpenAI Config] WARNING: OPENAI_API_KEY environment variable is not set');
-} else {
-    console.log('[OpenAI Config] API key loaded successfully (length:', apiKey.length, ')');
+    logger.warn('[OpenAI Config] OPENAI_API_KEY environment variable is not set');
 }
 
 const openaiClient = new OpenAI({

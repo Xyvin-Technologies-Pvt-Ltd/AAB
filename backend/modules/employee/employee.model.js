@@ -83,7 +83,9 @@ employeeSchema.virtual('hourlyCost').get(function () {
   return this.monthlyCost / this.monthlyWorkingHours;
 });
 
-// Ensure virtuals are included in JSON
+employeeSchema.index({ email: 1 });
+employeeSchema.index({ isActive: 1 });
+
 employeeSchema.set('toJSON', { virtuals: true });
 employeeSchema.set('toObject', { virtuals: true });
 

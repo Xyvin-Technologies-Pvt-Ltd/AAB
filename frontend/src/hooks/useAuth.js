@@ -13,8 +13,6 @@ export const useLogin = () => {
     onSuccess: (data) => {
       const { token, user } = data.data;
       login(user, token);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
       queryClient.invalidateQueries({ queryKey: ['user'] });
       navigate('/dashboard');
     },

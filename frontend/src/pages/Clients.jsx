@@ -77,7 +77,7 @@ export const Clients = () => {
     ],
     queryFn: () => {
       const params = {
-        limit: 10000, // Fetch all clients matching the server-side filters
+        limit: 500,
         status: filters.status || undefined,
         packageId: filters.packageId || undefined,
       };
@@ -99,7 +99,7 @@ export const Clients = () => {
   // Fetch client profitability data for profit column
   const { data: clientProfitabilityData } = useQuery({
     queryKey: ["analytics", "clients", "all"],
-    queryFn: () => analyticsApi.getClientProfitability({ page: 1, limit: 10000 }),
+    queryFn: () => analyticsApi.getClientProfitability({ page: 1, limit: 500 }),
   });
 
   // Create a map of client profitability for quick lookup

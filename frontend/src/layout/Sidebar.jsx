@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -87,10 +87,10 @@ const allMenuItems = [
 
 export const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { user, logout } = useAuthStore();
 
-  // Filter menu items based on user role
   const menuItems = allMenuItems.filter((item) => {
     if (!user) return false;
     return item.roles.includes(user.role);
@@ -98,7 +98,7 @@ export const Sidebar = () => {
 
   const handleLogout = () => {
     logout();
-    window.location.href = "/login";
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -172,6 +172,7 @@ export const Sidebar = () => {
           <div className="p-4 border-t border-indigo-700">
             <button
               onClick={handleLogout}
+              aria-label="Log out"
               className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 text-indigo-100 hover:bg-indigo-700 hover:text-white"
             >
               <LogOut className="h-5 w-5 text-indigo-300" />
@@ -185,7 +186,7 @@ export const Sidebar = () => {
 };
 
 export const SidebarToggle = () => {
-  const { sidebarOpen, setSidebarOpen } = useUIStore();
+  const { setSidebarOpen } = useUIStore();
 
   return (
     <Button

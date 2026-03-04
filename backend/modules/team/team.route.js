@@ -23,10 +23,9 @@ router.get('/manager/:managerId', teamController.getTeamsByManager);
 // Get teams by member - admin only
 router.get('/member/:employeeId', teamController.getTeamsByMember);
 
-// Create, update, delete - ADMIN only
-router.post('/', authorize('ADMIN'), teamController.createTeam);
-router.put('/:id', authorize('ADMIN'), teamController.updateTeam);
-router.delete('/:id', authorize('ADMIN'), teamController.deleteTeam);
+router.post('/', teamController.createTeam);
+router.put('/:id', teamController.updateTeam);
+router.delete('/:id', teamController.deleteTeam);
 
 export default router;
 

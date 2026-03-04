@@ -2,12 +2,12 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -21,15 +21,21 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+let onUnauthorized = null;
+
+export const setOnUnauthorized = (callback) => {
+  onUnauthorized = callback;
+};
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (onUnauthorized) {
+        onUnauthorized();
+      }
     }
     return Promise.reject(error);
   }

@@ -1,16 +1,7 @@
-import { ToastProvider, ToastViewport } from '@/ui/toast';
-import { useToast } from '@/hooks/useToast';
-
-export const ToastContainer = () => {
-  const { toasts } = useToast();
-
-  return (
-    <ToastProvider>
-      {toasts.map((toast) => (
-        <div key={toast.id}>{toast.component}</div>
-      ))}
-      <ToastViewport />
-    </ToastProvider>
-  );
-};
+/**
+ * Toast notifications are handled by the useToast hook which creates
+ * DOM-based toast elements directly. This component is intentionally
+ * a no-op since the hook manages its own lifecycle.
+ */
+export const ToastContainer = () => null;
 

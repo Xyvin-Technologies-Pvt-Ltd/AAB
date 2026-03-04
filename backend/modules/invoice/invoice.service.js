@@ -19,14 +19,26 @@ function computeTotals(lineItems = [], taxRate = 0, discount = 0) {
 }
 
 async function getNextInvoiceNumber() {
-  const all = await Invoice.find().select('invoiceNumber').lean();
+  const latest = await Invoice.findOne()
+    .sort({ createdAt: -1 })
+    .select('invoiceNumber')
+    .lean();
+
   let maxNum = 0;
-  for (const doc of all) {
-    const match = doc?.invoiceNumber?.match(/^INV-0*(\d+)$/);
-    if (match) maxNum = Math.max(maxNum, parseInt(match[1], 10));
+  if (latest?.invoiceNumber) {
+    const match = latest.invoiceNumber.match(/^INV-0*(\d+)$/);
+    if (match) maxNum = parseInt(match[1], 10);
   }
-  const next = String(maxNum + 1).padStart(4, '0');
-  return `INV-${next}`;
+
+  // Retry loop to handle concurrent creation
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const nextNum = maxNum + 1 + attempt;
+    const candidate = `INV-${String(nextNum).padStart(4, '0')}`;
+    const exists = await Invoice.exists({ invoiceNumber: candidate });
+    if (!exists) return candidate;
+  }
+
+  throw new Error('Unable to generate unique invoice number. Please try again.');
 }
 
 export const createInvoice = async (invoiceData, userId) => {

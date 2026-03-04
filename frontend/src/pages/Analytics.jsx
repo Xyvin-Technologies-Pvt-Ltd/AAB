@@ -4,25 +4,22 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/layout/AppLayout";
 import { analyticsApi } from "@/api/analytics";
 import { formatCurrency } from "@/utils/currencyFormat";
-import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { LoaderWithText } from "@/components/Loader";
 import { Avatar } from "@/components/Avatar";
 import { Pagination } from "@/components/Pagination";
 import { SearchInput } from "@/components/SearchInput";
-import { Card } from "@/ui/card";
 import { StatCard } from "@/components/StatCard";
 import { useAuthStore } from "@/store/authStore";
 import { TrendingUp, DollarSign, TrendingDown, Percent } from "lucide-react";
 
 export const Analytics = () => {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState("packages");
+  const [activeTab, setActiveTab] = useState("clients");
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const limit = 25;
-  // Admin only: 'my' = own analytics, 'all' = see all
   const [viewMode, setViewMode] = useState("all");
 
   const isEmployee = user?.role === "EMPLOYEE";
@@ -38,20 +35,12 @@ export const Analytics = () => {
   }, [page, limit, search, user?.role, viewMode]);
 
   const allApiParams = useMemo(() => {
-    const base = { page: 1, limit: 10000, search };
+    const base = { page: 1, limit: 500, search };
     if (user?.role === "ADMIN") {
       base.viewMode = viewMode;
     }
     return base;
   }, [search, user?.role, viewMode]);
-
-  // Analytics queries with pagination and search (packages/clients disabled for employees)
-  const { data: packageData, isLoading: packagesLoading } = useQuery({
-    queryKey: ["analytics", "packages", page, search, viewMode],
-    queryFn: () =>
-      analyticsApi.getPackageProfitability({ ...apiParams, page, limit }),
-    enabled: !isEmployee,
-  });
 
   const { data: clientData, isLoading: clientsLoading } = useQuery({
     queryKey: ["analytics", "clients", page, search, viewMode],
@@ -66,25 +55,13 @@ export const Analytics = () => {
       analyticsApi.getEmployeeUtilization({ ...apiParams, page, limit }),
   });
 
-  // Fetch all data for KPI calculations (without pagination)
-  const { data: allPackagesData, isLoading: allPackagesLoading } = useQuery({
-    queryKey: ["analytics", "packages", "all", search, viewMode],
-    queryFn: () =>
-      analyticsApi.getPackageProfitability(allApiParams),
-    enabled: !isEmployee && (effectiveTab === "packages" || effectiveTab === "clients"),
-  });
-
+  // Fetch all client data for KPI calculations (without pagination)
   const { data: allClientsData, isLoading: allClientsLoading } = useQuery({
     queryKey: ["analytics", "clients", "all", search, viewMode],
     queryFn: () => analyticsApi.getClientProfitability(allApiParams),
     enabled: !isEmployee && effectiveTab === "clients",
   });
 
-  // Handle response format - check if it's the new paginated format or old format
-  const packagesList =
-    packageData?.data?.results ??
-    (Array.isArray(packageData?.data) ? packageData.data : []);
-  const packagesPagination = packageData?.data?.pagination;
   const clientsList =
     clientData?.data?.results ??
     (Array.isArray(clientData?.data) ? clientData.data : []);
@@ -94,72 +71,27 @@ export const Analytics = () => {
     (Array.isArray(employeeData?.data) ? employeeData.data : []);
   const employeesPagination = employeeData?.data?.pagination;
 
-  // Calculate KPI metrics
+  // Calculate KPI metrics for clients tab
   const kpiMetrics = useMemo(() => {
-    // Get all data for KPI calculations
-    const allPackagesList =
-      allPackagesData?.data?.results ??
-      (Array.isArray(allPackagesData?.data) ? allPackagesData.data : []);
-    const allClientsList =
-      allClientsData?.data?.results ??
-      (Array.isArray(allClientsData?.data) ? allClientsData.data : []);
+    if (effectiveTab === "clients") {
+      const allClientsList =
+        allClientsData?.data?.results ??
+        (Array.isArray(allClientsData?.data) ? allClientsData.data : []);
 
-    if (effectiveTab === "packages") {
-      const totalRevenue = allPackagesList.reduce((sum, pkg) => {
-        const revenue =
-          pkg.totalCycleRevenue || pkg.cycleRevenue || pkg.revenue || 0;
-        return sum + revenue;
-      }, 0);
-      const totalCost = allPackagesList.reduce((sum, pkg) => {
-        const cost = pkg.totalCycleCost || pkg.cycleCost || pkg.cost || 0;
-        return sum + cost;
-      }, 0);
-      const totalProfit = totalRevenue - totalCost;
-      const overallMargin =
-        totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-
-      return {
-        totalRevenue,
-        totalCost,
-        totalProfit,
-        overallMargin,
-        isLoading: allPackagesLoading,
-      };
-    } else if (effectiveTab === "clients") {
       const totalRevenue = allClientsList.reduce((sum, client) => {
-        const revenue = client.totalCycleRevenue || client.totalRevenue || 0;
-        return sum + revenue;
+        return sum + (client.totalCycleRevenue || client.totalRevenue || 0);
       }, 0);
       const totalCost = allClientsList.reduce((sum, client) => {
-        const cost = client.totalCycleCost || client.totalCost || 0;
-        return sum + cost;
+        return sum + (client.totalCycleCost || client.totalCost || 0);
       }, 0);
       const totalProfit = totalRevenue - totalCost;
       const overallMargin =
         totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
-      return {
-        totalRevenue,
-        totalCost,
-        totalProfit,
-        overallMargin,
-        isLoading: allClientsLoading,
-      };
+      return { totalRevenue, totalCost, totalProfit, overallMargin, isLoading: allClientsLoading };
     }
-    return {
-      totalRevenue: 0,
-      totalCost: 0,
-      totalProfit: 0,
-      overallMargin: 0,
-      isLoading: false,
-    };
-  }, [
-    effectiveTab,
-    allPackagesData,
-    allClientsData,
-    allPackagesLoading,
-    allClientsLoading,
-  ]);
+    return { totalRevenue: 0, totalCost: 0, totalProfit: 0, overallMargin: 0, isLoading: false };
+  }, [effectiveTab, allClientsData, allClientsLoading]);
 
   const handleSearchChange = (value) => {
     setSearch(value);
@@ -191,8 +123,8 @@ export const Analytics = () => {
           )}
         </div>
 
-        {/* KPI Cards */}
-        {(effectiveTab === "packages" || effectiveTab === "clients") && (
+        {/* KPI Cards - shown on clients tab */}
+        {effectiveTab === "clients" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard
               title="Overall Profitability"
@@ -206,11 +138,7 @@ export const Analytics = () => {
               isLoading={kpiMetrics.isLoading}
             />
             <StatCard
-              title={
-                effectiveTab === "clients"
-                  ? "Client Profitability"
-                  : "Package Profitability"
-              }
+              title="Client Profitability"
               value={formatCurrency(kpiMetrics.totalProfit)}
               icon={DollarSign}
               gradient="bg-gradient-to-br from-indigo-500 to-indigo-600"
@@ -237,36 +165,20 @@ export const Analytics = () => {
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
               {!isEmployee && (
-                <>
-                  <button
-                    onClick={() => {
-                      setActiveTab("packages");
-                      setPage(1);
-                      setSearch("");
-                    }}
-                    className={`py-3 px-4 text-xs font-medium border-b-2 ${
-                      activeTab === "packages"
-                        ? "border-indigo-500 text-indigo-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    Package Profitability
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("clients");
-                      setPage(1);
-                      setSearch("");
-                    }}
-                    className={`py-3 px-4 text-xs font-medium border-b-2 ${
-                      activeTab === "clients"
-                        ? "border-indigo-500 text-indigo-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    Client Profitability
-                  </button>
-                </>
+                <button
+                  onClick={() => {
+                    setActiveTab("clients");
+                    setPage(1);
+                    setSearch("");
+                  }}
+                  className={`py-3 px-4 text-xs font-medium border-b-2 ${
+                    activeTab === "clients"
+                      ? "border-indigo-500 text-indigo-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  Client Profitability
+                </button>
               )}
               <button
                 onClick={() => {
@@ -292,148 +204,12 @@ export const Analytics = () => {
                 value={search}
                 onChange={handleSearchChange}
                 placeholder={
-                  effectiveTab === "packages"
-                    ? "Search packages..."
-                    : effectiveTab === "clients"
+                  effectiveTab === "clients"
                     ? "Search clients..."
                     : "Search employees..."
                 }
               />
             </div>
-            {effectiveTab === "packages" && (
-              <div>
-                {packagesLoading ? (
-                  <div className="py-8">
-                    <LoaderWithText text="Loading packages..." />
-                  </div>
-                ) : packagesList.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    No data available
-                  </div>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider"></th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                              Package
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                              Client
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                              Type
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                              Revenue (Overall)
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                              Cost (Overall)
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                              Profit (Overall)
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-                              Margin %
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {packagesList.map((pkg) => {
-                            // Calculate overall totals since start
-                            const overallRevenue =
-                              pkg.totalCycleRevenue ||
-                              pkg.cycleRevenue ||
-                              pkg.revenue ||
-                              0;
-                            const overallCost =
-                              pkg.totalCycleCost ||
-                              pkg.cycleCost ||
-                              pkg.cost ||
-                              0;
-                            const overallProfit = overallRevenue - overallCost;
-                            const overallMargin =
-                              overallRevenue > 0
-                                ? (overallProfit / overallRevenue) * 100
-                                : 0;
-
-                            return (
-                              <tr
-                                key={pkg.packageId}
-                                onClick={() =>
-                                  navigate(
-                                    `/analytics/package/${pkg.packageId}`
-                                  )
-                                }
-                                className="hover:bg-gray-50 cursor-pointer transition-colors"
-                              >
-                                <td className="px-3 py-2 whitespace-nowrap">
-                                  <Avatar name={pkg.packageName} size="sm" />
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap">
-                                  <div className="text-xs font-medium text-gray-900">
-                                    {pkg.packageName}
-                                  </div>
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                                  {pkg.clientName}
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap">
-                                  <Badge
-                                    variant={
-                                      pkg.type === "RECURRING"
-                                        ? "default"
-                                        : "secondary"
-                                    }
-                                    className="text-[10px] px-1.5 py-0.5"
-                                  >
-                                    {pkg.type === "RECURRING"
-                                      ? "Recurring"
-                                      : "One Time"}
-                                  </Badge>
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
-                                  {formatCurrency(overallRevenue)}
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
-                                  {formatCurrency(overallCost)}
-                                </td>
-                                <td
-                                  className={`px-3 py-2 whitespace-nowrap text-xs font-medium ${
-                                    overallProfit >= 0
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
-                                >
-                                  {formatCurrency(overallProfit)}
-                                </td>
-                                <td
-                                  className={`px-3 py-2 whitespace-nowrap text-xs font-medium ${
-                                    overallMargin >= 0
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
-                                >
-                                  {overallMargin.toFixed(1)}%
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {packagesPagination && (
-                      <Pagination
-                        pagination={packagesPagination}
-                        onPageChange={setPage}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-            )}
 
             {effectiveTab === "clients" && (
               <div>

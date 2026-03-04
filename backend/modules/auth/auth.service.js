@@ -4,6 +4,7 @@ import User from './auth.model.js';
 import Employee from '../employee/employee.model.js';
 import { jwtConfig } from '../../config/jwt.js';
 import { sendPasswordResetEmail } from '../../helpers/emailService.js';
+import logger from '../../helpers/logger.js';
 
 export const registerUser = async (userData) => {
   const { email, password, role, employeeId } = userData;
@@ -142,7 +143,7 @@ export const updateAccountDetails = async (userId, updateData, profileImageFile)
         try {
           await deleteFile(employee.profilePicture.key);
         } catch (error) {
-          console.error('Error deleting old profile picture:', error);
+          logger.error('Error deleting old profile picture:', error);
         }
       }
 

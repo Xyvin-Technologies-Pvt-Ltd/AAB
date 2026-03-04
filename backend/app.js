@@ -18,7 +18,9 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'http://localhost:5174'],
+        origin: process.env.FRONTEND_URL
+            ? process.env.FRONTEND_URL.split(',').map(u => u.trim())
+            : ['http://localhost:5173', 'http://localhost:5174'],
         credentials: true,
     })
 );
@@ -52,7 +54,7 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API routesi
+// API routes
 import authRoutes from './modules/auth/auth.route.js';
 import clientRoutes from './modules/client/client.route.js';
 import employeeRoutes from './modules/employee/employee.route.js';
