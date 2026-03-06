@@ -43,8 +43,36 @@ export const getTaskById = async (req, res, next) => {
 
 export const updateTask = async (req, res, next) => {
   try {
-    const task = await taskService.updateTask(req.params.id, req.body);
+    const task = await taskService.updateTask(req.params.id, req.body, req.user._id);
     return successResponse(res, 200, 'Task updated successfully', task);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const archiveTask = async (req, res, next) => {
+  try {
+    const task = await taskService.archiveTask(req.params.id, req.user._id);
+    return successResponse(res, 200, 'Task archived successfully', task);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const unarchiveTask = async (req, res, next) => {
+  try {
+    const task = await taskService.unarchiveTask(req.params.id, req.user._id);
+    return successResponse(res, 200, 'Task unarchived successfully', task);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getWorkload = async (req, res, next) => {
+  try {
+    const { clientId, packageId } = req.query;
+    const workload = await taskService.getWorkload({ clientId, packageId });
+    return successResponse(res, 200, 'Workload retrieved successfully', { workload });
   } catch (error) {
     next(error);
   }

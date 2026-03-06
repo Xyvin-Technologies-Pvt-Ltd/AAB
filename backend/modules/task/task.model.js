@@ -39,8 +39,14 @@ const taskSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ['TODO', 'IN_PROGRESS', 'DONE'],
+      enum: ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'ARCHIVED'],
       default: 'TODO',
+    },
+    archivedAt: {
+      type: Date,
+    },
+    doneAt: {
+      type: Date,
     },
     assignedTo: [
       {
@@ -161,6 +167,26 @@ const taskSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'TimeEntry',
     },
+    activityLog: [
+      {
+        action: {
+          type: String,
+          enum: ['CREATED', 'STATUS_CHANGED', 'ASSIGNED', 'UNASSIGNED', 'PRIORITY_CHANGED', 'COMMENT_ADDED', 'COMMENT_DELETED', 'ATTACHMENT_ADDED', 'ATTACHMENT_DELETED', 'EDITED', 'ARCHIVED', 'UNARCHIVED'],
+          required: true,
+        },
+        field: { type: String },
+        oldValue: { type: String },
+        newValue: { type: String },
+        performedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

@@ -13,9 +13,12 @@ router.use(authenticate);
 router.post('/', validate(createTaskSchema), taskController.createTask);
 router.get('/', taskController.getTasks);
 router.get('/calendar', taskController.getCalendarTasks);
+router.get('/workload', taskController.getWorkload);
 router.get('/:id', taskController.getTaskById);
 router.put('/:id', validate(updateTaskSchema), taskController.updateTask);
 router.patch('/:id/order', taskController.updateTaskOrder);
+router.patch('/:id/archive', taskController.archiveTask);
+router.patch('/:id/unarchive', taskController.unarchiveTask);
 router.delete('/:id', taskController.deleteTask);
 
 // Comments routes

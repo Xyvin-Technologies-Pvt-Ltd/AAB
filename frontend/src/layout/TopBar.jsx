@@ -6,6 +6,7 @@ import { Avatar } from "@/components/Avatar";
 import { SidebarToggle } from "./Sidebar";
 import { CompactTimer } from "@/components/CompactTimer";
 import { Greeting } from "@/components/Greeting";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,6 +67,8 @@ export const TopBar = () => {
           {/* Right side actions */}
           <div className="flex items-center gap-3">
             <CompactTimer />
+
+            <NotificationBell />
 
             {/* Settings Button - Only show for ADMIN */}
             {canAccessSettings && (

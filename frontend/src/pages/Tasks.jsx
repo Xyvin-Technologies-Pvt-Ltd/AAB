@@ -9,6 +9,9 @@ import { servicesApi } from "@/api/services";
 import { activitiesApi } from "@/api/activities";
 import { Button } from "@/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import { HistoryView } from "@/components/HistoryView";
+import { WorkloadView } from "@/components/WorkloadView";
+import { TimelineView } from "@/components/TimelineView";
 import { TaskDetailDrawer } from "@/components/TaskDetailDrawer";
 import { Avatar } from "@/components/Avatar";
 import { SelectSearch } from "@/ui/select-search";
@@ -34,7 +37,6 @@ import {
   User,
   Calendar,
   Building2,
-  Package,
   Briefcase,
   Activity,
   AlertCircle,
@@ -42,6 +44,11 @@ import {
   Trash2,
   MoreVertical,
   Copy,
+  AlignJustify,
+  AlignLeft,
+  History,
+  Users,
+  GitBranch,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useTimer } from "@/hooks/useTimer";
@@ -69,7 +76,9 @@ export const Tasks = () => {
   const [selectedActivities, setSelectedActivities] = useState([]);
   const [pendingClientId, setPendingClientId] = useState(null);
   const [filters, setFilters] = useState({});
-  const [viewMode, setViewMode] = useState("kanban"); // 'kanban' or 'table'
+  const [viewMode, setViewMode] = useState("kanban"); // 'kanban', 'table', 'history', 'workload', 'timeline'
+  const [compact, setCompact] = useState(false);
+  const [inlineSearch, setInlineSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [showClientForm, setShowClientForm] = useState(false);
@@ -317,6 +326,23 @@ export const Tasks = () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
+
+  const archiveMutation = useMutation({
+    mutationFn: tasksApi.archive,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast({ title: "Archived", description: "Task archived successfully", type: "success" });
+    },
+    onError: (error) => {
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to archive task", type: "destructive" });
+    },
+  });
+
+  const handleArchive = (taskId) => {
+    if (confirm("Archive this task? It will be moved to History.")) {
+      archiveMutation.mutate(taskId);
+    }
+  };
 
   const createClientMutation = useMutation({
     mutationFn: clientsApi.create,
@@ -661,6 +687,13 @@ export const Tasks = () => {
     }
   };
 
+  const handleQuickAdd = (name) => {
+    if (!name?.trim()) return;
+    setCopiedTaskData({ name, priority: "MEDIUM", dueDate: "" });
+    setEditingTask(null);
+    setShowForm(true);
+  };
+
   // Timer handlers now come from the useTimer hook
 
   const handleSubmit = async (e) => {
@@ -771,7 +804,7 @@ export const Tasks = () => {
     }));
   };
 
-  const sortedTasks = [...tasks].sort((a, b) => {
+  const sortedTasks = [...(inlineSearch ? tasks.filter((t) => t.name?.toLowerCase().includes(inlineSearch.toLowerCase())) : tasks)].sort((a, b) => {
     if (!sortConfig.key) return 0;
 
     let aValue = a[sortConfig.key];
@@ -812,234 +845,206 @@ export const Tasks = () => {
     }
   };
 
+  // Inline search filter (client-side, fast)
+  const boardTasks = inlineSearch
+    ? tasks.filter((t) => t.name?.toLowerCase().includes(inlineSearch.toLowerCase()))
+    : tasks;
+
+  const KANBAN_COLUMNS = [
+    { id: "TODO", title: "To Do", color: "from-slate-600 to-slate-700" },
+    { id: "IN_PROGRESS", title: "In Progress", color: "from-blue-500 to-blue-600" },
+    { id: "REVIEW", title: "Review", color: "from-purple-500 to-purple-600" },
+    { id: "DONE", title: "Done", color: "from-emerald-500 to-emerald-600" },
+  ];
+
+  const activeFilterCount = Object.keys(filters).filter((key) => {
+    if (key === "priority") return filters[key]?.length > 0;
+    return filters[key];
+  }).length;
+
+  const isFullHeightView = viewMode === "kanban" || viewMode === "timeline" || viewMode === "workload";
+
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
-            <p className="text-gray-600 mt-1">
-              Manage and track your project tasks
-            </p>
+    <AppLayout fullHeight={isFullHeightView}>
+      <div className={`flex flex-col ${isFullHeightView ? "h-full min-h-0" : "p-6 max-w-7xl mx-auto space-y-4"}`}>
+        {/* Header Bar */}
+        <div className={`flex items-center gap-2 flex-wrap flex-shrink-0 ${isFullHeightView ? "px-6 pt-4 pb-2 bg-white border-b border-gray-100" : ""}`}>
+          <div className="mr-auto">
+            <h1 className="text-xl font-bold text-gray-900">Tasks</h1>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Task View Filter - Only show for non-admin users */}
-            {!isAdmin() && user?.employeeId && (
-              <div className="flex items-center gap-2 border rounded-lg p-1 bg-white">
-                <Button
-                  variant={taskViewFilter === "myTasks" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => {
-                    setTaskViewFilter("myTasks");
-                    // Clear any manual assignedTo filter - will be set automatically
-                    const newFilters = { ...filters };
-                    delete newFilters.assignedTo;
-                    setFilters(newFilters);
-                  }}
-                >
-                  My Tasks
-                </Button>
-                <Button
-                  variant={taskViewFilter === "allTasks" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => {
-                    setTaskViewFilter("allTasks");
-                    // Clear assignedTo filter to show all tasks
-                    const newFilters = { ...filters };
-                    delete newFilters.assignedTo;
-                    setFilters(newFilters);
-                  }}
-                >
-                  All Tasks
-                </Button>
-              </div>
-            )}
-            <div className="flex items-center gap-1 border rounded-lg p-1">
-              <Button
-                variant={viewMode === "kanban" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("kanban")}
-              >
-                <LayoutGrid className="h-4 w-4 mr-1" />
-                Kanban
+
+          {/* My Tasks / All Tasks toggle for non-admin */}
+          {!isAdmin() && user?.employeeId && (
+            <div className="flex items-center gap-0.5 border rounded-lg p-0.5 bg-white">
+              <Button variant={taskViewFilter === "myTasks" ? "default" : "ghost"} size="sm"
+                className="h-7 px-3 text-xs"
+                onClick={() => { setTaskViewFilter("myTasks"); const nf = { ...filters }; delete nf.assignedTo; setFilters(nf); }}>
+                My Tasks
               </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("table")}
-              >
-                <Table2 className="h-4 w-4 mr-1" />
-                Table
+              <Button variant={taskViewFilter === "allTasks" ? "default" : "ghost"} size="sm"
+                className="h-7 px-3 text-xs"
+                onClick={() => { setTaskViewFilter("allTasks"); const nf = { ...filters }; delete nf.assignedTo; setFilters(nf); }}>
+                All Tasks
               </Button>
             </div>
-            <Button variant="outline" onClick={() => setShowFilters(true)}>
-              <Filter className="h-4 w-4 mr-2" />
+          )}
+
+          {/* Inline search */}
+          {(viewMode === "kanban" || viewMode === "table") && (
+            <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-2.5 py-1 bg-white min-w-[160px]">
+              <Search className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+              <input
+                type="text"
+                value={inlineSearch}
+                onChange={(e) => setInlineSearch(e.target.value)}
+                placeholder="Quick search..."
+                className="text-xs text-gray-700 placeholder-gray-400 outline-none bg-transparent flex-1 w-28"
+              />
+              {inlineSearch && (
+                <button onClick={() => setInlineSearch("")} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Compact/Comfortable toggle (kanban only) */}
+          {viewMode === "kanban" && (
+            <div className="flex items-center gap-0.5 border rounded-lg p-0.5 bg-white">
+              <Button variant={!compact ? "default" : "ghost"} size="sm" onClick={() => setCompact(false)} className="h-7 w-7 p-0" title="Comfortable">
+                <AlignJustify className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant={compact ? "default" : "ghost"} size="sm" onClick={() => setCompact(true)} className="h-7 w-7 p-0" title="Compact">
+                <AlignLeft className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
+          {/* View mode toggle */}
+          <div className="flex items-center gap-0.5 border rounded-lg p-0.5 bg-white">
+            {[
+              { id: "kanban", icon: LayoutGrid, label: "Kanban" },
+              { id: "table", icon: Table2, label: "Table" },
+              { id: "timeline", icon: GitBranch, label: "Timeline" },
+              { id: "workload", icon: Users, label: "Workload" },
+              { id: "history", icon: History, label: "History" },
+            ].map((viewItem) => {
+              const ViewIcon = viewItem.icon;
+              return (
+                <Button key={viewItem.id} variant={viewMode === viewItem.id ? "default" : "ghost"} size="sm"
+                  onClick={() => setViewMode(viewItem.id)} className="h-7 px-2.5 text-xs gap-1" title={viewItem.label}>
+                  <ViewIcon className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{viewItem.label}</span>
+                </Button>
+              );
+            })}
+          </div>
+
+          {/* Filters button */}
+          {(viewMode === "kanban" || viewMode === "table") && (
+            <Button variant="outline" size="sm" onClick={() => setShowFilters(true)} className="h-8">
+              <Filter className="h-3.5 w-3.5 mr-1.5" />
               Filters
-              {Object.keys(filters).some((key) => {
-                if (key === "priority") return filters[key]?.length > 0;
-                return filters[key];
-              }) && (
-                <span className="ml-2 bg-indigo-600 text-white text-xs rounded-full px-2 py-0.5">
-                  {
-                    Object.keys(filters).filter((key) => {
-                      if (key === "priority") return filters[key]?.length > 0;
-                      return filters[key];
-                    }).length
-                  }
-                </span>
+              {activeFilterCount > 0 && (
+                <span className="ml-1.5 bg-indigo-600 text-white text-[10px] rounded-full px-1.5 py-0.5">{activeFilterCount}</span>
               )}
             </Button>
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Task
-            </Button>
-          </div>
+          )}
+
+          {/* New Task button */}
+          <Button onClick={() => setShowForm(true)} size="sm" className="h-8">
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            New Task
+          </Button>
         </div>
 
         {/* Active Filter Chips */}
-        {(filters.search ||
-          filters.clientId ||
-          filters.packageId ||
-          filters.assignedTo ||
-          filters.priority?.length > 0) && (
-          <div className="flex flex-wrap items-center gap-2">
+        {(viewMode === "kanban" || viewMode === "table") && activeFilterCount > 0 && (
+          <div className={`flex flex-wrap items-center gap-1.5 flex-shrink-0 ${isFullHeightView ? "px-6 pb-2" : ""}`}>
             {filters.search && (
-              <div className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
-                <span>Search: {filters.search}</span>
-                <button
-                  onClick={() => {
-                    const newFilters = { ...filters, search: "" };
-                    setFilters(newFilters);
-                  }}
-                  className="ml-1 hover:bg-indigo-200 rounded-full p-0.5"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-full text-xs">
+                Search: {filters.search}
+                <button onClick={() => setFilters({ ...filters, search: "" })} className="ml-0.5 hover:bg-indigo-200 rounded-full p-0.5"><X className="h-2.5 w-2.5" /></button>
+              </span>
             )}
             {filters.clientId && (
-              <div className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
-                <span>
-                  Client:{" "}
-                  {clients.find((c) => c._id === filters.clientId)?.name ||
-                    filters.clientId}
-                </span>
-                <button
-                  onClick={() => {
-                    const newFilters = {
-                      ...filters,
-                      clientId: "",
-                      packageId: "",
-                    };
-                    setFilters(newFilters);
-                  }}
-                  className="ml-1 hover:bg-indigo-200 rounded-full p-0.5"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-full text-xs">
+                Client: {clients.find((c) => c._id === filters.clientId)?.name || filters.clientId}
+                <button onClick={() => setFilters({ ...filters, clientId: "", packageId: "" })} className="ml-0.5 hover:bg-indigo-200 rounded-full p-0.5"><X className="h-2.5 w-2.5" /></button>
+              </span>
             )}
             {filters.packageId && (
-              <div className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
-                <span>
-                  Package:{" "}
-                  {(packagesData?.data?.packages || []).find(
-                    (p) => p._id === filters.packageId
-                  )?.name || filters.packageId}
-                </span>
-                <button
-                  onClick={() => {
-                    const newFilters = { ...filters, packageId: "" };
-                    setFilters(newFilters);
-                  }}
-                  className="ml-1 hover:bg-indigo-200 rounded-full p-0.5"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-full text-xs">
+                Package: {(packagesData?.data?.packages || []).find((p) => p._id === filters.packageId)?.name || filters.packageId}
+                <button onClick={() => setFilters({ ...filters, packageId: "" })} className="ml-0.5 hover:bg-indigo-200 rounded-full p-0.5"><X className="h-2.5 w-2.5" /></button>
+              </span>
             )}
             {filters.assignedTo && (
-              <div className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
-                <span>
-                  Assignee:{" "}
-                  {employees.find((e) => e._id === filters.assignedTo)?.name ||
-                    filters.assignedTo}
-                </span>
-                <button
-                  onClick={() => {
-                    const newFilters = { ...filters, assignedTo: "" };
-                    setFilters(newFilters);
-                  }}
-                  className="ml-1 hover:bg-indigo-200 rounded-full p-0.5"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-full text-xs">
+                Assignee: {employees.find((e) => e._id === filters.assignedTo)?.name || filters.assignedTo}
+                <button onClick={() => setFilters({ ...filters, assignedTo: "" })} className="ml-0.5 hover:bg-indigo-200 rounded-full p-0.5"><X className="h-2.5 w-2.5" /></button>
+              </span>
             )}
-            {filters.priority?.length > 0 &&
-              filters.priority.map((priority) => (
-                <div
-                  key={priority}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm"
-                >
-                  <span>Priority: {priority}</span>
-                  <button
-                    onClick={() => {
-                      const newFilters = {
-                        ...filters,
-                        priority: filters.priority.filter(
-                          (p) => p !== priority
-                        ),
-                      };
-                      setFilters(newFilters);
-                    }}
-                    className="ml-1 hover:bg-indigo-200 rounded-full p-0.5"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setFilters({})}
-              className="text-sm"
-            >
-              Clear All
-            </Button>
+            {filters.priority?.length > 0 && filters.priority.map((priority) => (
+              <span key={priority} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-full text-xs">
+                Priority: {priority}
+                <button onClick={() => setFilters({ ...filters, priority: filters.priority.filter((p) => p !== priority) })} className="ml-0.5 hover:bg-indigo-200 rounded-full p-0.5"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            ))}
+            <Button variant="ghost" size="sm" onClick={() => setFilters({})} className="h-6 text-xs px-2">Clear All</Button>
           </div>
         )}
 
         {/* View Content */}
         {isLoading ? (
-          <div className="py-12">
+          <div className={`flex items-center justify-center ${isFullHeightView ? "flex-1" : "py-12"}`}>
             <LoaderWithText text="Loading tasks..." />
           </div>
+        ) : viewMode === "history" ? (
+          <div className="flex-1 min-h-0 px-6 pb-6">
+            <HistoryView clients={clients} employees={employees} />
+          </div>
+        ) : viewMode === "workload" ? (
+          <div className="flex-1 min-h-0 px-6 pb-6">
+            <WorkloadView />
+          </div>
+        ) : viewMode === "timeline" ? (
+          <div className="flex-1 min-h-0 px-6 pb-6">
+            <TimelineView tasks={boardTasks} onTaskClick={handleTaskClick} />
+          </div>
         ) : viewMode === "kanban" ? (
-          <KanbanBoard
-            tasks={tasks}
-            onTaskMove={handleTaskMove}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onTaskClick={handleTaskClick}
-            onCopy={handleCopy}
-            onStartTimer={(taskId) => {
-              const task = tasks.find((t) => t._id === taskId);
-              return handleStartTimerForTask(taskId, task);
-            }}
-            onPauseTimer={handlePauseTimer}
-            onResumeTimer={handleResumeTimer}
-            onCompleteTimer={handleCompleteTimer}
-            runningTimerId={
-              runningTimer?.taskId?._id?.toString() ||
-              runningTimer?.taskId?.toString() ||
-              (runningTimer?.taskId && typeof runningTimer.taskId === "string"
-                ? runningTimer.taskId
-                : null)
-            }
-            isTimerRunning={isRunning && !isPaused}
-            isTimerPaused={isPaused}
-          />
+          <div className="flex gap-3 flex-1 min-h-0 px-6 pb-4 overflow-hidden">
+            <div className="flex-1 min-w-0 min-h-0">
+              <KanbanBoard
+                tasks={boardTasks}
+                columns={KANBAN_COLUMNS}
+                onTaskMove={handleTaskMove}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onTaskClick={handleTaskClick}
+                onCopy={handleCopy}
+                onQuickAdd={handleQuickAdd}
+                onArchive={handleArchive}
+                compact={compact}
+                onStartTimer={(taskId) => {
+                  const task = tasks.find((t) => t._id === taskId);
+                  return handleStartTimerForTask(taskId, task);
+                }}
+                onPauseTimer={handlePauseTimer}
+                onResumeTimer={handleResumeTimer}
+                onCompleteTimer={handleCompleteTimer}
+                runningTimerId={
+                  runningTimer?.taskId?._id?.toString() ||
+                  runningTimer?.taskId?.toString() ||
+                  (runningTimer?.taskId && typeof runningTimer.taskId === "string"
+                    ? runningTimer.taskId
+                    : null)
+                }
+                isTimerRunning={isRunning && !isPaused}
+                isTimerPaused={isPaused}
+              />
+            </div>
+          </div>
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <table className="min-w-full divide-y divide-gray-200 text-xs">
@@ -1132,7 +1137,9 @@ export const Tasks = () => {
                     const statusColors = {
                       TODO: "bg-gray-100 text-gray-800",
                       IN_PROGRESS: "bg-blue-100 text-blue-800",
-                      DONE: "bg-green-100 text-green-800",
+                      REVIEW: "bg-purple-100 text-purple-800",
+                      DONE: "bg-emerald-100 text-emerald-800",
+                      ARCHIVED: "bg-gray-100 text-gray-500",
                     };
                     const isOverdue =
                       task.dueDate &&
@@ -1460,6 +1467,7 @@ export const Tasks = () => {
           open={!!selectedTask}
           onOpenChange={(open) => !open && setSelectedTask(null)}
         />
+
 
         {/* Filter Drawer */}
         <TaskFilterDrawer

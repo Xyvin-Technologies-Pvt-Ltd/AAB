@@ -1,6 +1,18 @@
 import Task from './task.model.js';
 import Package from '../package/package.model.js';
 
+const populateTask = (query) =>
+  query
+    .populate('clientId', 'name')
+    .populate('packageId', 'name type')
+    .populate('assignedTo', 'name email')
+    .populate('services', 'name')
+    .populate('activities', 'name')
+    .populate('reporter', 'email')
+    .populate('comments.author', 'email')
+    .populate('attachments.uploadedBy', 'email')
+    .populate('activityLog.performedBy', 'email');
+
 export const createTask = async (taskData, userId) => {
   // Verify package exists and belongs to the specified client
   const packageDoc = await Package.findById(taskData.packageId);
@@ -17,7 +29,13 @@ export const createTask = async (taskData, userId) => {
     taskData.reporter = userId;
   }
 
-  const task = await Task.create(taskData);
+  const activityEntry = {
+    action: 'CREATED',
+    performedBy: userId,
+    timestamp: new Date(),
+  };
+
+  const task = await Task.create({ ...taskData, activityLog: [activityEntry] });
   return task;
 };
 
@@ -26,25 +44,28 @@ export const getTasks = async (filters = {}) => {
 
   const query = {};
 
-  if (clientId) {
-    query.clientId = clientId;
-  }
-
-  if (packageId) {
-    query.packageId = packageId;
-  }
+  if (clientId) query.clientId = clientId;
+  if (packageId) query.packageId = packageId;
 
   if (status) {
-    query.status = status;
+    // Support comma-separated statuses e.g. "TODO,IN_PROGRESS"
+    if (status.includes(',')) {
+      query.status = { $in: status.split(',') };
+    } else {
+      query.status = status;
+    }
+  } else {
+    // By default exclude ARCHIVED tasks from the board
+    query.status = { $ne: 'ARCHIVED' };
   }
 
-  if (assignedTo) {
-    // Support filtering by single employee ID (finds tasks where this employee is assigned)
-    query.assignedTo = assignedTo;
-  }
-
+  if (assignedTo) query.assignedTo = assignedTo;
   if (priority) {
-    query.priority = priority;
+    if (priority.includes(',')) {
+      query.priority = { $in: priority.split(',') };
+    } else {
+      query.priority = priority;
+    }
   }
 
   if (search) {
@@ -55,14 +76,10 @@ export const getTasks = async (filters = {}) => {
     ];
   }
 
-  // Date filtering by dueDate
   if (dateFrom || dateTo) {
     query.dueDate = {};
-    if (dateFrom) {
-      query.dueDate.$gte = new Date(dateFrom);
-    }
+    if (dateFrom) query.dueDate.$gte = new Date(dateFrom);
     if (dateTo) {
-      // Set to end of day for dateTo
       const endDate = new Date(dateTo);
       endDate.setHours(23, 59, 59, 999);
       query.dueDate.$lte = endDate;
@@ -88,70 +105,80 @@ export const getTasks = async (filters = {}) => {
 
   return {
     tasks,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   };
 };
 
 export const getTaskById = async (taskId) => {
-  const task = await Task.findById(taskId)
-    .populate('clientId', 'name')
-    .populate('packageId', 'name type')
-    .populate('assignedTo', 'name email')
-    .populate('services', 'name')
-    .populate('activities', 'name')
-    .populate('reporter', 'email')
-    .populate('comments.author', 'email')
-    .populate('attachments.uploadedBy', 'email');
-  if (!task) {
-    throw new Error('Task not found');
-  }
+  const task = await populateTask(Task.findById(taskId)).exec();
+  if (!task) throw new Error('Task not found');
   return task;
 };
 
-export const updateTask = async (taskId, updateData) => {
-  // If packageId or clientId is being updated, verify relationships
-  if (updateData.packageId || updateData.clientId) {
-    const currentTask = await Task.findById(taskId);
-    if (!currentTask) {
-      throw new Error('Task not found');
-    }
+export const updateTask = async (taskId, updateData, userId) => {
+  const currentTask = await Task.findById(taskId);
+  if (!currentTask) throw new Error('Task not found');
 
+  if (updateData.packageId || updateData.clientId) {
     const packageId = updateData.packageId || currentTask.packageId;
     const clientId = updateData.clientId || currentTask.clientId;
-
     const packageDoc = await Package.findById(packageId);
-    if (!packageDoc) {
-      throw new Error('Package not found');
-    }
-
+    if (!packageDoc) throw new Error('Package not found');
     if (packageDoc.clientId.toString() !== clientId.toString()) {
       throw new Error('Package does not belong to the specified client');
     }
   }
 
-  const task = await Task.findByIdAndUpdate(taskId, updateData, {
-    new: true,
-    runValidators: true,
-  })
-    .populate('clientId', 'name')
-    .populate('packageId', 'name type')
-    .populate('assignedTo', 'name email')
-    .populate('services', 'name')
-    .populate('activities', 'name')
-    .populate('reporter', 'email')
-    .populate('comments.author', 'email')
-    .populate('attachments.uploadedBy', 'email');
-
-  if (!task) {
-    throw new Error('Task not found');
+  // Build activity log entries
+  const activityEntries = [];
+  if (userId) {
+    if (updateData.status && updateData.status !== currentTask.status) {
+      activityEntries.push({
+        action: 'STATUS_CHANGED',
+        field: 'status',
+        oldValue: currentTask.status,
+        newValue: updateData.status,
+        performedBy: userId,
+        timestamp: new Date(),
+      });
+      // Track when task moved to DONE
+      if (updateData.status === 'DONE') {
+        updateData.doneAt = new Date();
+      }
+    }
+    if (updateData.priority && updateData.priority !== currentTask.priority) {
+      activityEntries.push({
+        action: 'PRIORITY_CHANGED',
+        field: 'priority',
+        oldValue: currentTask.priority,
+        newValue: updateData.priority,
+        performedBy: userId,
+        timestamp: new Date(),
+      });
+    }
+    if (updateData.name && updateData.name !== currentTask.name) {
+      activityEntries.push({
+        action: 'EDITED',
+        field: 'name',
+        oldValue: currentTask.name,
+        newValue: updateData.name,
+        performedBy: userId,
+        timestamp: new Date(),
+      });
+    }
   }
 
-  return task;
+  const finalUpdate = activityEntries.length > 0
+    ? { ...updateData, $push: { activityLog: { $each: activityEntries } } }
+    : updateData;
+
+  const task = await Task.findByIdAndUpdate(taskId, finalUpdate, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!task) throw new Error('Task not found');
+  return populateTask(Task.findById(task._id)).exec();
 };
 
 export const deleteTask = async (taskId) => {
@@ -167,20 +194,90 @@ export const updateTaskOrder = async (taskId, order) => {
     taskId,
     { order },
     { new: true, runValidators: true }
-  )
-    .populate('clientId', 'name')
-    .populate('packageId', 'name type')
-    .populate('assignedTo', 'name email')
-    .populate('services', 'name')
-    .populate('activities', 'name')
-    .populate('reporter', 'email')
-    .populate('comments.author', 'email')
-    .populate('attachments.uploadedBy', 'email');
+  );
+  if (!task) throw new Error('Task not found');
+  return populateTask(Task.findById(task._id)).exec();
+};
 
-  if (!task) {
-    throw new Error('Task not found');
+export const archiveTask = async (taskId, userId) => {
+  const task = await Task.findById(taskId);
+  if (!task) throw new Error('Task not found');
+
+  const activityEntry = {
+    action: 'ARCHIVED',
+    performedBy: userId,
+    timestamp: new Date(),
+  };
+
+  const updated = await Task.findByIdAndUpdate(
+    taskId,
+    {
+      status: 'ARCHIVED',
+      archivedAt: new Date(),
+      $push: { activityLog: activityEntry },
+    },
+    { new: true, runValidators: true }
+  );
+  if (!updated) throw new Error('Task not found');
+  return populateTask(Task.findById(updated._id)).exec();
+};
+
+export const unarchiveTask = async (taskId, userId) => {
+  const task = await Task.findById(taskId);
+  if (!task) throw new Error('Task not found');
+
+  const activityEntry = {
+    action: 'UNARCHIVED',
+    performedBy: userId,
+    timestamp: new Date(),
+  };
+
+  const updated = await Task.findByIdAndUpdate(
+    taskId,
+    {
+      status: 'DONE',
+      archivedAt: null,
+      $push: { activityLog: activityEntry },
+    },
+    { new: true, runValidators: true }
+  );
+  if (!updated) throw new Error('Task not found');
+  return populateTask(Task.findById(updated._id)).exec();
+};
+
+export const getWorkload = async (filters = {}) => {
+  const { clientId, packageId } = filters;
+  const query = { status: { $ne: 'ARCHIVED' } };
+  if (clientId) query.clientId = clientId;
+  if (packageId) query.packageId = packageId;
+
+  const tasks = await Task.find(query)
+    .populate('assignedTo', 'name email')
+    .populate('clientId', 'name')
+    .lean();
+
+  const workloadMap = {};
+  for (const task of tasks) {
+    const assignees = Array.isArray(task.assignedTo) ? task.assignedTo : task.assignedTo ? [task.assignedTo] : [{ _id: 'unassigned', name: 'Unassigned', email: '' }];
+    for (const emp of assignees) {
+      const key = emp._id?.toString() || 'unassigned';
+      if (!workloadMap[key]) {
+        workloadMap[key] = {
+          employee: emp,
+          tasks: [],
+          counts: { TODO: 0, IN_PROGRESS: 0, REVIEW: 0, DONE: 0 },
+          overdueCount: 0,
+        };
+      }
+      workloadMap[key].tasks.push(task);
+      workloadMap[key].counts[task.status] = (workloadMap[key].counts[task.status] || 0) + 1;
+      if (task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE') {
+        workloadMap[key].overdueCount += 1;
+      }
+    }
   }
-  return task;
+
+  return Object.values(workloadMap).sort((a, b) => b.tasks.length - a.tasks.length);
 };
 
 export const getCalendarTasks = async (startDate, endDate, clientId = null) => {
@@ -231,128 +328,71 @@ export const getCalendarTasks = async (startDate, endDate, clientId = null) => {
 
 export const addComment = async (taskId, commentData, userId) => {
   const task = await Task.findById(taskId);
-  if (!task) {
-    throw new Error('Task not found');
-  }
+  if (!task) throw new Error('Task not found');
 
-  const comment = {
-    author: userId,
-    content: commentData.content,
-    createdAt: new Date(),
-  };
+  const comment = { author: userId, content: commentData.content, createdAt: new Date() };
+  const activityEntry = { action: 'COMMENT_ADDED', performedBy: userId, timestamp: new Date() };
 
   task.comments.push(comment);
+  task.activityLog.push(activityEntry);
   await task.save();
 
-  return await Task.findById(taskId)
-    .populate('clientId', 'name')
-    .populate('packageId', 'name type')
-    .populate('assignedTo', 'name email')
-    .populate('services', 'name')
-    .populate('activities', 'name')
-    .populate('reporter', 'email')
-    .populate('comments.author', 'email')
-    .populate('attachments.uploadedBy', 'email');
+  return populateTask(Task.findById(taskId)).exec();
 };
 
 export const deleteComment = async (taskId, commentId, userId) => {
   const task = await Task.findById(taskId);
-  if (!task) {
-    throw new Error('Task not found');
-  }
+  if (!task) throw new Error('Task not found');
 
   const comment = task.comments.id(commentId);
-  if (!comment) {
-    throw new Error('Comment not found');
-  }
+  if (!comment) throw new Error('Comment not found');
 
-  // Only allow author or admin to delete
   if (comment.author.toString() !== userId.toString()) {
     const User = (await import('../auth/auth.model.js')).default;
     const user = await User.findById(userId);
-    if (!user || user.role !== 'ADMIN') {
-      throw new Error('You can only delete your own comments');
-    }
+    if (!user || user.role !== 'ADMIN') throw new Error('You can only delete your own comments');
   }
 
   task.comments.pull(commentId);
+  task.activityLog.push({ action: 'COMMENT_DELETED', performedBy: userId, timestamp: new Date() });
   await task.save();
 
-  return await Task.findById(taskId)
-    .populate('clientId', 'name')
-    .populate('packageId', 'name type')
-    .populate('assignedTo', 'name email')
-    .populate('services', 'name')
-    .populate('activities', 'name')
-    .populate('reporter', 'email')
-    .populate('comments.author', 'email')
-    .populate('attachments.uploadedBy', 'email');
+  return populateTask(Task.findById(taskId)).exec();
 };
 
 export const addAttachment = async (taskId, fileData, userId) => {
   const task = await Task.findById(taskId);
-  if (!task) {
-    throw new Error('Task not found');
-  }
+  if (!task) throw new Error('Task not found');
 
-  const attachment = {
-    name: fileData.name,
-    url: fileData.url,
-    key: fileData.key,
-    uploadedBy: userId,
-    uploadedAt: new Date(),
-  };
-
+  const attachment = { name: fileData.name, url: fileData.url, key: fileData.key, uploadedBy: userId, uploadedAt: new Date() };
   task.attachments.push(attachment);
+  task.activityLog.push({ action: 'ATTACHMENT_ADDED', newValue: fileData.name, performedBy: userId, timestamp: new Date() });
   await task.save();
 
-  return await Task.findById(taskId)
-    .populate('clientId', 'name')
-    .populate('packageId', 'name type')
-    .populate('assignedTo', 'name email')
-    .populate('services', 'name')
-    .populate('activities', 'name')
-    .populate('reporter', 'email')
-    .populate('comments.author', 'email')
-    .populate('attachments.uploadedBy', 'email');
+  return populateTask(Task.findById(taskId)).exec();
 };
 
 export const deleteAttachment = async (taskId, attachmentId, userId) => {
   const task = await Task.findById(taskId);
-  if (!task) {
-    throw new Error('Task not found');
-  }
+  if (!task) throw new Error('Task not found');
 
   const attachment = task.attachments.id(attachmentId);
-  if (!attachment) {
-    throw new Error('Attachment not found');
-  }
+  if (!attachment) throw new Error('Attachment not found');
 
-  // Only allow uploader or admin to delete
   if (attachment.uploadedBy.toString() !== userId.toString()) {
     const User = (await import('../auth/auth.model.js')).default;
     const user = await User.findById(userId);
-    if (!user || user.role !== 'ADMIN') {
-      throw new Error('You can only delete your own attachments');
-    }
+    if (!user || user.role !== 'ADMIN') throw new Error('You can only delete your own attachments');
   }
 
-  // Delete from S3
   const { deleteFile } = await import('../../helpers/s3Storage.js');
   await deleteFile(attachment.key);
 
   task.attachments.pull(attachmentId);
+  task.activityLog.push({ action: 'ATTACHMENT_DELETED', oldValue: attachment.name, performedBy: userId, timestamp: new Date() });
   await task.save();
 
-  return await Task.findById(taskId)
-    .populate('clientId', 'name')
-    .populate('packageId', 'name type')
-    .populate('assignedTo', 'name email')
-    .populate('services', 'name')
-    .populate('activities', 'name')
-    .populate('reporter', 'email')
-    .populate('comments.author', 'email')
-    .populate('attachments.uploadedBy', 'email');
+  return populateTask(Task.findById(taskId)).exec();
 };
 
 const generateRecurringInstances = (task, startDate, endDate) => {

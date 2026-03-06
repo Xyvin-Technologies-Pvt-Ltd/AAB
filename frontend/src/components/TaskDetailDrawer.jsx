@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -12,20 +12,69 @@ import { tasksApi } from '@/api/tasks';
 import { useToast } from '@/hooks/useToast';
 import { useAuthStore } from '@/store/authStore';
 import {
-  X,
   MessageSquare,
   Paperclip,
   User,
   Calendar,
-  Clock,
   Trash2,
   Send,
-  Download,
+  History,
+  CheckSquare,
+  UserCheck,
+  AlertCircle,
+  Pencil,
+  Archive,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+
+const ACTION_ICONS = {
+  CREATED: CheckSquare,
+  STATUS_CHANGED: CheckSquare,
+  ASSIGNED: UserCheck,
+  UNASSIGNED: UserCheck,
+  PRIORITY_CHANGED: AlertCircle,
+  COMMENT_ADDED: MessageSquare,
+  COMMENT_DELETED: MessageSquare,
+  ATTACHMENT_ADDED: Paperclip,
+  ATTACHMENT_DELETED: Paperclip,
+  EDITED: Pencil,
+  ARCHIVED: Archive,
+  UNARCHIVED: Archive,
+};
+
+const ACTION_COLORS = {
+  CREATED: 'text-emerald-600 bg-emerald-50',
+  STATUS_CHANGED: 'text-blue-600 bg-blue-50',
+  ASSIGNED: 'text-indigo-600 bg-indigo-50',
+  UNASSIGNED: 'text-gray-600 bg-gray-50',
+  PRIORITY_CHANGED: 'text-amber-600 bg-amber-50',
+  COMMENT_ADDED: 'text-blue-600 bg-blue-50',
+  COMMENT_DELETED: 'text-gray-600 bg-gray-50',
+  ATTACHMENT_ADDED: 'text-purple-600 bg-purple-50',
+  ATTACHMENT_DELETED: 'text-gray-600 bg-gray-50',
+  EDITED: 'text-gray-600 bg-gray-100',
+  ARCHIVED: 'text-orange-600 bg-orange-50',
+  UNARCHIVED: 'text-emerald-600 bg-emerald-50',
+};
+
+const ACTION_LABELS = {
+  CREATED: 'Task created',
+  STATUS_CHANGED: 'Status changed',
+  ASSIGNED: 'Assignee changed',
+  UNASSIGNED: 'Assignee removed',
+  PRIORITY_CHANGED: 'Priority changed',
+  COMMENT_ADDED: 'Comment added',
+  COMMENT_DELETED: 'Comment deleted',
+  ATTACHMENT_ADDED: 'Attachment added',
+  ATTACHMENT_DELETED: 'Attachment deleted',
+  EDITED: 'Task edited',
+  ARCHIVED: 'Task archived',
+  UNARCHIVED: 'Task restored',
+};
 
 export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
   const [commentText, setCommentText] = useState('');
+  const [activeTab, setActiveTab] = useState('comments');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuthStore();
@@ -131,7 +180,9 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
   const statusColors = {
     TODO: 'bg-gray-100 text-gray-800',
     IN_PROGRESS: 'bg-blue-100 text-blue-800',
-    DONE: 'bg-green-100 text-green-800',
+    REVIEW: 'bg-purple-100 text-purple-800',
+    DONE: 'bg-emerald-100 text-emerald-800',
+    ARCHIVED: 'bg-gray-100 text-gray-500',
   };
 
   // Calculate actual time from time entries (would need to fetch separately)
@@ -260,121 +311,153 @@ export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
             </div>
           )}
 
-          {/* Attachments - Compact */}
-          <div className="pb-2 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Attachments</label>
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                  disabled={addAttachmentMutation.isPending}
-                />
-                <Button variant="outline" size="sm" asChild className="h-6 px-2 text-xs">
-                  <span>
-                    <Paperclip className="h-3 w-3 mr-1" />
-                    Upload
-                  </span>
-                </Button>
-              </label>
-            </div>
-            <div className="space-y-1">
-              {taskData.attachments?.map((attachment) => (
-                <div
-                  key={attachment._id || attachment.key}
-                  className="flex items-center justify-between p-1.5 bg-gray-50 rounded text-xs"
-                >
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    <Paperclip className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                    <a
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline truncate flex-1"
-                    >
-                      {attachment.name}
-                    </a>
-                    {(user?.role === 'ADMIN' ||
-                      attachment.uploadedBy?._id === user?._id ||
-                      attachment.uploadedBy === user?._id) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteAttachment(attachment._id || attachment.key)}
-                        className="h-5 w-5 p-0 text-red-600 hover:text-red-700 flex-shrink-0"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {(!taskData.attachments || taskData.attachments.length === 0) && (
-                <p className="text-xs text-gray-400 py-1">No attachments</p>
-              )}
-            </div>
-          </div>
-
-          {/* Comments - Compact */}
+          {/* Tabbed section: Comments / Attachments / Activity */}
           <div>
-            <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1.5 block">Comments</label>
-            <div className="space-y-2">
-              {/* Add Comment */}
-              <div className="flex gap-1.5">
-                <textarea
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="flex-1 px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-xs"
-                  rows={2}
-                />
-                <Button
-                  onClick={handleAddComment}
-                  disabled={!commentText.trim() || addCommentMutation.isPending}
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <Send className="h-3 w-3" />
-                </Button>
-              </div>
+            <div className="flex gap-0 border-b border-gray-100 mb-3">
+              {[
+                { id: 'comments', label: 'Comments', icon: MessageSquare, count: taskData.comments?.length },
+                { id: 'attachments', label: 'Attachments', icon: Paperclip, count: taskData.attachments?.length },
+                { id: 'activity', label: 'Activity', icon: History, count: taskData.activityLog?.length },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+                      activeTab === tab.id
+                        ? 'border-indigo-600 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <span className={`text-[9px] font-bold px-1 rounded-full ${activeTab === tab.id ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-              {/* Comments List */}
-              <div className="space-y-1.5">
-                {taskData.comments?.map((comment) => (
-                  <div key={comment._id} className="p-2 bg-gray-50 rounded text-xs">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-xs font-medium text-gray-700">
-                            {comment.author?.email || 'Unknown'}
-                          </span>
-                          <span className="text-[10px] text-gray-400">
-                            {format(new Date(comment.createdAt), 'MMM dd, HH:mm')}
-                          </span>
+            {/* Comments Tab */}
+            {activeTab === 'comments' && (
+              <div className="space-y-2">
+                <div className="flex gap-1.5">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-xs"
+                    rows={2}
+                  />
+                  <Button onClick={handleAddComment} disabled={!commentText.trim() || addCommentMutation.isPending} size="sm" className="h-8 w-8 p-0">
+                    <Send className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="space-y-1.5">
+                  {taskData.comments?.map((comment) => (
+                    <div key={comment._id} className="p-2 bg-gray-50 rounded text-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-xs font-medium text-gray-700">{comment.author?.email || 'Unknown'}</span>
+                            <span className="text-[10px] text-gray-400">{format(new Date(comment.createdAt), 'MMM dd, HH:mm')}</span>
+                          </div>
+                          <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
                         </div>
-                        <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+                        {(user?.role === 'ADMIN' || comment.author?._id === user?._id || comment.author === user?._id) && (
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteComment(comment._id)} className="h-5 w-5 p-0 text-red-600 hover:text-red-700 flex-shrink-0">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
-                      {(user?.role === 'ADMIN' ||
-                        comment.author?._id === user?._id ||
-                        comment.author === user?._id) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteComment(comment._id)}
-                          className="h-5 w-5 p-0 text-red-600 hover:text-red-700 flex-shrink-0"
-                        >
+                    </div>
+                  ))}
+                  {(!taskData.comments || taskData.comments.length === 0) && (
+                    <p className="text-xs text-gray-400 text-center py-4">No comments yet</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Attachments Tab */}
+            {activeTab === 'attachments' && (
+              <div className="space-y-2">
+                <div className="flex justify-end">
+                  <label className="cursor-pointer">
+                    <input type="file" className="hidden" onChange={handleFileUpload} disabled={addAttachmentMutation.isPending} />
+                    <Button variant="outline" size="sm" asChild className="h-7 px-2.5 text-xs">
+                      <span><Paperclip className="h-3 w-3 mr-1" /> Upload File</span>
+                    </Button>
+                  </label>
+                </div>
+                <div className="space-y-1">
+                  {taskData.attachments?.map((attachment) => (
+                    <div key={attachment._id || attachment.key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <Paperclip className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                        <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate flex-1">
+                          {attachment.name}
+                        </a>
+                      </div>
+                      {(user?.role === 'ADMIN' || attachment.uploadedBy?._id === user?._id || attachment.uploadedBy === user?._id) && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteAttachment(attachment._id || attachment.key)} className="h-5 w-5 p-0 text-red-600 hover:text-red-700 flex-shrink-0">
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       )}
                     </div>
-                  </div>
-                ))}
-                {(!taskData.comments || taskData.comments.length === 0) && (
-                  <p className="text-xs text-gray-400 text-center py-2">No comments yet</p>
+                  ))}
+                  {(!taskData.attachments || taskData.attachments.length === 0) && (
+                    <p className="text-xs text-gray-400 text-center py-4">No attachments</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Activity Tab */}
+            {activeTab === 'activity' && (
+              <div className="space-y-0">
+                {taskData.activityLog && taskData.activityLog.length > 0 ? (
+                  [...taskData.activityLog].reverse().map((entry, idx) => {
+                    const Icon = ACTION_ICONS[entry.action] || History;
+                    const colorClass = ACTION_COLORS[entry.action] || 'text-gray-600 bg-gray-50';
+                    return (
+                      <div key={idx} className="flex gap-3 pb-3 relative">
+                        {idx < taskData.activityLog.length - 1 && (
+                          <div className="absolute left-3.5 top-7 bottom-0 w-px bg-gray-100" />
+                        )}
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-gray-700">{ACTION_LABELS[entry.action] || entry.action}</span>
+                            <span className="text-[10px] text-gray-400">
+                              {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
+                            </span>
+                          </div>
+                          {(entry.oldValue || entry.newValue) && (
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {entry.oldValue && <span className="text-[10px] text-gray-400 line-through">{entry.oldValue}</span>}
+                              {entry.oldValue && entry.newValue && <span className="text-[10px] text-gray-400">→</span>}
+                              {entry.newValue && <span className="text-[10px] text-gray-600 font-medium">{entry.newValue}</span>}
+                            </div>
+                          )}
+                          {entry.performedBy?.email && (
+                            <span className="text-[10px] text-gray-400">by {entry.performedBy.email}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-gray-400 text-center py-4">No activity recorded yet</p>
                 )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </DialogContent>

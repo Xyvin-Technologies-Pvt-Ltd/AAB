@@ -68,6 +68,9 @@ import activityRoutes from './modules/activity/activity.route.js';
 import teamRoutes from './modules/team/team.route.js';
 import calendarRoutes from './modules/calendar/calendar.route.js';
 import invoiceRoutes from './modules/invoice/invoice.route.js';
+import notificationRoutes from './modules/notification/notification.route.js';
+import { authenticate } from './middlewares/auth.js';
+import { runAutoArchive, runDueSoonNotifications, runOverdueNotifications } from './scheduler.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
@@ -82,6 +85,24 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Admin-only manual scheduler triggers (for testing or emergency runs)
+app.post('/api/admin/scheduler/archive', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ success: false, message: 'Forbidden' });
+    await runAutoArchive();
+    res.json({ success: true, message: 'Auto-archive run completed' });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/admin/scheduler/due-soon', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ success: false, message: 'Forbidden' });
+    await runDueSoonNotifications();
+    res.json({ success: true, message: 'Due-soon notifications sent' });
+  } catch (error) { next(error); }
+});
 
 // 404 handler
 app.use((req, res) => {

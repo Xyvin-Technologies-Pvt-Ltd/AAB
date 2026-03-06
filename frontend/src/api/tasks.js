@@ -61,5 +61,37 @@ export const tasksApi = {
     const response = await api.delete(`/tasks/${taskId}/attachments/${attachmentId}`);
     return response.data;
   },
+
+  archive: async (taskId) => {
+    const response = await api.patch(`/tasks/${taskId}/archive`);
+    return response.data;
+  },
+
+  unarchive: async (taskId) => {
+    const response = await api.patch(`/tasks/${taskId}/unarchive`);
+    return response.data;
+  },
+
+  getArchived: async (params = {}) => {
+    const response = await api.get('/tasks', { params: { ...params, status: 'ARCHIVED', limit: 1000 } });
+    return response.data;
+  },
+
+  getWorkload: async (params = {}) => {
+    const response = await api.get('/tasks/workload', { params });
+    return response.data;
+  },
+};
+
+export const adminApi = {
+  triggerArchive: async () => {
+    const response = await api.post('/admin/scheduler/archive');
+    return response.data;
+  },
+
+  triggerDueSoon: async () => {
+    const response = await api.post('/admin/scheduler/due-soon');
+    return response.data;
+  },
 };
 

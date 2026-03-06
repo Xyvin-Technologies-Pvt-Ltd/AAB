@@ -95,7 +95,9 @@ export const getTimeEntries = async (filters = {}) => {
       query.date.$gte = new Date(startDate);
     }
     if (endDate) {
-      query.date.$lte = new Date(endDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      query.date.$lte = end;
     }
   }
 

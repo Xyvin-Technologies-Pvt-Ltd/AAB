@@ -47,12 +47,6 @@ const allMenuItems = [
     roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
   },
   {
-    path: "/packages",
-    label: "Packages",
-    icon: Package,
-    roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
-  },
-  {
     path: "/calendar",
     label: "Calendar",
     icon: Calendar,

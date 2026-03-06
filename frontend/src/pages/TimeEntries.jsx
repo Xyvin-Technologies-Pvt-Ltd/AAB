@@ -100,11 +100,11 @@ export const TimeEntries = () => {
   const isEmployee = user?.role === "EMPLOYEE";
 
   const { data: entriesData, isLoading } = useQuery({
-    queryKey: ["time-entries", filters, page, search],
+    queryKey: ["time-entries", filters, viewMode === "weekly" ? 1 : page, search, viewMode],
     queryFn: () =>
       timeEntriesApi.getAll({
-        page,
-        limit,
+        page: viewMode === "weekly" ? 1 : page,
+        limit: viewMode === "weekly" ? 500 : limit,
         search,
         ...filters,
         employeeId: filters.employeeId || undefined,
@@ -613,7 +613,16 @@ export const TimeEntries = () => {
               <Button
                 variant={viewMode === "weekly" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setViewMode("weekly")}
+                onClick={() => {
+                  setViewMode("weekly");
+                  const ws = startOfWeek(currentWeek, { weekStartsOn: 1 });
+                  const we = endOfWeek(currentWeek, { weekStartsOn: 1 });
+                  setFilters((prev) => ({
+                    ...prev,
+                    startDate: format(ws, "yyyy-MM-dd"),
+                    endDate: format(we, "yyyy-MM-dd"),
+                  }));
+                }}
               >
                 <Grid className="h-4 w-4 mr-1" />
                 Weekly
@@ -859,7 +868,15 @@ export const TimeEntries = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentWeek(new Date())}
+                    onClick={() => {
+                    const now = new Date();
+                    setCurrentWeek(now);
+                    setFilters((prev) => ({
+                      ...prev,
+                      startDate: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+                      endDate: format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+                    }));
+                  }}
                   >
                     This Week
                   </Button>

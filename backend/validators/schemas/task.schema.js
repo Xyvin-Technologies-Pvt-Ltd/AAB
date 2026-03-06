@@ -14,7 +14,7 @@ export const createTaskSchema = Joi.object({
   category: Joi.string().trim().allow('', null),
   services: Joi.array().items(Joi.string().hex().length(24)).allow(null),
   activities: Joi.array().items(Joi.string().hex().length(24)).allow(null),
-  status: Joi.string().valid('TODO', 'IN_PROGRESS', 'DONE').default('TODO'),
+  status: Joi.string().valid('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'ARCHIVED').default('TODO'),
   assignedTo: Joi.alternatives().try(
     Joi.string().hex().length(24).allow(null),
     Joi.array().items(Joi.string().hex().length(24)).allow(null)
@@ -50,7 +50,7 @@ export const updateTaskSchema = Joi.object({
   category: Joi.string().trim().allow('', null),
   services: Joi.array().items(Joi.string().hex().length(24)).allow(null),
   activities: Joi.array().items(Joi.string().hex().length(24)).allow(null),
-  status: Joi.string().valid('TODO', 'IN_PROGRESS', 'DONE'),
+  status: Joi.string().valid('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'ARCHIVED'),
   assignedTo: Joi.alternatives().try(
     Joi.string().hex().length(24).allow(null),
     Joi.array().items(Joi.string().hex().length(24)).allow(null)
