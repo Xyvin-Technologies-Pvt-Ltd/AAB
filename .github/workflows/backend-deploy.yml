@@ -32,53 +32,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Clean up old ECR images
-        run: |
-          aws ecr put-lifecycle-policy \
-            --repository-name ${{ env.ECR_REPOSITORY }} \
-            --lifecycle-policy-text '{
-              "rules": [
-                {
-                  "rulePriority": 1,
-                  "description": "Expire untagged images after 1 day",
-                  "selection": {
-                    "tagStatus": "untagged",
-                    "countType": "sinceImagePushed",
-                    "countUnit": "days",
-                    "countNumber": 1
-                  },
-                  "action": { "type": "expire" }
-                },
-                {
-                  "rulePriority": 2,
-                  "description": "Keep only last 10 tagged images",
-                  "selection": {
-                    "tagStatus": "tagged",
-                    "tagPatternList": ["*"],
-                    "countType": "imageCountMoreThan",
-                    "countNumber": 10
-                  },
-                  "action": { "type": "expire" }
-                }
-              ]
-            }'
-
-          IMAGES_TO_DELETE=$(aws ecr describe-images \
-            --repository-name ${{ env.ECR_REPOSITORY }} \
-            --query 'sort_by(imageDetails, &imagePushedAt)[:-20].imageDigest' \
-            --output text)
-
-          if [ -n "$IMAGES_TO_DELETE" ]; then
-            for DIGEST in $IMAGES_TO_DELETE; do
-              aws ecr batch-delete-image \
-                --repository-name ${{ env.ECR_REPOSITORY }} \
-                --image-ids imageDigest=$DIGEST || true
-            done
-            echo "Cleaned up old images"
-          else
-            echo "No old images to clean up"
-          fi
-
+    
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
