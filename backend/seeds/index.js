@@ -8,7 +8,7 @@ dotenv.config();
 
 const seedData = async () => {
   try {
-    // Connect to database
+    // Connect to databases
     await connectDatabase();
 
     // Clear existing data
