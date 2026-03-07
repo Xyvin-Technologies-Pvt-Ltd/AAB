@@ -1,6 +1,8 @@
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { Footer } from "@/components/Footer";
+import { ChatPanel } from "@/components/ai-chat/ChatPanel";
+import { AIChatButton } from "@/components/ai-chat/AIChatButton";
 
 export const AppLayout = ({ children, fullHeight = false }) => {
   return (
@@ -21,6 +23,10 @@ export const AppLayout = ({ children, fullHeight = false }) => {
           </main>
         )}
       </div>
+
+      {/* AI Chat floating button + panel */}
+      <AIChatButton />
+      <ChatPanel />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { employeesApi } from "@/api/employees";
 import { tasksApi } from "@/api/tasks";
 import { StatCard } from "@/components/StatCard";
 import { DashboardGraphs } from "@/components/DashboardGraphs";
+import { AIInsightsWidget } from "@/components/ai-chat/AIInsightsWidget";
 import { Users, Package, UserCog, Calendar, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import { Button } from "@/ui/button";
@@ -232,6 +233,9 @@ export const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Insights Widget */}
+        <AIInsightsWidget />
 
         {/* Dashboard Graphs */}
         <DashboardGraphs />

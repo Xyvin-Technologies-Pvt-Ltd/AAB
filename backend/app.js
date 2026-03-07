@@ -69,6 +69,7 @@ import teamRoutes from './modules/team/team.route.js';
 import calendarRoutes from './modules/calendar/calendar.route.js';
 import invoiceRoutes from './modules/invoice/invoice.route.js';
 import notificationRoutes from './modules/notification/notification.route.js';
+import aiChatRoutes from './modules/ai-chat/ai-chat.route.js';
 import { authenticate } from './middlewares/auth.js';
 import { runAutoArchive, runDueSoonNotifications, runOverdueNotifications } from './scheduler.js';
 
@@ -86,6 +87,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/ai-chat', aiChatRoutes);
 
 // Admin-only manual scheduler triggers (for testing or emergency runs)
 app.post('/api/admin/scheduler/archive', authenticate, async (req, res, next) => {
