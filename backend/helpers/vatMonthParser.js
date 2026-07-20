@@ -1,8 +1,8 @@
 /**
  * Parse VAT Return Month string and convert to vatReturnCycle and vatTaxPeriods
- * @param {string} vatReturnMonth - String like "Feb May Aug Nov" or "Jan Apr Jul Oct"
- * @returns {Object} Object with vatReturnCycle and vatTaxPeriods
  */
+import { startOfDay, endOfDay, getDubaiDateParts, getDaysInMonth } from './dateRange.js';
+
 export const parseVATReturnMonth = (vatReturnMonth) => {
   if (!vatReturnMonth || !vatReturnMonth.trim()) {
     return {
@@ -62,7 +62,7 @@ export const parseVATReturnMonth = (vatReturnMonth) => {
   }
 
   // Generate quarterly periods for current year
-  const currentYear = new Date().getFullYear();
+  const currentYear = getDubaiDateParts(new Date()).year;
   const periods = [];
   
   // Generate 4 quarters based on cycle
@@ -83,13 +83,14 @@ export const parseVATReturnMonth = (vatReturnMonth) => {
       endMonth -= 12;
       endYear += 1;
     }
-    
-    const startDate = new Date(startYear, startMonth, 1);
-    const endDate = new Date(endYear, endMonth + 1, 0); // Last day of end month
+
+    const startMonthStr = String(startMonth + 1).padStart(2, '0');
+    const endMonthStr = String(endMonth + 1).padStart(2, '0');
+    const endDayStr = String(getDaysInMonth(endYear, endMonth)).padStart(2, '0');
     
     periods.push({
-      startDate,
-      endDate,
+      startDate: startOfDay(`${startYear}-${startMonthStr}-01`),
+      endDate: endOfDay(`${endYear}-${endMonthStr}-${endDayStr}`),
     });
   }
 

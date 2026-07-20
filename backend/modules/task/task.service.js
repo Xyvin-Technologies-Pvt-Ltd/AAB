@@ -1,5 +1,13 @@
 import Task from './task.model.js';
 import Package from '../package/package.model.js';
+import {
+  buildDateRangeQuery,
+  parseCalendarDate,
+  startOfDay,
+  endOfDay,
+  startOfToday,
+  toDateString,
+} from '../../helpers/dateRange.js';
 
 const populateTask = (query) =>
   query
@@ -35,7 +43,13 @@ export const createTask = async (taskData, userId) => {
     timestamp: new Date(),
   };
 
-  const task = await Task.create({ ...taskData, activityLog: [activityEntry] });
+  const payload = { ...taskData };
+  if (payload.dueDate) payload.dueDate = parseCalendarDate(payload.dueDate);
+  if (payload.recurringPattern?.endDate) {
+    payload.recurringPattern.endDate = parseCalendarDate(payload.recurringPattern.endDate);
+  }
+
+  const task = await Task.create({ ...payload, activityLog: [activityEntry] });
   return task;
 };
 
@@ -77,13 +91,7 @@ export const getTasks = async (filters = {}) => {
   }
 
   if (dateFrom || dateTo) {
-    query.dueDate = {};
-    if (dateFrom) query.dueDate.$gte = new Date(dateFrom);
-    if (dateTo) {
-      const endDate = new Date(dateTo);
-      endDate.setHours(23, 59, 59, 999);
-      query.dueDate.$lte = endDate;
-    }
+    query.dueDate = buildDateRangeQuery(dateFrom, dateTo);
   }
 
   const skip = (page - 1) * limit;
@@ -168,9 +176,15 @@ export const updateTask = async (taskId, updateData, userId) => {
     }
   }
 
+  const payload = { ...updateData };
+  if (payload.dueDate) payload.dueDate = parseCalendarDate(payload.dueDate);
+  if (payload.recurringPattern?.endDate) {
+    payload.recurringPattern.endDate = parseCalendarDate(payload.recurringPattern.endDate);
+  }
+
   const finalUpdate = activityEntries.length > 0
-    ? { ...updateData, $push: { activityLog: { $each: activityEntries } } }
-    : updateData;
+    ? { ...payload, $push: { activityLog: { $each: activityEntries } } }
+    : payload;
 
   const task = await Task.findByIdAndUpdate(taskId, finalUpdate, {
     new: true,
@@ -271,7 +285,7 @@ export const getWorkload = async (filters = {}) => {
       }
       workloadMap[key].tasks.push(task);
       workloadMap[key].counts[task.status] = (workloadMap[key].counts[task.status] || 0) + 1;
-      if (task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE') {
+      if (task.dueDate && new Date(task.dueDate) < startOfToday() && task.status !== 'DONE') {
         workloadMap[key].overdueCount += 1;
       }
     }
@@ -282,10 +296,7 @@ export const getWorkload = async (filters = {}) => {
 
 export const getCalendarTasks = async (startDate, endDate, clientId = null) => {
   const query = {
-    dueDate: {
-      $gte: new Date(startDate),
-      $lte: new Date(endDate),
-    },
+    dueDate: buildDateRangeQuery(startDate, endDate),
   };
 
   if (clientId) {
@@ -301,7 +312,7 @@ export const getCalendarTasks = async (startDate, endDate, clientId = null) => {
   // Generate recurring task instances
   const recurringTasks = await Task.find({
     isRecurring: true,
-    'recurringPattern.endDate': { $gte: new Date(startDate) },
+    'recurringPattern.endDate': { $gte: startOfDay(startDate) },
     $or: [
       { 'recurringPattern.endDate': { $exists: false } },
       { 'recurringPattern.endDate': null },
@@ -397,8 +408,8 @@ export const deleteAttachment = async (taskId, attachmentId, userId) => {
 
 const generateRecurringInstances = (task, startDate, endDate) => {
   const instances = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = startOfDay(toDateString(startDate));
+  const end = endOfDay(toDateString(endDate));
   const pattern = task.recurringPattern;
 
   if (!pattern || !pattern.frequency) {

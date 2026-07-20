@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { AppLayout } from '@/layout/AppLayout';
 import { employeesApi } from '@/api/employees';
 import { timeEntriesApi } from '@/api/timeEntries';
@@ -8,16 +8,27 @@ import { tasksApi } from '@/api/tasks';
 import { analyticsApi } from '@/api/analytics';
 import { Button } from '@/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/ui/dialog';
 import { Avatar } from '@/components/Avatar';
-import { ArrowLeft, Clock, CheckSquare, TrendingUp, User } from 'lucide-react';
+import { ArrowLeft, Clock, CheckSquare, TrendingUp, User, Mail } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import { format } from 'date-fns';
 import { formatTimeFromSeconds } from '@/utils/dateFormat';
 import { LoaderWithText } from '@/components/Loader';
+import { useToast } from '@/hooks/useToast';
 
 export const EmployeeDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
   const [dateRange, setDateRange] = useState({
     startDate: '',
     endDate: '',
@@ -47,6 +58,26 @@ export const EmployeeDetails = () => {
   const { data: teamData } = useQuery({
     queryKey: ['analytics', 'employees'],
     queryFn: () => analyticsApi.getEmployeeUtilization(),
+  });
+
+  const sendCredentialsMutation = useMutation({
+    mutationFn: () => employeesApi.sendCredentials(id),
+    onSuccess: (response) => {
+      setShowCredentialsDialog(false);
+      toast({
+        title: 'Success',
+        description: response.message || 'Credentials sent successfully',
+        type: 'success',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description:
+          error.response?.data?.message || 'Failed to send login credentials',
+        type: 'destructive',
+      });
+    },
   });
 
   const employee = employeeData?.data;
@@ -109,7 +140,45 @@ export const EmployeeDetails = () => {
               </p>
             </div>
           </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!employee.email || sendCredentialsMutation.isPending}
+            title={employee.email ? undefined : 'Add an email address first'}
+            onClick={() => setShowCredentialsDialog(true)}
+          >
+            <Mail className="h-3.5 w-3.5 mr-1.5" />
+            {sendCredentialsMutation.isPending ? 'Sending...' : 'Send login credentials'}
+          </Button>
         </div>
+
+        <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Send new login credentials?</DialogTitle>
+              <DialogDescription>
+                This will generate a new password and email it to{' '}
+                <span className="font-medium text-gray-900">{employee.email}</span>.
+                Any existing password for this account will stop working immediately.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="secondary"
+                onClick={() => setShowCredentialsDialog(false)}
+                disabled={sendCredentialsMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => sendCredentialsMutation.mutate()}
+                disabled={sendCredentialsMutation.isPending}
+              >
+                {sendCredentialsMutation.isPending ? 'Sending...' : 'Send credentials'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Employee Info Card */}
         <Card>

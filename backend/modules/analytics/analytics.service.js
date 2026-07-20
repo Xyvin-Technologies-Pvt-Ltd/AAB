@@ -10,6 +10,14 @@ import {
   calculateCycleMetrics,
   getEmployeeHourlyRate,
 } from '../../helpers/calculations.js';
+import {
+  buildDateRangeQuery,
+  getProratedPeriodCost,
+  getDubaiDateParts,
+  startOfDay,
+  endOfDay,
+  toDateString,
+} from '../../helpers/dateRange.js';
 
 /**
  * Get package profitability analytics
@@ -57,13 +65,7 @@ export const getPackageProfitability = async (filters = {}, user = null) => {
       // Get time entries for this package within date range
       const timeEntryQuery = { packageId: pkg._id };
       if (startDate || endDate) {
-        timeEntryQuery.date = {};
-        if (startDate) {
-          timeEntryQuery.date.$gte = new Date(startDate);
-        }
-        if (endDate) {
-          timeEntryQuery.date.$lte = new Date(endDate);
-        }
+        timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
       }
 
       // Apply employee filter
@@ -223,13 +225,7 @@ export const getClientProfitability = async (filters = {}, user = null) => {
         packages.map(async (pkg) => {
           const timeEntryQuery = { packageId: pkg._id };
           if (startDate || endDate) {
-            timeEntryQuery.date = {};
-            if (startDate) {
-              timeEntryQuery.date.$gte = new Date(startDate);
-            }
-            if (endDate) {
-              timeEntryQuery.date.$lte = new Date(endDate);
-            }
+            timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
           }
 
           // Apply employee filter
@@ -368,13 +364,7 @@ export const getEmployeeUtilization = async (filters = {}, user = null) => {
 
   const timeEntryQuery = {};
   if (startDate || endDate) {
-    timeEntryQuery.date = {};
-    if (startDate) {
-      timeEntryQuery.date.$gte = new Date(startDate);
-    }
-    if (endDate) {
-      timeEntryQuery.date.$lte = new Date(endDate);
-    }
+    timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
   }
 
   // Apply client filter
@@ -552,13 +542,7 @@ export const getClientDashboard = async (clientId, filters = {}) => {
   // Get time entries for date range
   const timeEntryQuery = { clientId };
   if (startDate || endDate) {
-    timeEntryQuery.date = {};
-    if (startDate) {
-      timeEntryQuery.date.$gte = new Date(startDate);
-    }
-    if (endDate) {
-      timeEntryQuery.date.$lte = new Date(endDate);
-    }
+    timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
   }
 
   const timeEntries = await TimeEntry.find(timeEntryQuery).populate(
@@ -598,22 +582,21 @@ export const getClientDashboard = async (clientId, filters = {}) => {
         pkg.type
       );
 
-      // Calculate monthly equivalent for date range
-      const months = startDate && endDate
-        ? (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24 * 30)
-        : 1;
+      const periodRevenue = startDate && endDate
+        ? getProratedPeriodCost(pkgRevenue, startDate, endDate)
+        : pkgRevenue;
 
-      totalRevenue += pkgRevenue * months;
+      totalRevenue += periodRevenue;
 
       return {
         packageId: pkg._id,
         packageName: pkg.name,
         type: pkg.type,
         contractValue: pkg.contractValue,
-        revenue: pkgRevenue * months,
-        cost: pkgCost * months,
-        profit: pkgRevenue * months - pkgCost * months,
-        efficiency: pkgCost > 0 ? parseFloat(((pkgRevenue / pkgCost) * 100).toFixed(2)) : 0,
+        revenue: periodRevenue,
+        cost: pkgCost,
+        profit: periodRevenue - pkgCost,
+        efficiency: pkgCost > 0 ? parseFloat(((periodRevenue / pkgCost) * 100).toFixed(2)) : 0,
         hoursLogged: pkgTimeEntries.reduce((sum, te) => sum + te.minutesSpent / 3600, 0),
       };
     })
@@ -914,13 +897,7 @@ export const getPackageAnalytics = async (packageId, filters = {}, user = null) 
   // Build time entry query
   const timeEntryQuery = { packageId: pkg._id };
   if (startDate || endDate) {
-    timeEntryQuery.date = {};
-    if (startDate) {
-      timeEntryQuery.date.$gte = new Date(startDate);
-    }
-    if (endDate) {
-      timeEntryQuery.date.$lte = new Date(endDate);
-    }
+    timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
   }
 
   if (employeeId) {
@@ -972,15 +949,12 @@ export const getPackageAnalytics = async (packageId, filters = {}, user = null) 
   // For filtered period, calculate revenue based on date range
   let periodRevenue = monthlyRevenue;
   if (startDate && endDate && pkg.type === 'RECURRING') {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const pkgStart = pkg.startDate ? new Date(pkg.startDate) : start;
-    const effectiveStart = pkgStart > start ? pkgStart : start;
+    const rangeStart = startOfDay(startDate);
+    const pkgStart = pkg.startDate ? startOfDay(toDateString(pkg.startDate)) : rangeStart;
+    const effectiveStart = pkgStart > rangeStart ? toDateString(pkgStart) : startDate;
 
-    if (effectiveStart <= end) {
-      const monthsDiff = (end.getFullYear() - effectiveStart.getFullYear()) * 12 +
-        (end.getMonth() - effectiveStart.getMonth()) + 1;
-      periodRevenue = monthlyRevenue * monthsDiff;
+    if (startOfDay(effectiveStart) <= endOfDay(endDate)) {
+      periodRevenue = getProratedPeriodCost(monthlyRevenue, effectiveStart, endDate);
     } else {
       periodRevenue = 0;
     }
@@ -1000,22 +974,19 @@ export const getPackageAnalytics = async (packageId, filters = {}, user = null) 
   // Calculate monthly trends (if recurring)
   const monthlyTrends = [];
   if (pkg.type === 'RECURRING') {
-    const start = startDate ? new Date(startDate) : (pkg.startDate ? new Date(pkg.startDate) : new Date());
-    const end = endDate ? new Date(endDate) : new Date();
-
     const monthMap = {};
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     // Group time entries by month
     timeEntries.forEach((entry) => {
-      const entryDate = new Date(entry.date);
-      const monthKey = `${entryDate.getFullYear()}-${entryDate.getMonth()}`;
+      const dubaiParts = getDubaiDateParts(entry.date);
+      const monthKey = `${dubaiParts.year}-${dubaiParts.month}`;
 
       if (!monthMap[monthKey]) {
         monthMap[monthKey] = {
-          month: `${monthNames[entryDate.getMonth()]} ${entryDate.getFullYear()}`,
-          year: entryDate.getFullYear(),
-          monthNum: entryDate.getMonth(),
+          month: `${monthNames[dubaiParts.month]} ${dubaiParts.year}`,
+          year: dubaiParts.year,
+          monthNum: dubaiParts.month,
           timeEntries: [],
         };
       }
@@ -1204,13 +1175,7 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
     packages.map(async (pkg) => {
       const timeEntryQuery = { packageId: pkg._id };
       if (startDate || endDate) {
-        timeEntryQuery.date = {};
-        if (startDate) {
-          timeEntryQuery.date.$gte = new Date(startDate);
-        }
-        if (endDate) {
-          timeEntryQuery.date.$lte = new Date(endDate);
-        }
+        timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
       }
 
       if (employeeId) {
@@ -1257,15 +1222,12 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
       // Calculate period revenue
       let periodRevenue = monthlyRevenue;
       if (startDate && endDate && pkg.type === 'RECURRING') {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const pkgStart = pkg.startDate ? new Date(pkg.startDate) : start;
-        const effectiveStart = pkgStart > start ? pkgStart : start;
+        const rangeStart = startOfDay(startDate);
+        const pkgStart = pkg.startDate ? startOfDay(toDateString(pkg.startDate)) : rangeStart;
+        const effectiveStart = pkgStart > rangeStart ? toDateString(pkgStart) : startDate;
 
-        if (effectiveStart <= end) {
-          const monthsDiff = (end.getFullYear() - effectiveStart.getFullYear()) * 12 +
-            (end.getMonth() - effectiveStart.getMonth()) + 1;
-          periodRevenue = monthlyRevenue * monthsDiff;
+        if (startOfDay(effectiveStart) <= endOfDay(endDate)) {
+          periodRevenue = getProratedPeriodCost(monthlyRevenue, effectiveStart, endDate);
         } else {
           periodRevenue = 0;
         }
@@ -1307,13 +1269,7 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
   for (const pkg of packages) {
     const timeEntryQuery = { packageId: pkg._id };
     if (startDate || endDate) {
-      timeEntryQuery.date = {};
-      if (startDate) {
-        timeEntryQuery.date.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        timeEntryQuery.date.$lte = new Date(endDate);
-      }
+      timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
     }
 
     if (employeeId) {
@@ -1343,12 +1299,12 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
     );
 
     timeEntries.forEach((entry) => {
-      const entryDate = new Date(entry.date);
-      const monthKey = `${entryDate.getFullYear()}-${entryDate.getMonth()}`;
+      const dubaiParts = getDubaiDateParts(entry.date);
+      const monthKey = `${dubaiParts.year}-${dubaiParts.month}`;
 
       if (!monthMap[monthKey]) {
         monthMap[monthKey] = {
-          month: `${monthNames[entryDate.getMonth()]} ${entryDate.getFullYear()}`,
+          month: `${monthNames[dubaiParts.month]} ${dubaiParts.year}`,
           revenue: 0,
           cost: 0,
         };
@@ -1400,10 +1356,7 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
   const allTimeEntries = await TimeEntry.find({
     clientId: client._id,
     ...(startDate || endDate ? {
-      date: {
-        ...(startDate ? { $gte: new Date(startDate) } : {}),
-        ...(endDate ? { $lte: new Date(endDate) } : {}),
-      },
+      date: buildDateRangeQuery(startDate, endDate),
     } : {}),
     ...(employeeId ? { employeeId } : {}),
   }).populate('employeeId', 'name monthlyCost monthlyWorkingHours hourlyRate');
@@ -1502,13 +1455,7 @@ export const getEmployeeAnalytics = async (employeeId, filters = {}, user = null
   // Build time entry query
   const timeEntryQuery = { employeeId: employee._id };
   if (startDate || endDate) {
-    timeEntryQuery.date = {};
-    if (startDate) {
-      timeEntryQuery.date.$gte = new Date(startDate);
-    }
-    if (endDate) {
-      timeEntryQuery.date.$lte = new Date(endDate);
-    }
+    timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
   }
 
   if (clientId) {
@@ -1531,11 +1478,7 @@ export const getEmployeeAnalytics = async (employeeId, filters = {}, user = null
   // Calculate monthly cost for the period
   let periodMonthlyCost = employee.monthlyCost;
   if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const monthsDiff = (end.getFullYear() - start.getFullYear()) * 12 +
-      (end.getMonth() - start.getMonth()) + 1;
-    periodMonthlyCost = employee.monthlyCost * monthsDiff;
+    periodMonthlyCost = getProratedPeriodCost(employee.monthlyCost, startDate, endDate);
   }
 
   // Utilization: (serviceHours * hourlyCost) / monthlyCost * 100
@@ -1544,13 +1487,8 @@ export const getEmployeeAnalytics = async (employeeId, filters = {}, user = null
 
   // Salary vs earned analysis
   let monthlySalary = employee.monthlyCost;
-  let monthsInPeriod = 1;
   if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    monthsInPeriod = (end.getFullYear() - start.getFullYear()) * 12 +
-      (end.getMonth() - start.getMonth()) + 1;
-    monthlySalary = employee.monthlyCost * monthsInPeriod;
+    monthlySalary = getProratedPeriodCost(employee.monthlyCost, startDate, endDate);
   }
 
   const salaryVsEarned = {
@@ -1565,12 +1503,12 @@ export const getEmployeeAnalytics = async (employeeId, filters = {}, user = null
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   timeEntries.forEach((entry) => {
-    const entryDate = new Date(entry.date);
-    const monthKey = `${entryDate.getFullYear()}-${entryDate.getMonth()}`;
+    const dubaiParts = getDubaiDateParts(entry.date);
+    const monthKey = `${dubaiParts.year}-${dubaiParts.month}`;
 
     if (!monthMap[monthKey]) {
       monthMap[monthKey] = {
-        month: `${monthNames[entryDate.getMonth()]} ${entryDate.getFullYear()}`,
+        month: `${monthNames[dubaiParts.month]} ${dubaiParts.year}`,
         hours: 0,
         cost: 0,
       };

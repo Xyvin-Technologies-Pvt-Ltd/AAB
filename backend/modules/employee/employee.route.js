@@ -28,6 +28,7 @@ router.delete('/:id/documents/:documentId', employeeController.deleteDocument);
 // Profile picture route
 router.post('/:id/profile-picture', uploadSingle, employeeController.uploadProfilePicture);
 router.delete('/:id/profile-picture', employeeController.deleteProfilePicture);
+router.post('/:id/send-credentials', employeeController.sendEmployeeCredentials);
 
 export default router;
 

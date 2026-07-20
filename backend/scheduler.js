@@ -140,13 +140,13 @@ const runOverdueNotifications = async () => {
 
 export const startScheduler = () => {
   // Auto-archive DONE tasks every day at 2:00 AM
-  cron.schedule('0 2 * * *', runAutoArchive, { timezone: 'UTC' });
+  cron.schedule('0 2 * * *', runAutoArchive, { timezone: 'Asia/Dubai' });
 
-  // Due-soon notifications every day at 8:00 AM
-  cron.schedule('0 8 * * *', runDueSoonNotifications, { timezone: 'UTC' });
+  // Due-soon notifications every day at 8:00 AM Dubai
+  cron.schedule('0 8 * * *', runDueSoonNotifications, { timezone: 'Asia/Dubai' });
 
-  // Overdue notifications every day at 9:00 AM
-  cron.schedule('0 9 * * *', runOverdueNotifications, { timezone: 'UTC' });
+  // Overdue notifications every day at 9:00 AM Dubai
+  cron.schedule('0 9 * * *', runOverdueNotifications, { timezone: 'Asia/Dubai' });
 
   logger.info('[scheduler] Cron jobs started: auto-archive (02:00), due-soon (08:00), overdue (09:00)');
 };

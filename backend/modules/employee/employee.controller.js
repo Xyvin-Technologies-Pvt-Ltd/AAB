@@ -135,3 +135,17 @@ export const deleteProfilePicture = async (req, res, next) => {
   }
 };
 
+export const sendEmployeeCredentials = async (req, res, next) => {
+  try {
+    const result = await employeeService.sendEmployeeCredentials(req.params.id);
+    return successResponse(
+      res,
+      200,
+      `Login credentials sent to ${result.email}`,
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+

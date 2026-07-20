@@ -1,7 +1,10 @@
 import Employee from './employee.model.js';
 import User from '../auth/auth.model.js';
-import { sendWelcomeEmail } from '../../helpers/emailService.js';
-import crypto from 'crypto';
+import {
+  sendWelcomeEmail,
+  sendWelcomeEmailWithLoginUrl,
+  getLoginUrl,
+} from '../../helpers/emailService.js';
 import logger from '../../helpers/logger.js';
 
 /**
@@ -186,5 +189,64 @@ export const removeProfilePicture = async (employeeId) => {
   await employee.save();
 
   return { employee, oldKey };
+};
+
+export const sendEmployeeCredentials = async (employeeId) => {
+  const employee = await Employee.findById(employeeId);
+  if (!employee) {
+    const error = new Error('Employee not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!employee.email?.trim()) {
+    const error = new Error('Employee does not have an email address');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const generatedPassword = generatePassword();
+  let user = await User.findOne({ email: employee.email });
+  let accountCreated = false;
+
+  if (user) {
+    user.password = generatedPassword;
+    if (!user.employeeId) {
+      user.employeeId = employee._id;
+    }
+    user.isActive = true;
+    await user.save();
+  } else {
+    user = await User.create({
+      email: employee.email,
+      password: generatedPassword,
+      role: 'EMPLOYEE',
+      employeeId: employee._id,
+      isActive: true,
+    });
+    accountCreated = true;
+  }
+
+  try {
+    await sendWelcomeEmailWithLoginUrl(
+      employee.email,
+      generatedPassword,
+      employee.name,
+      getLoginUrl()
+    );
+  } catch (error) {
+    logger.error('Error sending credentials email:', error);
+    const emailError = new Error(
+      'Account credentials were updated but the email could not be sent. Please check email configuration.'
+    );
+    emailError.statusCode = 502;
+    throw emailError;
+  }
+
+  return {
+    emailSent: true,
+    email: employee.email,
+    accountCreated,
+  };
 };
 

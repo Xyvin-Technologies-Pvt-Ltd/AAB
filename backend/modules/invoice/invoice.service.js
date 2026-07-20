@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Invoice from './invoice.model.js';
 import Client from '../client/client.model.js';
 import TimeEntry from '../timeEntry/timeEntry.model.js';
+import { buildDateRangeQuery, parseCalendarDate } from '../../helpers/dateRange.js';
 
 const VALID_STATUS_TRANSITIONS = {
   DRAFT: ['SENT', 'CANCELLED'],
@@ -69,8 +70,12 @@ export const createInvoice = async (invoiceData, userId) => {
 
   const invoiceNumber = await getNextInvoiceNumber();
   const status = invoiceData.status === 'SENT' ? 'SENT' : 'DRAFT';
+  const payload = { ...invoiceData };
+  if (payload.issueDate) payload.issueDate = parseCalendarDate(payload.issueDate);
+  if (payload.dueDate) payload.dueDate = parseCalendarDate(payload.dueDate);
+
   const invoice = await Invoice.create({
-    ...invoiceData,
+    ...payload,
     invoiceNumber,
     status,
     subtotal,
@@ -96,9 +101,7 @@ export const getInvoices = async (filters = {}) => {
   if (clientId) query.clientId = clientId;
   if (status) query.status = status;
   if (startDate || endDate) {
-    query.issueDate = {};
-    if (startDate) query.issueDate.$gte = new Date(startDate);
-    if (endDate) query.issueDate.$lte = new Date(endDate);
+    query.issueDate = buildDateRangeQuery(startDate, endDate);
   }
 
   const skip = (page - 1) * limit;
@@ -161,7 +164,13 @@ export const updateInvoice = async (invoiceId, updateData) => {
   const allowed = ['lineItems', 'timeEntries', 'issueDate', 'dueDate', 'notes', 'taxRate', 'discount'];
   const payload = { subtotal, taxAmount, total };
   allowed.forEach((key) => {
-    if (updateData[key] !== undefined) payload[key] = updateData[key];
+    if (updateData[key] !== undefined) {
+      if (key === 'issueDate' || key === 'dueDate') {
+        payload[key] = parseCalendarDate(updateData[key]);
+      } else {
+        payload[key] = updateData[key];
+      }
+    }
   });
 
   const previousTimeEntryIds = (invoice.timeEntries || []).map((id) =>

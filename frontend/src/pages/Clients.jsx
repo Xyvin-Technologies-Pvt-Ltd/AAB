@@ -6,6 +6,7 @@ import { packagesApi } from "@/api/packages";
 import { analyticsApi } from "@/api/analytics";
 import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
+import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 import {
   Dialog,
   DialogContent,
@@ -432,14 +433,7 @@ export const Clients = () => {
         );
 
         // Format dates
-        const formatDate = (date) => {
-          if (!date) return "";
-          return new Date(date).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          });
-        };
+        const formatDate = (date) => formatDateDDMMYYYY(date);
 
         // Get VAT cycle (use existing helper, replace "-" with empty string for CSV)
         const vatCycleValue = formatVATCycle(client);

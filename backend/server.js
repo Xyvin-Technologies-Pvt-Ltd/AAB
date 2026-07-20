@@ -1,12 +1,14 @@
 import dotenv from 'dotenv';
+
+dotenv.config();
+process.env.TZ = process.env.APP_TIMEZONE || process.env.TZ || 'Asia/Dubai';
+
 import app from './app.js';
 import { connectDatabase } from './config/database.js';
 import { serverConfig } from './config/server.js';
 import logger from './helpers/logger.js';
 import { startScheduler } from './scheduler.js';
 import Task from './modules/task/task.model.js';
-
-dotenv.config();
 
 // Backfill doneAt for DONE tasks created before the field was introduced.
 // Uses updatedAt as a best-effort proxy. Runs once at startup, no-ops on subsequent boots.

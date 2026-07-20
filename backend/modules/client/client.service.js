@@ -5,6 +5,11 @@ import { bulkCreateClientSchema } from '../../validators/schemas/client.schema.j
 import Package from '../package/package.model.js';
 import logger from '../../helpers/logger.js';
 import { encrypt, decrypt } from '../../helpers/encryption.js';
+import {
+  parseCalendarDate,
+  nowInDubai,
+  getDubaiDateParts,
+} from '../../helpers/dateRange.js';
 
 /**
  * Format date to dd/mm/yyyy format
@@ -14,10 +19,13 @@ import { encrypt, decrypt } from '../../helpers/encryption.js';
 const formatDateDDMMYYYY = (date) => {
   if (!date) return '';
   const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Dubai',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(d);
 };
 
 export const createClient = async (clientData) => {
@@ -343,13 +351,13 @@ export const updateBusinessInfo = async (clientId, businessInfoData) => {
   }
   if (businessInfoData.vatTaxPeriods !== undefined) {
     client.businessInfo.vatTaxPeriods = businessInfoData.vatTaxPeriods.map((period) => ({
-      startDate: period.startDate ? new Date(period.startDate) : null,
-      endDate: period.endDate ? new Date(period.endDate) : null,
+      startDate: period.startDate ? parseCalendarDate(period.startDate) : null,
+      endDate: period.endDate ? parseCalendarDate(period.endDate) : null,
     }));
   }
   if (businessInfoData.corporateTaxDueDate !== undefined) {
     client.businessInfo.corporateTaxDueDate = businessInfoData.corporateTaxDueDate
-      ? new Date(businessInfoData.corporateTaxDueDate)
+      ? parseCalendarDate(businessInfoData.corporateTaxDueDate)
       : null;
   }
   if (businessInfoData.licenseNumber !== undefined) {
@@ -357,12 +365,12 @@ export const updateBusinessInfo = async (clientId, businessInfoData) => {
   }
   if (businessInfoData.licenseStartDate !== undefined) {
     client.businessInfo.licenseStartDate = businessInfoData.licenseStartDate
-      ? new Date(businessInfoData.licenseStartDate)
+      ? parseCalendarDate(businessInfoData.licenseStartDate)
       : null;
   }
   if (businessInfoData.licenseExpiryDate !== undefined) {
     client.businessInfo.licenseExpiryDate = businessInfoData.licenseExpiryDate
-      ? new Date(businessInfoData.licenseExpiryDate)
+      ? parseCalendarDate(businessInfoData.licenseExpiryDate)
       : null;
   }
   if (businessInfoData.turnover !== undefined) {
@@ -504,7 +512,7 @@ export const getAllAlerts = async (filters = {}) => {
   } = await import('../../services/compliance.service.js');
 
   // Default to current month/year if not provided
-  const now = new Date();
+  const now = nowInDubai();
   const filterMonth = month !== undefined ? parseInt(month, 10) : now.getMonth() + 1; // 1-12
   const filterYear = year !== undefined ? parseInt(year, 10) : now.getFullYear();
 
@@ -546,7 +554,7 @@ export const getAllAlerts = async (filters = {}) => {
     // Add VAT submission alert
     const vatSubmission = calculateNextVATSubmissionDate(client);
     if (vatSubmission) {
-      const now = new Date();
+      const now = nowInDubai();
       const daysUntilDue = vatSubmission.daysUntilDue || Math.floor((vatSubmission.submissionDate - now) / (1000 * 60 * 60 * 24));
 
       // Determine severity based on days until due
@@ -633,7 +641,7 @@ export const getAllAlerts = async (filters = {}) => {
     // Add corporate tax due date as deadline
     if (client.businessInfo?.corporateTaxDueDate) {
       const dueDate = new Date(client.businessInfo.corporateTaxDueDate);
-      const now = new Date();
+      const now = nowInDubai();
       const daysUntilDue = Math.floor((dueDate - now) / (1000 * 60 * 60 * 24));
 
       if (!type || type.toLowerCase().includes('corporate') || type.toLowerCase().includes('tax')) {
@@ -651,7 +659,7 @@ export const getAllAlerts = async (filters = {}) => {
     // Add license expiry as deadline
     if (client.businessInfo?.licenseExpiryDate) {
       const expiryDate = new Date(client.businessInfo.licenseExpiryDate);
-      const now = new Date();
+      const now = nowInDubai();
       const daysUntilExpiry = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
 
       if (!type || type.toLowerCase().includes('license') || type.toLowerCase().includes('trade')) {
@@ -960,7 +968,7 @@ export const getCalendarEvents = async (startDate, endDate, clientId = null) => 
   const { calculateNextVATSubmissionDate, calculateNextCorporateTaxSubmissionDate } = await import('../../services/compliance.service.js');
 
   const events = [];
-  const now = new Date();
+  const now = nowInDubai();
   const vatFilingDaysAfterPeriod = 28;
 
   // Helper to get last day of month
@@ -989,7 +997,7 @@ export const getCalendarEvents = async (startDate, endDate, clientId = null) => 
       // Calculate how many cycles we need to generate
       const cyclesNeeded = Math.ceil(monthsAhead / (12 / sortedPeriods.length)) + 1;
       const generatedDates = new Set();
-      const currentYear = now.getFullYear();
+      const currentYear = getDubaiDateParts(now).year;
 
       // Generate submissions for current year and next year
       for (let yearOffset = 0; yearOffset <= cyclesNeeded; yearOffset++) {

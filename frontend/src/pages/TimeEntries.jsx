@@ -21,7 +21,7 @@ import {
   isSameDay,
 } from "date-fns";
 import { useToast } from "@/hooks/useToast";
-import { formatTimeFromSeconds } from "@/utils/dateFormat";
+import { formatTimeFromSeconds, formatDateForDisplay } from "@/utils/dateFormat";
 import { LoaderWithText } from "@/components/Loader";
 import { Pagination } from "@/components/Pagination";
 import { SearchInput } from "@/components/SearchInput";
@@ -991,7 +991,7 @@ export const TimeEntries = () => {
                           {isNested && (
                             <span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
                           )}
-                          <div className="truncate">{new Date(entry.date).toLocaleDateString()}</div>
+                          <div className="truncate">{formatDateForDisplay(entry.date)}</div>
                           {entry.startTime && (
                             <div className="text-[10px] text-gray-500 mt-0.5 truncate">
                               {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1134,8 +1134,8 @@ export const TimeEntries = () => {
                     const earliestDate = new Date(dates[0]);
                     const latestDate = new Date(dates[dates.length - 1]);
                     const dateRange = earliestDate.getTime() === latestDate.getTime()
-                      ? earliestDate.toLocaleDateString()
-                      : `${earliestDate.toLocaleDateString()} - ${latestDate.toLocaleDateString()}`;
+                      ? formatDateForDisplay(earliestDate)
+                      : `${formatDateForDisplay(earliestDate)} - ${formatDateForDisplay(latestDate)}`;
 
                     return (
                       <React.Fragment key={group.key}>

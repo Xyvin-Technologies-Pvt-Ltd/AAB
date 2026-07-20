@@ -1,3 +1,10 @@
+import {
+  startOfDay,
+  endOfDay,
+  getDubaiDateParts,
+  toDateString,
+} from './dateRange.js';
+
 /**
  * Calculate employee hourly cost
  * @param {number} monthlyCost - Employee monthly cost
@@ -136,9 +143,9 @@ export const getCyclesInPeriod = (billingFrequency, startDate, endDate, packageS
     return 1;
   }
 
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const pkgStart = packageStartDate ? new Date(packageStartDate) : start;
+  const start = startOfDay(startDate);
+  const end = endOfDay(endDate);
+  const pkgStart = packageStartDate ? startOfDay(toDateString(packageStartDate)) : start;
 
   // Use package start date as reference if it's later than the filter start date
   const effectiveStart = pkgStart > start ? pkgStart : start;
@@ -147,20 +154,23 @@ export const getCyclesInPeriod = (billingFrequency, startDate, endDate, packageS
     return 0;
   }
 
+  const startParts = getDubaiDateParts(effectiveStart);
+  const endParts = getDubaiDateParts(end);
+
   switch (billingFrequency) {
     case 'MONTHLY': {
-      const monthsDiff = (end.getFullYear() - effectiveStart.getFullYear()) * 12 +
-        (end.getMonth() - effectiveStart.getMonth());
+      const monthsDiff = (endParts.year - startParts.year) * 12 +
+        (endParts.month - startParts.month);
       return Math.max(1, Math.floor(monthsDiff) + 1);
     }
     case 'QUARTERLY': {
-      const monthsDiff = (end.getFullYear() - effectiveStart.getFullYear()) * 12 +
-        (end.getMonth() - effectiveStart.getMonth());
+      const monthsDiff = (endParts.year - startParts.year) * 12 +
+        (endParts.month - startParts.month);
       const quarters = Math.floor(monthsDiff / 3);
       return Math.max(1, quarters + 1);
     }
     case 'YEARLY': {
-      const yearsDiff = end.getFullYear() - effectiveStart.getFullYear();
+      const yearsDiff = endParts.year - startParts.year;
       return Math.max(1, yearsDiff + 1);
     }
     default:

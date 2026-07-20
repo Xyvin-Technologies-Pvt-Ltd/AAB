@@ -57,5 +57,10 @@ export const employeesApi = {
     const response = await api.delete(`/employees/${id}/profile-picture`);
     return response.data;
   },
+
+  sendCredentials: async (id) => {
+    const response = await api.post(`/employees/${id}/send-credentials`);
+    return response.data;
+  },
 };
 

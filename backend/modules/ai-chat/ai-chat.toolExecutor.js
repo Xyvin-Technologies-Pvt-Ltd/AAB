@@ -5,6 +5,12 @@ import TimeEntry from '../timeEntry/timeEntry.model.js';
 import Invoice from '../invoice/invoice.model.js';
 import Package from '../package/package.model.js';
 import logger from '../../helpers/logger.js';
+import {
+  buildDateRangeQuery,
+  startOfMonth,
+  endOfDay,
+  nowInDubai,
+} from '../../helpers/dateRange.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -392,9 +398,13 @@ export const executeGetEmployeeWorkload = async (args, user) => {
       .select('name designation hourlyRate monthlyCost monthlyWorkingHours isActive')
       .lean();
 
-    const now = new Date();
-    const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = endDate ? new Date(endDate) : now;
+    const now = nowInDubai();
+    const defaultRange = buildDateRangeQuery(
+      startDate || startOfMonth(now),
+      endDate || now
+    );
+    const start = defaultRange.$gte;
+    const end = defaultRange.$lte;
 
     const employeeIds = employees.map((e) => e._id);
 
@@ -480,9 +490,7 @@ export const executeGetInvoiceSummary = async (args, user) => {
     if (clientId) query.clientId = clientId;
     if (status) query.status = status;
     if (startDate || endDate) {
-      query.issueDate = {};
-      if (startDate) query.issueDate.$gte = new Date(startDate);
-      if (endDate) query.issueDate.$lte = new Date(endDate);
+      query.issueDate = buildDateRangeQuery(startDate, endDate);
     }
 
     // Apply RBAC filtering (invoices are client-related)
@@ -541,9 +549,7 @@ export const executeGetTimeEntries = async (args, user) => {
     if (resolvedEmployeeId) query.employeeId = resolvedEmployeeId;
     if (resolvedClientId) query.clientId = resolvedClientId;
     if (startDate || endDate) {
-      query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate);
+      query.date = buildDateRangeQuery(startDate, endDate);
     }
 
     if (user.role === 'EMPLOYEE' && user.employeeId) {
@@ -579,8 +585,8 @@ export const executeGetTimeEntries = async (args, user) => {
 
 export const executeGetDashboardStats = async (args, user) => {
   try {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const now = nowInDubai();
+    const monthStart = startOfMonth(now);
 
     const [activeClients, totalEmployees, activePackages, pendingTasks, overdueTasks,
       monthlyHoursResult, overdueInvoices] = await Promise.all([
@@ -639,9 +645,12 @@ export const executeGetDashboardStats = async (args, user) => {
 export const executeGetAnalytics = async (args, user) => {
   try {
     const { analyticsType: type, clientId, employeeId, startDate, endDate, limit = 10 } = args;
-    const now = new Date();
-    const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth() - 2, 1);
-    const end = endDate ? new Date(endDate) : now;
+    const now = nowInDubai();
+    const defaultRange = buildDateRangeQuery(startDate, endDate);
+    const start = startDate
+      ? defaultRange.$gte
+      : startOfMonth(new Date(now.getFullYear(), now.getMonth() - 2, 1));
+    const end = endDate ? defaultRange.$lte : endOfDay(now);
 
     if (type === 'package') {
       let query = clientId ? { clientId } : {};

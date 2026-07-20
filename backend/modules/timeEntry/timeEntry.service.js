@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import TimeEntry from './timeEntry.model.js';
 import Task from '../task/task.model.js';
 import Package from '../package/package.model.js';
+import { buildDateRangeQuery, parseCalendarDate } from '../../helpers/dateRange.js';
 
 export const createTimeEntry = async (timeEntryData, userId, userRole) => {
   // Only verify relationships if not miscellaneous
@@ -45,7 +46,12 @@ export const createTimeEntry = async (timeEntryData, userId, userRole) => {
     }
   }
 
-  const timeEntry = await TimeEntry.create(timeEntryData);
+  const payload = { ...timeEntryData };
+  if (payload.date) {
+    payload.date = parseCalendarDate(payload.date);
+  }
+
+  const timeEntry = await TimeEntry.create(payload);
   return timeEntry;
 };
 
@@ -90,15 +96,7 @@ export const getTimeEntries = async (filters = {}) => {
   }
 
   if (startDate || endDate) {
-    query.date = {};
-    if (startDate) {
-      query.date.$gte = new Date(startDate);
-    }
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      query.date.$lte = end;
-    }
+    query.date = buildDateRangeQuery(startDate, endDate);
   }
 
   const skip = (page - 1) * limit;
@@ -268,7 +266,12 @@ export const updateTimeEntry = async (timeEntryId, updateData, userId, userRole)
     }
   }
 
-  const timeEntry = await TimeEntry.findByIdAndUpdate(timeEntryId, updateData, {
+  const payload = { ...updateData };
+  if (payload.date) {
+    payload.date = parseCalendarDate(payload.date);
+  }
+
+  const timeEntry = await TimeEntry.findByIdAndUpdate(timeEntryId, payload, {
     new: true,
     runValidators: true,
   })

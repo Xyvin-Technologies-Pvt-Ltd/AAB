@@ -1,15 +1,24 @@
+import {
+  nowInDubai,
+  daysBetweenDubai,
+  getDubaiDateParts,
+  endOfMonth,
+  startOfDay,
+} from '../helpers/dateRange.js';
+
 /**
- * Format date to dd/mm/yyyy format
- * @param {Date} date - Date object
- * @returns {string} Formatted date string
+ * Format date to dd/mm/yyyy format in Asia/Dubai
  */
 const formatDateDDMMYYYY = (date) => {
   if (!date) return '';
   const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Dubai',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(d);
 };
 
 /**
@@ -18,7 +27,7 @@ const formatDateDDMMYYYY = (date) => {
  * @returns {Object|null} Next VAT submission date info or null
  */
 export const calculateNextVATSubmissionDate = (client) => {
-  const now = new Date();
+  const now = nowInDubai();
   const vatFilingDaysAfterPeriod = 28;
 
   // Use tax periods if available
@@ -41,14 +50,15 @@ export const calculateNextVATSubmissionDate = (client) => {
             startDate: new Date(period.startDate),
             endDate: periodEndDate,
           },
-          daysUntilDue: Math.floor((submissionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+          daysUntilDue: daysBetweenDubai(submissionDate, now),
         };
       }
     }
 
     // All periods have passed - calculate next recurring period
     // Find which period should come next based on current month
-    const currentMonth = now.getMonth() + 1; // 1-12
+    const dubaiNow = getDubaiDateParts(now);
+    const currentMonth = dubaiNow.month + 1; // 1-12
     let nextPeriod = null;
 
     // Find the period that should occur next based on current month
@@ -57,9 +67,9 @@ export const calculateNextVATSubmissionDate = (client) => {
       const periodStartMonth = periodStart.getMonth() + 1;
 
       // Check if this period should occur in the current or next cycle
-      let testYear = now.getFullYear();
+      let testYear = dubaiNow.year;
       if (periodStartMonth < currentMonth) {
-        testYear = now.getFullYear() + 1;
+        testYear = dubaiNow.year + 1;
       }
 
       const testPeriodStart = new Date(periodStart);
@@ -86,10 +96,10 @@ export const calculateNextVATSubmissionDate = (client) => {
     if (!nextPeriod) {
       const firstPeriod = sortedPeriods[0];
       const nextPeriodStart = new Date(firstPeriod.startDate);
-      nextPeriodStart.setFullYear(now.getFullYear() + 1);
+      nextPeriodStart.setFullYear(dubaiNow.year + 1);
 
       const nextPeriodEnd = new Date(firstPeriod.endDate);
-      nextPeriodEnd.setFullYear(now.getFullYear() + 1);
+      nextPeriodEnd.setFullYear(dubaiNow.year + 1);
 
       const submissionDate = new Date(nextPeriodEnd);
       submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
@@ -100,7 +110,7 @@ export const calculateNextVATSubmissionDate = (client) => {
           startDate: nextPeriodStart,
           endDate: nextPeriodEnd,
         },
-        daysUntilDue: Math.floor((submissionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+        daysUntilDue: daysBetweenDubai(submissionDate, now),
       };
     }
 
@@ -110,45 +120,41 @@ export const calculateNextVATSubmissionDate = (client) => {
         startDate: nextPeriod.startDate,
         endDate: nextPeriod.endDate,
       },
-      daysUntilDue: Math.floor((nextPeriod.submissionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      daysUntilDue: daysBetweenDubai(nextPeriod.submissionDate, now),
     };
   }
 
   // Fallback to cycle-based calculation - cycle continuously without anchoring to dates
   if (client.businessInfo?.vatReturnCycle) {
     const cycle = client.businessInfo.vatReturnCycle;
-    let periodEndDate = new Date(now);
-    let submissionDate = new Date(now);
+    const dubaiNow = getDubaiDateParts(now);
+    let periodEndDate = endOfMonth(now);
+    let submissionDate = new Date(periodEndDate);
+    submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
 
     if (cycle === 'MONTHLY') {
-      // Always use current month's end, if submission passed, use next month
-      periodEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      submissionDate = new Date(periodEndDate);
-      submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
-
-      // If submission date has passed, move to next month (cycle forward)
       if (submissionDate <= now) {
-        periodEndDate = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+        const nextMonth = dubaiNow.month + 1;
+        const nextYear = nextMonth > 11 ? dubaiNow.year + 1 : dubaiNow.year;
+        const normalizedMonth = ((nextMonth % 12) + 12) % 12;
+        periodEndDate = endOfMonth(`${nextYear}-${String(normalizedMonth + 1).padStart(2, '0')}-01`);
         submissionDate = new Date(periodEndDate);
         submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
       }
     } else if (cycle === 'QUARTERLY') {
-      // Calculate current quarter and cycle forward
-      const currentQuarter = Math.floor(now.getMonth() / 3);
-      // Current quarter end (month 3, 6, 9, or 12)
-      periodEndDate = new Date(now.getFullYear(), (currentQuarter + 1) * 3, 0);
+      const currentQuarter = Math.floor(dubaiNow.month / 3);
+      const quarterEndMonth = (currentQuarter + 1) * 3 - 1;
+      periodEndDate = endOfMonth(`${dubaiNow.year}-${String(quarterEndMonth + 1).padStart(2, '0')}-01`);
       submissionDate = new Date(periodEndDate);
       submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
 
-      // If submission date has passed, move to next quarter (cycle forward)
       if (submissionDate <= now) {
         const nextQuarter = currentQuarter + 1;
         if (nextQuarter >= 4) {
-          // Cycle to Q1 of next year
-          periodEndDate = new Date(now.getFullYear() + 1, 3, 0);
+          periodEndDate = endOfMonth(`${dubaiNow.year + 1}-03-01`);
         } else {
-          // Cycle to next quarter of same year
-          periodEndDate = new Date(now.getFullYear(), (nextQuarter + 1) * 3, 0);
+          const nextQuarterEndMonth = (nextQuarter + 1) * 3 - 1;
+          periodEndDate = endOfMonth(`${dubaiNow.year}-${String(nextQuarterEndMonth + 1).padStart(2, '0')}-01`);
         }
         submissionDate = new Date(periodEndDate);
         submissionDate.setDate(submissionDate.getDate() + vatFilingDaysAfterPeriod);
@@ -160,7 +166,7 @@ export const calculateNextVATSubmissionDate = (client) => {
     return {
       submissionDate,
       cycle,
-      daysUntilDue: Math.floor((submissionDate - now) / (1000 * 60 * 60 * 24)),
+      daysUntilDue: daysBetweenDubai(submissionDate, now),
     };
   }
 
@@ -173,7 +179,7 @@ export const calculateNextVATSubmissionDate = (client) => {
  * @returns {Object|null} Next Corporate Tax submission date info or null
  */
 export const calculateNextCorporateTaxSubmissionDate = (client) => {
-  const now = new Date();
+  const now = nowInDubai();
 
   if (client.businessInfo?.corporateTaxDueDate) {
     const dueDate = new Date(client.businessInfo.corporateTaxDueDate);
@@ -185,13 +191,13 @@ export const calculateNextCorporateTaxSubmissionDate = (client) => {
 
       return {
         submissionDate: nextDueDate,
-        daysUntilDue: Math.floor((nextDueDate - now) / (1000 * 60 * 60 * 24)),
+        daysUntilDue: daysBetweenDubai(nextDueDate, now),
       };
     }
 
     return {
       submissionDate: dueDate,
-      daysUntilDue: Math.floor((dueDate - now) / (1000 * 60 * 60 * 24)),
+      daysUntilDue: daysBetweenDubai(dueDate, now),
     };
   }
 
@@ -214,7 +220,7 @@ export const calculateComplianceStatus = (client) => {
   const missingDocuments = [];
   const expiringDocuments = [];
 
-  const now = new Date();
+  const now = nowInDubai();
   const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const sixtyDays = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
   const ninetyDays = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
@@ -246,31 +252,31 @@ export const calculateComplianceStatus = (client) => {
       expiringDocuments.push({
         type: 'TRADE_LICENSE',
         expiryDate,
-        daysUntilExpiry: Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24)),
+        daysUntilExpiry: daysBetweenDubai(expiryDate, now),
       });
     } else if (expiryDate <= thirtyDays) {
       alerts.push({
         type: 'EXPIRING_LICENSE',
         severity: 'HIGH',
-        message: `Trade License expires in ${Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24))} days`,
+        message: `Trade License expires in ${daysBetweenDubai(expiryDate, now)} days`,
         expiryDate,
       });
       expiringDocuments.push({
         type: 'TRADE_LICENSE',
         expiryDate,
-        daysUntilExpiry: Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24)),
+        daysUntilExpiry: daysBetweenDubai(expiryDate, now),
       });
     } else if (expiryDate <= sixtyDays) {
       alerts.push({
         type: 'EXPIRING_LICENSE',
         severity: 'MEDIUM',
-        message: `Trade License expires in ${Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24))} days`,
+        message: `Trade License expires in ${daysBetweenDubai(expiryDate, now)} days`,
         expiryDate,
       });
       expiringDocuments.push({
         type: 'TRADE_LICENSE',
         expiryDate,
-        daysUntilExpiry: Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24)),
+        daysUntilExpiry: daysBetweenDubai(expiryDate, now),
       });
     }
   }
@@ -364,7 +370,7 @@ export const calculateComplianceStatus = (client) => {
     }
 
     if (nextDueDate) {
-      const daysUntilDue = Math.floor((nextDueDate - now) / (1000 * 60 * 60 * 24));
+      const daysUntilDue = daysBetweenDubai(nextDueDate, now);
 
       // Prioritize upcoming alerts - only show overdue if very recent (within 7 days)
       // Otherwise focus on upcoming alerts
@@ -414,7 +420,7 @@ export const calculateComplianceStatus = (client) => {
   // Check VAT/Corporate Tax due dates
   if (client.businessInfo?.corporateTaxDueDate) {
     const dueDate = new Date(client.businessInfo.corporateTaxDueDate);
-    const daysUntilDue = Math.floor((dueDate - now) / (1000 * 60 * 60 * 24));
+    const daysUntilDue = daysBetweenDubai(dueDate, now);
     // Only show upcoming alerts (up to 30 days ahead) or very recent overdue (within 7 days)
     if ((daysUntilDue >= 0 && daysUntilDue <= 30) || (daysUntilDue < 0 && daysUntilDue >= -7)) {
       let severity = 'MEDIUM';
@@ -455,7 +461,7 @@ export const calculateComplianceStatus = (client) => {
           personId: person._id,
           personName: person.name,
           expiryDate,
-          daysUntilExpiry: Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24)),
+          daysUntilExpiry: daysBetweenDubai(expiryDate, now),
         });
       }
     }
@@ -479,7 +485,7 @@ export const calculateComplianceStatus = (client) => {
           personId: person._id,
           personName: person.name,
           expiryDate,
-          daysUntilExpiry: Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24)),
+          daysUntilExpiry: daysBetweenDubai(expiryDate, now),
         });
       }
     }
@@ -517,10 +523,10 @@ export const calculateComplianceStatus = (client) => {
       if (aDate && bDate) {
         const aDays = a.daysUntilDue !== undefined ? a.daysUntilDue :
           (a.daysUntilExpiry !== undefined ? a.daysUntilExpiry :
-            Math.floor((new Date(aDate) - now) / (1000 * 60 * 60 * 24)));
+            daysBetweenDubai(new Date(aDate), now));
         const bDays = b.daysUntilDue !== undefined ? b.daysUntilDue :
           (b.daysUntilExpiry !== undefined ? b.daysUntilExpiry :
-            Math.floor((new Date(bDate) - now) / (1000 * 60 * 60 * 24)));
+            daysBetweenDubai(new Date(bDate), now));
 
         // Prioritize upcoming (positive days) over overdue (negative days)
         if (aDays >= 0 && bDays < 0) return -1;

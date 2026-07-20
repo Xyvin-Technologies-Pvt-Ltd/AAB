@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Upload, X, File, Loader2 } from "lucide-react";
 import { Button } from "@/ui/button";
+import { formatDateForDisplay } from "@/utils/dateFormat";
 
 export const FileUpload = ({
   onUpload,
@@ -186,7 +187,7 @@ export const FileUpload = ({
                     </p>
                     <p className="text-xs text-gray-500">
                       {file.uploadedAt
-                        ? new Date(file.uploadedAt).toLocaleDateString()
+                        ? formatDateForDisplay(file.uploadedAt)
                         : "Recently uploaded"}
                     </p>
                   </div>

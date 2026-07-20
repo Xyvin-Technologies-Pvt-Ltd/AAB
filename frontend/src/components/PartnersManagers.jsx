@@ -9,6 +9,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { Button } from "@/ui/button";
+import { formatDateForDisplay } from "@/utils/dateFormat";
 import {
   Dialog,
   DialogContent,
@@ -466,9 +467,9 @@ export const PartnersManagers = ({
                       {editingPerson.emiratesId.expiryDate && (
                         <span className="ml-2">
                           (Expires:{" "}
-                          {new Date(
+                          {formatDateForDisplay(
                             editingPerson.emiratesId.expiryDate
-                          ).toLocaleDateString()}
+                          )}
                           )
                         </span>
                       )}
@@ -481,9 +482,9 @@ export const PartnersManagers = ({
                       {editingPerson.passport.expiryDate && (
                         <span className="ml-2">
                           (Expires:{" "}
-                          {new Date(
+                          {formatDateForDisplay(
                             editingPerson.passport.expiryDate
-                          ).toLocaleDateString()}
+                          )}
                           )
                         </span>
                       )}

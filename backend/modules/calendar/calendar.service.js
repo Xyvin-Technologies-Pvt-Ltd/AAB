@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import ical from 'ical-generator';
 import User from '../auth/auth.model.js';
 import * as taskService from '../task/task.service.js';
+import { startOfDay, endOfDay, getDubaiDateParts } from '../../helpers/dateRange.js';
 
 const getBaseUrl = () => {
   // Public URL of this API so calendar apps (phones) can fetch the feed. Set in production.
@@ -43,12 +44,9 @@ export const getFeedIcs = async (token) => {
   // Every user (including admin) only sees tasks assigned to themselves
   const myEmployeeId = user.employeeId ? user.employeeId.toString() : null;
 
-  const startDate = new Date();
-  startDate.setFullYear(startDate.getFullYear() - 1);
-  startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date();
-  endDate.setFullYear(endDate.getFullYear() + 2);
-  endDate.setHours(23, 59, 59, 999);
+  const dubaiParts = getDubaiDateParts(new Date());
+  const startDate = startOfDay(`${dubaiParts.year - 1}-${String(dubaiParts.month + 1).padStart(2, '0')}-${String(dubaiParts.day).padStart(2, '0')}`);
+  const endDate = endOfDay(`${dubaiParts.year + 2}-${String(dubaiParts.month + 1).padStart(2, '0')}-${String(dubaiParts.day).padStart(2, '0')}`);
 
   const allTasks = await taskService.getCalendarTasks(startDate, endDate, null);
 

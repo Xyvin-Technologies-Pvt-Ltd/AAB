@@ -1,6 +1,7 @@
 import { successResponse } from '../../helpers/response.js';
 import * as clientService from './client.service.js';
 import logger from '../../helpers/logger.js';
+import { startOfDay, endOfDay } from '../../helpers/dateRange.js';
 
 export const createClient = async (req, res, next) => {
   try {
@@ -611,10 +612,10 @@ export const getCalendarEvents = async (req, res, next) => {
       return res.status(400).json({ message: 'Start and end dates are required' });
     }
 
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    const startDate = startOfDay(start);
+    const endDate = endOfDay(end);
 
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    if (!startDate || !endDate) {
       return res.status(400).json({ message: 'Invalid date format' });
     }
 

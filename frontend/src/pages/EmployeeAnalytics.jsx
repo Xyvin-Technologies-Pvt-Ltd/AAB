@@ -12,6 +12,7 @@ import { UtilizationChart } from "@/components/charts/UtilizationChart";
 import { TimeDistributionChart } from "@/components/charts/TimeDistributionChart";
 import { ArrowLeft, Filter, X } from "lucide-react";
 import { LoaderWithText } from "@/components/Loader";
+import { formatDateForDisplay } from "@/utils/dateFormat";
 
 export const EmployeeAnalytics = () => {
   const { employeeId } = useParams();
@@ -404,7 +405,7 @@ export const EmployeeAnalytics = () => {
                   {analytics.detailedTimeLog.map((entry, idx) => (
                     <tr key={idx}>
                       <td className="px-3 py-2 text-sm">
-                        {new Date(entry.date).toLocaleDateString()}
+                        {formatDateForDisplay(entry.date)}
                       </td>
                       <td className="px-3 py-2 text-sm">{entry.clientName}</td>
                       <td className="px-3 py-2 text-sm">{entry.packageName}</td>
