@@ -9,8 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/ui/card";
-import { Eye, EyeOff } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Eye, EyeOff, Loader2, ShieldCheck, Clock, LineChart } from "lucide-react";
 import logoImg from "@/assets/Logo_1.png";
+
+const highlights = [
+  { icon: LineChart, label: "Real-time profitability tracking" },
+  { icon: Clock, label: "Comprehensive time entry management" },
+  { icon: ShieldCheck, label: "Advanced analytics and reporting" },
+];
 
 export const Login = () => {
   const [email, setEmail] = useState("");
@@ -25,57 +32,65 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="flex min-h-screen bg-background">
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-pattern opacity-10" />
-        <div className="relative z-10 flex flex-col justify-center items-center text-white p-12">
-          <div className="mb-8">
-            <div className="mb-6 flex justify-center">
-              <img
-                src={logoImg}
-                alt="Authentic Accounting"
-                className="h-20 object-contain"
-              />
-            </div>
-            <h1 className="text-4xl font-bold mb-4">Accounting Platform</h1>
-            <p className="text-xl text-indigo-100">
-              Track profitability and manage your accounting operations
-              efficiently
-            </p>
+      <div className="relative hidden overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 lg:flex lg:w-1/2">
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.12]" />
+        <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
+        <div className="absolute -right-16 bottom-10 h-72 w-72 rounded-full bg-teal-300/20 blur-3xl" />
+
+        <div className="relative z-10 flex flex-col justify-center p-12 text-white">
+          <div className="mb-8 flex items-center gap-3">
+            <img
+              src={logoImg}
+              alt="Authentic Accounting"
+              className="h-16 object-contain"
+            />
           </div>
-          <div className="mt-8 space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-green-400 rounded-full" />
-              <span>Real-time profitability tracking</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-green-400 rounded-full" />
-              <span>Comprehensive time entry management</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-green-400 rounded-full" />
-              <span>Advanced analytics and reporting</span>
-            </div>
+          <h1 className="mb-4 text-4xl font-bold leading-tight">
+            Accounting Platform
+          </h1>
+          <p className="max-w-md text-lg text-emerald-50/90">
+            Track profitability and manage your accounting operations efficiently.
+          </p>
+
+          <div className="mt-10 space-y-4">
+            {highlights.map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/20">
+                  <Icon className="h-[18px] w-[18px]" />
+                </span>
+                <span className="text-emerald-50">{label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Right side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
-        <Card className="w-full max-w-md shadow-xl">
+      <div className="relative flex w-full items-center justify-center p-6 sm:p-8 lg:w-1/2">
+        <div className="absolute right-4 top-4">
+          <ThemeToggle />
+        </div>
+
+        <Card className="w-full max-w-md shadow-soft">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-3xl font-bold">Welcome Back</CardTitle>
-            <CardDescription>
-              Sign in to your account to continue
-            </CardDescription>
+            <img
+              src={logoImg}
+              alt="Authentic Accounting"
+              className="mx-auto mb-2 h-12 object-contain lg:hidden"
+            />
+            <CardTitle className="text-3xl font-bold tracking-tight">
+              Welcome back
+            </CardTitle>
+            <CardDescription>Sign in to your account to continue</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label
                   htmlFor="email"
-                  className="text-sm font-medium text-gray-700"
+                  className="text-sm font-medium text-foreground"
                 >
                   Email address
                 </label>
@@ -87,7 +102,7 @@ export const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-transparent focus:ring-2 focus:ring-ring"
                   placeholder="Enter your email"
                 />
               </div>
@@ -95,7 +110,7 @@ export const Login = () => {
               <div className="space-y-2">
                 <label
                   htmlFor="password"
-                  className="text-sm font-medium text-gray-700"
+                  className="text-sm font-medium text-foreground"
                 >
                   Password
                 </label>
@@ -108,14 +123,14 @@ export const Login = () => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none pr-12"
+                    className="w-full rounded-lg border border-input bg-background px-4 py-2.5 pr-12 text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-transparent focus:ring-2 focus:ring-ring"
                     placeholder="Enter your password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5" />
@@ -127,26 +142,26 @@ export const Login = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <label className="flex items-center space-x-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    className="h-4 w-4 rounded border-input text-primary accent-primary focus:ring-ring"
                   />
-                  <span className="text-sm text-gray-600">Remember me</span>
+                  <span className="text-sm text-muted-foreground">Remember me</span>
                 </label>
                 <Link
                   to="/forgot-password"
-                  className="text-sm text-indigo-600 hover:text-indigo-800"
+                  className="text-sm font-medium text-primary hover:underline"
                 >
                   Forgot password?
                 </Link>
               </div>
 
               {loginMutation.isError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">
+                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+                  <p className="text-sm text-destructive">
                     {loginMutation.error?.response?.data?.message ||
                       "Login failed. Please try again."}
                   </p>
@@ -155,33 +170,15 @@ export const Login = () => {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white py-3 text-base font-semibold shadow-lg"
+                size="lg"
+                className="w-full text-base"
                 disabled={loginMutation.isPending}
               >
                 {loginMutation.isPending ? (
-                  <span className="flex items-center justify-center">
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
                     Signing in...
-                  </span>
+                  </>
                 ) : (
                   "Sign in"
                 )}

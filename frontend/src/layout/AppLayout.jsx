@@ -6,7 +6,7 @@ import { AIChatButton } from "@/components/ai-chat/AIChatButton";
 
 export const AppLayout = ({ children, fullHeight = false }) => {
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-50">
+    <div className="h-screen flex overflow-hidden bg-background text-foreground">
       <Sidebar />
       <div className="lg:pl-64 flex flex-col flex-1 min-w-0 h-screen overflow-hidden">
         <TopBar />

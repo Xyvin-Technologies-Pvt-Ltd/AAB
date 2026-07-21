@@ -16,6 +16,7 @@ import {
 } from "@/ui/dropdown-menu";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { AccountDetailsDialog } from "@/components/AccountDetailsDialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 export const TopBar = () => {
@@ -55,18 +56,22 @@ export const TopBar = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between px-4 py-3 gap-4">
-          <SidebarToggle />
+      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+        <div className="flex h-16 items-center justify-between gap-4 px-4">
+          <div className="flex items-center gap-2">
+            <SidebarToggle />
 
-          {/* Greeting and Time */}
-          <div className="flex-1 hidden md:flex justify-start">
-            <Greeting name={firstName} />
+            {/* Greeting and Time */}
+            <div className="hidden md:flex">
+              <Greeting name={firstName} />
+            </div>
           </div>
 
           {/* Right side actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <CompactTimer />
+
+            <ThemeToggle />
 
             <NotificationBell />
 
@@ -74,36 +79,39 @@ export const TopBar = () => {
             {canAccessSettings && (
               <Link
                 to="/settings"
+                aria-label="Settings"
                 className={cn(
-                  "p-2 rounded-lg transition-colors hover:bg-gray-100",
+                  "inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
                   location.pathname === "/settings"
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
                 <Settings className="h-5 w-5" />
               </Link>
             )}
 
+            <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
                   <Avatar
                     name={displayName}
                     src={profilePictureUrl}
                     size="sm"
                   />
-                  <div className="hidden sm:flex flex-col items-start">
-                    <span className="text-sm font-medium text-gray-900">
+                  <div className="hidden flex-col items-start sm:flex">
+                    <span className="text-sm font-medium text-foreground">
                       {firstName}
                     </span>
                     {user?.role && (
-                      <span className="text-xs text-gray-500">
-                        {user?.role}
+                      <span className="text-xs capitalize text-muted-foreground">
+                        {user?.role?.toLowerCase()}
                       </span>
                     )}
                   </div>
-                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
