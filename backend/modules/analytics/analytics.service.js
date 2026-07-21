@@ -1639,14 +1639,22 @@ export const getEmployeeAnalytics = async (employeeId, filters = {}, user = null
   }));
 
   // Detailed time log
-  const detailedTimeLog = timeEntries.map((entry) => ({
-    date: entry.date,
-    clientName: entry.clientId?.name || 'N/A',
-    packageName: entry.packageId?.name || 'N/A',
-    taskName: entry.taskId?.name || 'N/A',
-    hours: parseFloat(((entry.minutesSpent || 0) / 3600).toFixed(2)),
-    cost: parseFloat((((entry.minutesSpent || 0) / 3600) * hourlyRate).toFixed(2)),
-  }));
+  const detailedTimeLog = timeEntries
+    .map((entry) => ({
+      date: entry.date,
+      startTime: entry.startTime || null,
+      endTime: entry.endTime || null,
+      clientName: entry.clientId?.name || 'N/A',
+      packageName: entry.packageId?.name || 'N/A',
+      taskName: entry.taskId?.name || 'N/A',
+      hours: parseFloat(((entry.minutesSpent || 0) / 3600).toFixed(2)),
+      cost: parseFloat((((entry.minutesSpent || 0) / 3600) * hourlyRate).toFixed(2)),
+    }))
+    .sort((a, b) => {
+      const aTime = new Date(a.startTime || a.date).getTime();
+      const bTime = new Date(b.startTime || b.date).getTime();
+      return bTime - aTime;
+    });
 
   return {
     employee: {

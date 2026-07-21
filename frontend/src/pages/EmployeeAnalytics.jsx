@@ -12,7 +12,7 @@ import { UtilizationChart } from "@/components/charts/UtilizationChart";
 import { TimeDistributionChart } from "@/components/charts/TimeDistributionChart";
 import { ArrowLeft, Filter, X } from "lucide-react";
 import { LoaderWithText } from "@/components/Loader";
-import { formatDateForDisplay } from "@/utils/dateFormat";
+import { formatDateForDisplay, formatTimeForDisplay } from "@/utils/dateFormat";
 
 export const EmployeeAnalytics = () => {
   const { employeeId } = useParams();
@@ -385,6 +385,12 @@ export const EmployeeAnalytics = () => {
                       Date
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
+                      Start
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
+                      End
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
                       Client
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 uppercase">
@@ -406,6 +412,12 @@ export const EmployeeAnalytics = () => {
                     <tr key={idx}>
                       <td className="px-3 py-2 text-sm">
                         {formatDateForDisplay(entry.date)}
+                      </td>
+                      <td className="px-3 py-2 text-sm tabular-nums">
+                        {formatTimeForDisplay(entry.startTime)}
+                      </td>
+                      <td className="px-3 py-2 text-sm tabular-nums">
+                        {formatTimeForDisplay(entry.endTime)}
                       </td>
                       <td className="px-3 py-2 text-sm">{entry.clientName}</td>
                       <td className="px-3 py-2 text-sm">{entry.packageName}</td>

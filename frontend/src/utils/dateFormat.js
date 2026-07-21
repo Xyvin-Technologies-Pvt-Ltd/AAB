@@ -18,6 +18,13 @@ const dubaiShortFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: APP_TIMEZONE,
 });
 
+const dubaiTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: APP_TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
 const toValidDate = (date) => {
   if (!date) return null;
   const d = date instanceof Date ? date : new Date(date);
@@ -49,6 +56,15 @@ export const formatDateForDisplay = (date) => {
   const d = toValidDate(date);
   if (!d) return '';
   return dubaiShortFormatter.format(d);
+};
+
+/**
+ * Format time-of-day in Asia/Dubai (e.g., "14:30").
+ */
+export const formatTimeForDisplay = (date) => {
+  const d = toValidDate(date);
+  if (!d) return '—';
+  return dubaiTimeFormatter.format(d);
 };
 
 /**
