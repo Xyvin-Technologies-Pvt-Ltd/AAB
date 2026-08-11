@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
-import { teamsApi } from "@/api/teams";
-import { employeesApi } from "@/api/employees";
+import { useTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from "@/api/queries/teamQueries";
+import { useEmployees } from "@/api/queries/employeeQueries";
 import { Button } from "@/ui/button";
 import { Card } from "@/ui/card";
 import {
@@ -21,7 +20,6 @@ import {
   UserCheck,
   MoreVertical,
 } from "lucide-react";
-import { useToast } from "@/hooks/useToast";
 import { MultiSelect } from "@/ui/multi-select";
 import { LoaderWithText } from "@/components/Loader";
 import {
@@ -37,80 +35,11 @@ export const Teams = () => {
   const [editingTeam, setEditingTeam] = useState(null);
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [selectedMembers, setSelectedMembers] = useState([]);
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["teams"],
-    queryFn: () => teamsApi.getAll({ limit: 100 }),
-  });
-
-  const { data: employeesData } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => employeesApi.getAll({ limit: 100 }),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: teamsApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["teams"] });
-      setShowForm(false);
-      resetForm();
-      toast({
-        title: "Success",
-        description: "Team created successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to create team",
-        type: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => teamsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["teams"] });
-      setShowForm(false);
-      setEditingTeam(null);
-      resetForm();
-      toast({
-        title: "Success",
-        description: "Team updated successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update team",
-        type: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: teamsApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["teams"] });
-      toast({
-        title: "Success",
-        description: "Team deleted successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to delete team",
-        type: "destructive",
-      });
-    },
-  });
+  const { data, isLoading } = useTeams({ limit: 100 });
+  const { data: employeesData } = useEmployees({ limit: 100 });
+  const createMutation = useCreateTeam();
+  const updateMutation = useUpdateTeam();
+  const deleteMutation = useDeleteTeam();
 
   const resetForm = () => {
     setEditingTeam(null);
@@ -142,9 +71,12 @@ export const Teams = () => {
     };
 
     if (editingTeam) {
-      updateMutation.mutate({ id: editingTeam._id, data });
+      updateMutation.mutate(
+        { id: editingTeam._id, data },
+        { onSuccess: () => { setShowForm(false); resetForm(); } }
+      );
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, { onSuccess: () => { setShowForm(false); resetForm(); } });
     }
   };
 

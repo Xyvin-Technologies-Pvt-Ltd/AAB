@@ -1,7 +1,5 @@
-import { useEffect } from 'react';
-import { Sparkles, AlertTriangle, Info, AlertCircle, Clock, Shield, FileText, CheckSquare, Loader2, ChevronRight } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getInsights } from '@/api/aiChat';
+import { Sparkles, Info, Clock, Shield, FileText, CheckSquare, Loader2, ChevronRight } from 'lucide-react';
+import { useAIInsights } from '@/api/queries';
 import { useChatStore } from '@/store/chatStore';
 
 const ICON_MAP = {
@@ -44,15 +42,8 @@ const INSIGHT_PROMPTS = {
 
 export function AIInsightsWidget() {
   const openChat = useChatStore((s) => s.openChat);
-  const isOpen = useChatStore((s) => s.isOpen);
-  const { handleSend: _ } = {};
 
-  const { data: insights = [], isLoading } = useQuery({
-    queryKey: ['ai-insights'],
-    queryFn: getInsights,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 1,
-  });
+  const { data: insights = [], isLoading } = useAIInsights({ retry: 1 });
 
   const handleInsightClick = (insight) => {
     const prompt = INSIGHT_PROMPTS[insight.icon] || insight.message;

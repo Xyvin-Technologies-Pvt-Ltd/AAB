@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -25,6 +26,9 @@ app.use(
     })
 );
 
+// Compress JSON responses (analytics/client-list payloads shrink 5-10x)
+app.use(compression());
+
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -37,8 +41,13 @@ app.use('/api/', limiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging with morgan
-app.use(morgan('dev'));
+// Request logging with morgan - 'dev' format uses ANSI colour codes meant for a
+// terminal, so it's only useful in development. Winston (below) covers
+// structured request logging in production; without this gate every request
+// was written twice.
+if (process.env.NODE_ENV !== 'production') {
+    app.use(morgan('dev'));
+}
 
 // Request logging
 app.use((req, res, next) => {
@@ -49,9 +58,16 @@ app.use((req, res, next) => {
     next();
 });
 
-// Health check
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check. MongoDB is the critical dependency (server.js won't boot
+// without it); Redis is optional caching infra, so its state is reported
+// but never flips this endpoint to unhealthy.
+app.get('/health', async (req, res) => {
+    const { isRedisReady } = await import('./config/redis.js');
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        redis: isRedisReady() ? 'connected' : 'disconnected',
+    });
 });
 
 // API routes

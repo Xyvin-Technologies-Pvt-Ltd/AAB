@@ -1,6 +1,7 @@
 import { successResponse, errorResponse } from '../../helpers/response.js';
 import * as analyticsService from './analytics.service.js';
 import { checkResourceAccess, getUserAccessibleEmployeeIds } from '../../middlewares/rbac.js';
+import { parsePage, parseLimit } from '../../helpers/pagination.js';
 
 export const getPackageProfitability = async (req, res, next) => {
   try {
@@ -18,8 +19,10 @@ export const getPackageProfitability = async (req, res, next) => {
       billingFrequency: req.query.billingFrequency,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
-      page: req.query.page,
-      limit: req.query.limit,
+      page: parsePage(req.query.page),
+      // Clients.jsx fetches client profitability with limit:500 to populate a
+      // table column; keep headroom above that.
+      limit: parseLimit(req.query.limit, 10, 1000),
       search: req.query.search,
     };
 
@@ -54,8 +57,10 @@ export const getClientProfitability = async (req, res, next) => {
       billingFrequency: req.query.billingFrequency,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
-      page: req.query.page,
-      limit: req.query.limit,
+      page: parsePage(req.query.page),
+      // Clients.jsx fetches client profitability with limit:500 to populate a
+      // table column; keep headroom above that.
+      limit: parseLimit(req.query.limit, 10, 1000),
       search: req.query.search,
     };
 
@@ -89,8 +94,10 @@ export const getEmployeeUtilization = async (req, res, next) => {
       employeeId: req.query.employeeId,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
-      page: req.query.page,
-      limit: req.query.limit,
+      page: parsePage(req.query.page),
+      // Clients.jsx fetches client profitability with limit:500 to populate a
+      // table column; keep headroom above that.
+      limit: parseLimit(req.query.limit, 10, 1000),
       search: req.query.search,
     };
 

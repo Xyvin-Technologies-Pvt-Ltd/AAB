@@ -1,9 +1,13 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/layout/AppLayout";
-import { clientsApi } from "@/api/clients";
-import { packagesApi } from "@/api/packages";
-import { analyticsApi } from "@/api/analytics";
+import {
+  useClients,
+  useCreateClient,
+  useUpdateClient,
+  useDeleteClient,
+} from "@/api/queries/clientQueries";
+import { usePackages } from "@/api/queries/packageQueries";
+import { useClientProfitability } from "@/api/queries/analyticsQueries";
 import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
 import { formatDateDDMMYYYY } from "@/utils/dateFormat";
@@ -46,6 +50,29 @@ import { LoaderWithText } from "@/components/Loader";
 import { Avatar } from "@/components/Avatar";
 import { formatCurrency } from "@/utils/currencyFormat";
 
+// Pure function of `client` only (no component state), hoisted so it has a
+// stable reference for use inside useMemo below and doesn't need to be
+// listed in a dependency array.
+const formatVATCycle = (client) => {
+  if (
+    !client.businessInfo?.vatTaxPeriods ||
+    client.businessInfo.vatTaxPeriods.length === 0
+  ) {
+    return "-";
+  }
+
+  const months = [];
+  client.businessInfo.vatTaxPeriods.forEach((period) => {
+    const startDate = new Date(period.startDate);
+    const monthName = startDate.toLocaleString("default", { month: "short" });
+    if (!months.includes(monthName)) {
+      months.push(monthName);
+    }
+  });
+
+  return months.join(", ") || "-";
+};
+
 export const Clients = () => {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -62,133 +89,67 @@ export const Clients = () => {
     packageId: "",
     status: "",
   });
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Fetch all clients for client-side filtering and pagination
-  // Apply server-side filters (status, packageId, vatMonths) but fetch all matching records
-  const { data: allClientsData, isLoading } = useQuery({
-    queryKey: [
-      "clients",
-      "all",
-      filters.status,
-      filters.packageId,
-      filters.vatMonths?.join(","),
-    ],
-    queryFn: () => {
-      const params = {
-        limit: 500,
-        status: filters.status || undefined,
-        packageId: filters.packageId || undefined,
-      };
-
-      // Handle vatMonths array - send as comma-separated string or multiple params
-      if (filters.vatMonths && filters.vatMonths.length > 0) {
-        params.vatMonths = filters.vatMonths.join(",");
-      }
-
-      return clientsApi.getAll(params);
-    },
-  });
-
-  const { data: packagesData } = useQuery({
-    queryKey: ["packages"],
-    queryFn: () => packagesApi.getAll({ limit: 1000 }),
-  });
-
-  // Fetch client profitability data for profit column
-  const { data: clientProfitabilityData } = useQuery({
-    queryKey: ["analytics", "clients", "all"],
-    queryFn: () => analyticsApi.getClientProfitability({ page: 1, limit: 500 }),
-  });
-
-  // Create a map of client profitability for quick lookup
-  const clientProfitabilityMap = {};
-  const allClientProfits = clientProfitabilityData?.data?.results ?? (Array.isArray(clientProfitabilityData?.data) ? clientProfitabilityData.data : []);
-  allClientProfits.forEach((clientProfit) => {
-    clientProfitabilityMap[clientProfit.clientId] = {
-      totalRevenue: clientProfit.totalCycleRevenue || clientProfit.totalRevenue || 0,
-      totalCost: clientProfit.totalCycleCost || clientProfit.totalCost || 0,
-      totalProfit: (clientProfit.totalCycleRevenue || clientProfit.totalRevenue || 0) - (clientProfit.totalCycleCost || clientProfit.totalCost || 0),
+  const clientFilters = useMemo(() => {
+    const params = {
+      limit: 500,
+      status: filters.status || undefined,
+      packageId: filters.packageId || undefined,
     };
-  });
-
-  // Group packages by client ID
-  const packagesByClient = {};
-  const packages = packagesData?.data?.packages || [];
-  packages.forEach((pkg) => {
-    const clientId =
-      typeof pkg.clientId === "object" ? pkg.clientId._id : pkg.clientId;
-    if (clientId) {
-      if (!packagesByClient[clientId]) {
-        packagesByClient[clientId] = [];
-      }
-      packagesByClient[clientId].push(pkg);
+    if (filters.vatMonths?.length > 0) {
+      params.vatMonths = filters.vatMonths.join(",");
     }
+    return params;
+  }, [filters.status, filters.packageId, filters.vatMonths]);
+
+  const { data: allClientsData, isLoading } = useClients(clientFilters);
+  const { data: packagesData } = usePackages({ limit: 1000 });
+  const { data: clientProfitabilityData } = useClientProfitability({
+    page: 1,
+    limit: 500,
   });
 
-  const createMutation = useMutation({
-    mutationFn: clientsApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      setShowForm(false);
-      resetForm();
-      toast({
-        title: "Success",
-        description: "Client created successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to create client",
-        type: "destructive",
-      });
-    },
-  });
+  // Create a map of client profitability for quick lookup. Memoized so this
+  // only rebuilds when the query result changes, not on every render.
+  const clientProfitabilityMap = useMemo(() => {
+    const map = {};
+    const allClientProfits = clientProfitabilityData?.data?.results ?? (Array.isArray(clientProfitabilityData?.data) ? clientProfitabilityData.data : []);
+    allClientProfits.forEach((clientProfit) => {
+      map[clientProfit.clientId] = {
+        totalRevenue: clientProfit.totalCycleRevenue || clientProfit.totalRevenue || 0,
+        totalCost: clientProfit.totalCycleCost || clientProfit.totalCost || 0,
+        totalProfit: (clientProfit.totalCycleRevenue || clientProfit.totalRevenue || 0) - (clientProfit.totalCycleCost || clientProfit.totalCost || 0),
+      };
+    });
+    return map;
+  }, [clientProfitabilityData]);
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => clientsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      setShowForm(false);
-      setEditingClient(null);
-      resetForm();
-      toast({
-        title: "Success",
-        description: "Client updated successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update client",
-        type: "destructive",
-      });
-    },
-  });
+  // ClientFilterDrawer needs the flat list; packagesByClient (below) is a
+  // grouped view derived from the same query data.
+  const packages = packagesData?.data?.packages || [];
 
-  const deleteMutation = useMutation({
-    mutationFn: clientsApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      toast({
-        title: "Success",
-        description: "Client deleted successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to delete client",
-        type: "destructive",
-      });
-    },
-  });
+  // Group packages by client ID. Memoized for the same reason.
+  const packagesByClient = useMemo(() => {
+    const map = {};
+    const pkgList = packagesData?.data?.packages || [];
+    pkgList.forEach((pkg) => {
+      const clientId =
+        typeof pkg.clientId === "object" ? pkg.clientId._id : pkg.clientId;
+      if (clientId) {
+        if (!map[clientId]) {
+          map[clientId] = [];
+        }
+        map[clientId].push(pkg);
+      }
+    });
+    return map;
+  }, [packagesData]);
+
+  const createMutation = useCreateClient();
+  const updateMutation = useUpdateClient();
+  const deleteMutation = useDeleteClient();
 
   const resetForm = () => {
     setEditingClient(null);
@@ -217,9 +178,23 @@ export const Clients = () => {
     };
 
     if (editingClient) {
-      updateMutation.mutate({ id: editingClient._id, data });
+      updateMutation.mutate(
+        { id: editingClient._id, data },
+        {
+          onSuccess: () => {
+            setShowForm(false);
+            setEditingClient(null);
+            resetForm();
+          },
+        }
+      );
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          setShowForm(false);
+          resetForm();
+        },
+      });
     }
   };
 
@@ -228,27 +203,6 @@ export const Clients = () => {
     if (!text) return "-";
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
-  };
-
-  // Helper function to format VAT cycle months
-  const formatVATCycle = (client) => {
-    if (
-      !client.businessInfo?.vatTaxPeriods ||
-      client.businessInfo.vatTaxPeriods.length === 0
-    ) {
-      return "-";
-    }
-
-    const months = [];
-    client.businessInfo.vatTaxPeriods.forEach((period) => {
-      const startDate = new Date(period.startDate);
-      const monthName = startDate.toLocaleString("default", { month: "short" });
-      if (!months.includes(monthName)) {
-        months.push(monthName);
-      }
-    });
-
-    return months.join(", ") || "-";
   };
 
   // Sorting function
@@ -273,70 +227,74 @@ export const Clients = () => {
     );
   };
 
-  // Get all clients from the query
-  let allClients = allClientsData?.data?.clients || [];
+  // Filter + sort + paginate the fetched client set. Memoized so this only
+  // re-runs when the underlying data or these specific controls change,
+  // instead of on every render (e.g. from unrelated state elsewhere on the
+  // page).
+  const { total, clients } = useMemo(() => {
+    let filtered = allClientsData?.data?.clients || [];
 
-  // Apply client-side search filter
-  if (filters.search) {
-    const searchLower = filters.search.toLowerCase();
-    allClients = allClients.filter((client) => {
-      return (
-        client.name?.toLowerCase().includes(searchLower) ||
-        client.contactPerson?.toLowerCase().includes(searchLower) ||
-        client.email?.toLowerCase().includes(searchLower) ||
-        client.phone?.toLowerCase().includes(searchLower)
-      );
-    });
-  }
+    // Apply client-side search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter((client) => {
+        return (
+          client.name?.toLowerCase().includes(searchLower) ||
+          client.contactPerson?.toLowerCase().includes(searchLower) ||
+          client.email?.toLowerCase().includes(searchLower) ||
+          client.phone?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
 
-  // Apply sorting
-  if (sortField) {
-    allClients = [...allClients].sort((a, b) => {
-      let aValue, bValue;
+    // Apply sorting
+    if (sortField) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue, bValue;
 
-      switch (sortField) {
-        case "name":
-          aValue = (a.name || "").toLowerCase();
-          bValue = (b.name || "").toLowerCase();
-          break;
-        case "contactPerson":
-          aValue = (a.contactPerson || "").toLowerCase();
-          bValue = (b.contactPerson || "").toLowerCase();
-          break;
-        case "email":
-          aValue = (a.email || "").toLowerCase();
-          bValue = (b.email || "").toLowerCase();
-          break;
-        case "phone":
-          aValue = (a.phone || "").toLowerCase();
-          bValue = (b.phone || "").toLowerCase();
-          break;
-        case "status":
-          aValue = a.status || "";
-          bValue = b.status || "";
-          break;
-        case "vatCycle":
-          aValue = formatVATCycle(a);
-          bValue = formatVATCycle(b);
-          break;
-        case "documents":
-          aValue = a.documents?.length || 0;
-          bValue = b.documents?.length || 0;
-          break;
-        default:
-          return 0;
-      }
+        switch (sortField) {
+          case "name":
+            aValue = (a.name || "").toLowerCase();
+            bValue = (b.name || "").toLowerCase();
+            break;
+          case "contactPerson":
+            aValue = (a.contactPerson || "").toLowerCase();
+            bValue = (b.contactPerson || "").toLowerCase();
+            break;
+          case "email":
+            aValue = (a.email || "").toLowerCase();
+            bValue = (b.email || "").toLowerCase();
+            break;
+          case "phone":
+            aValue = (a.phone || "").toLowerCase();
+            bValue = (b.phone || "").toLowerCase();
+            break;
+          case "status":
+            aValue = a.status || "";
+            bValue = b.status || "";
+            break;
+          case "vatCycle":
+            aValue = formatVATCycle(a);
+            bValue = formatVATCycle(b);
+            break;
+          case "documents":
+            aValue = a.documents?.length || 0;
+            bValue = b.documents?.length || 0;
+            break;
+          default:
+            return 0;
+        }
 
-      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-  }
+        if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
 
-  // Apply client-side pagination
-  const total = allClients.length;
-  const skip = (page - 1) * limit;
-  const clients = allClients.slice(skip, skip + limit);
+    // Apply client-side pagination
+    const skip = (page - 1) * limit;
+    return { total: filtered.length, clients: filtered.slice(skip, skip + limit) };
+  }, [allClientsData, filters.search, sortField, sortDirection, page, limit]);
   const pagination = {
     page,
     limit,

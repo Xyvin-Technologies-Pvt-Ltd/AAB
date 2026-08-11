@@ -4,7 +4,8 @@ dotenv.config();
 process.env.TZ = process.env.APP_TIMEZONE || process.env.TZ || 'Asia/Dubai';
 
 import app from './app.js';
-import { connectDatabase } from './config/database.js';
+import { connectDatabase, disconnectDatabase } from './config/database.js';
+import { connectRedis, disconnectRedis } from './config/redis.js';
 import { serverConfig } from './config/server.js';
 import logger from './helpers/logger.js';
 import { startScheduler } from './scheduler.js';
@@ -31,6 +32,11 @@ const startServer = async () => {
     // Connect to database
     await connectDatabase();
 
+    // Redis is optional infrastructure - connectRedis() logs a warning and
+    // resolves (rather than throwing) when REDIS_URL is unset/unreachable,
+    // so the app always starts even without it.
+    await connectRedis();
+
     // One-time backfill for tasks missing doneAt
     await backfillDoneAt();
 
@@ -46,8 +52,12 @@ const startServer = async () => {
 
     const gracefulShutdown = (signal) => {
       logger.info(`${signal} signal received: closing HTTP server`);
-      server.close(() => {
+      server.close(async () => {
         logger.info('HTTP server closed');
+        await disconnectDatabase();
+        logger.info('MongoDB connection closed');
+        await disconnectRedis();
+        logger.info('Redis connection closed');
         process.exit(0);
       });
     };

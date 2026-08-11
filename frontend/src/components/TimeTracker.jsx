@@ -1,8 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { tasksApi } from "@/api/tasks";
-import { clientsApi } from "@/api/clients";
-import { packagesApi } from "@/api/packages";
+import { useClients, usePackagesByClient, useTasks } from "@/api/queries";
 import { useTimer } from "@/hooks/useTimer";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/ui/button";
@@ -34,28 +31,19 @@ export const TimeTracker = () => {
 
   const isEmployee = user?.role === "EMPLOYEE";
 
-  const { data: clientsData } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 10000 }),
+  const { data: clientsData } = useClients({ limit: 500 });
+
+  const { data: packagesData } = usePackagesByClient(selectedClientId, {
+    limit: 10000,
   });
 
-  const { data: packagesData } = useQuery({
-    queryKey: ["packages", selectedClientId],
-    queryFn: () =>
-      packagesApi.getAll({ clientId: selectedClientId, limit: 10000 }),
-    enabled: !!selectedClientId,
-  });
+  const taskFilters = {
+    packageId: selectedPackageId,
+    limit: 10000,
+    ...(isEmployee && employeeId ? { assignedTo: employeeId } : {}),
+  };
 
-  const { data: tasksData } = useQuery({
-    queryKey: ["tasks", selectedPackageId, isEmployee ? employeeId : null],
-    queryFn: () => {
-      const params = { packageId: selectedPackageId, limit: 10000 };
-      // If user is an employee, filter by assignedTo
-      if (isEmployee && employeeId) {
-        params.assignedTo = employeeId;
-      }
-      return tasksApi.getAll(params);
-    },
+  const { data: tasksData } = useTasks(taskFilters, {
     enabled: !!selectedPackageId && (!isEmployee || !!employeeId),
   });
 

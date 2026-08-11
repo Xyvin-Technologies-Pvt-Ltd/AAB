@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
-import { analyticsApi } from "@/api/analytics";
-import { clientsApi } from "@/api/clients";
-import { packagesApi } from "@/api/packages";
+import { useEmployeeAnalytics } from "@/api/queries/analyticsQueries";
+import { useClients } from "@/api/queries/clientQueries";
+import { usePackages } from "@/api/queries/packageQueries";
 import { formatCurrency } from "@/utils/currencyFormat";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
@@ -25,21 +24,9 @@ export const EmployeeAnalytics = () => {
     endDate: "",
   });
 
-  const { data: analyticsData, isLoading } = useQuery({
-    queryKey: ["analytics", "employee", employeeId, filters],
-    queryFn: () => analyticsApi.getEmployeeAnalytics(employeeId, filters),
-    enabled: !!employeeId,
-  });
-
-  const { data: clientsData } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 10000 }),
-  });
-
-  const { data: packagesData } = useQuery({
-    queryKey: ["packages"],
-    queryFn: () => packagesApi.getAll({ limit: 10000 }),
-  });
+  const { data: analyticsData, isLoading } = useEmployeeAnalytics(employeeId, filters);
+  const { data: clientsData } = useClients({ limit: 500 });
+  const { data: packagesData } = usePackages({ limit: 10000 });
 
   const clients = clientsData?.data?.clients || [];
   const packages = packagesData?.data?.packages || [];

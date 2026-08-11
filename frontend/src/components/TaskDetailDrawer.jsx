@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useAddTaskComment,
+  useDeleteTaskComment,
+  useAddTaskAttachment,
+  useDeleteTaskAttachment,
+} from '@/api/queries/taskQueries';
 import {
   Dialog,
   DialogContent,
@@ -8,7 +13,6 @@ import {
   DialogDescription,
 } from '@/ui/dialog';
 import { Button } from '@/ui/button';
-import { tasksApi } from '@/api/tasks';
 import { useToast } from '@/hooks/useToast';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -75,98 +79,66 @@ const ACTION_LABELS = {
 export const TaskDetailDrawer = ({ task, open, onOpenChange }) => {
   const [commentText, setCommentText] = useState('');
   const [activeTab, setActiveTab] = useState('comments');
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuthStore();
 
   const taskData = task || {};
 
-  const addCommentMutation = useMutation({
-    mutationFn: ({ taskId, content }) => tasksApi.addComment(taskId, content),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['task', taskData._id] });
-      setCommentText('');
-      toast({ title: 'Success', description: 'Comment added successfully', type: 'success' });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to add comment',
-        type: 'destructive',
-      });
-    },
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: ({ taskId, commentId }) => tasksApi.deleteComment(taskId, commentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['task', taskData._id] });
-      toast({ title: 'Success', description: 'Comment deleted successfully', type: 'success' });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to delete comment',
-        type: 'destructive',
-      });
-    },
-  });
-
-  const addAttachmentMutation = useMutation({
-    mutationFn: ({ taskId, file }) => tasksApi.addAttachment(taskId, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['task', taskData._id] });
-      toast({ title: 'Success', description: 'Attachment uploaded successfully', type: 'success' });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to upload attachment',
-        type: 'destructive',
-      });
-    },
-  });
-
-  const deleteAttachmentMutation = useMutation({
-    mutationFn: ({ taskId, attachmentId }) => tasksApi.deleteAttachment(taskId, attachmentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['task', taskData._id] });
-      toast({ title: 'Success', description: 'Attachment deleted successfully', type: 'success' });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to delete attachment',
-        type: 'destructive',
-      });
-    },
-  });
+  const addCommentMutation = useAddTaskComment();
+  const deleteCommentMutation = useDeleteTaskComment();
+  const addAttachmentMutation = useAddTaskAttachment();
+  const deleteAttachmentMutation = useDeleteTaskAttachment();
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
-    addCommentMutation.mutate({ taskId: taskData._id, content: commentText });
+    addCommentMutation.mutate(
+      { taskId: taskData._id, content: commentText },
+      {
+        onSuccess: () => {
+          setCommentText('');
+          toast({ title: 'Success', description: 'Comment added successfully', type: 'success' });
+        },
+      }
+    );
   };
 
   const handleDeleteComment = (commentId) => {
     if (confirm('Are you sure you want to delete this comment?')) {
-      deleteCommentMutation.mutate({ taskId: taskData._id, commentId });
+      deleteCommentMutation.mutate(
+        { taskId: taskData._id, commentId },
+        {
+          onSuccess: () => {
+            toast({ title: 'Success', description: 'Comment deleted successfully', type: 'success' });
+          },
+        }
+      );
     }
   };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      addAttachmentMutation.mutate({ taskId: taskData._id, file });
+      addAttachmentMutation.mutate(
+        { taskId: taskData._id, file },
+        {
+          onSuccess: () => {
+            toast({ title: 'Success', description: 'Attachment uploaded successfully', type: 'success' });
+          },
+        }
+      );
     }
   };
 
   const handleDeleteAttachment = (attachmentId) => {
     if (confirm('Are you sure you want to delete this attachment?')) {
-      deleteAttachmentMutation.mutate({ taskId: taskData._id, attachmentId });
+      deleteAttachmentMutation.mutate(
+        { taskId: taskData._id, attachmentId },
+        {
+          onSuccess: () => {
+            toast({ title: 'Success', description: 'Attachment deleted successfully', type: 'success' });
+          },
+        }
+      );
     }
   };
 

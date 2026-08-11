@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { calendarApi } from "@/api/calendar";
+import { useGenerateCalendarToken, useRevokeCalendarToken } from "@/api/queries";
 import { Card } from "@/ui/card";
 import { Button } from "@/ui/button";
 import { Calendar, Copy, RefreshCw } from "lucide-react";
@@ -8,26 +7,17 @@ import { Calendar, Copy, RefreshCw } from "lucide-react";
 export const CalendarSubscription = () => {
   const [feedUrl, setFeedUrl] = useState(null);
   const [copied, setCopied] = useState(false);
-  const queryClient = useQueryClient();
 
-  const generateMutation = useMutation({
-    mutationFn: () => calendarApi.generateToken(),
-    onSuccess: (res) => {
-      const url = res?.data?.feedUrl ?? res?.feedUrl;
-      if (url) setFeedUrl(url);
-    },
-  });
-
-  const revokeMutation = useMutation({
-    mutationFn: () => calendarApi.revokeToken(),
-    onSuccess: () => {
-      setFeedUrl(null);
-      queryClient.invalidateQueries({ queryKey: ["calendar"] });
-    },
-  });
+  const generateMutation = useGenerateCalendarToken();
+  const revokeMutation = useRevokeCalendarToken();
 
   const handleGetUrl = () => {
-    generateMutation.mutate();
+    generateMutation.mutate(undefined, {
+      onSuccess: (res) => {
+        const url = res?.data?.feedUrl ?? res?.feedUrl;
+        if (url) setFeedUrl(url);
+      },
+    });
   };
 
   const handleCopy = async () => {
@@ -43,7 +33,15 @@ export const CalendarSubscription = () => {
 
   const handleRegenerate = () => {
     revokeMutation.mutate(undefined, {
-      onSettled: () => generateMutation.mutate(),
+      onSettled: () => {
+        setFeedUrl(null);
+        generateMutation.mutate(undefined, {
+          onSuccess: (res) => {
+            const url = res?.data?.feedUrl ?? res?.feedUrl;
+            if (url) setFeedUrl(url);
+          },
+        });
+      },
     });
   };
 

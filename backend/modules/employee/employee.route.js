@@ -2,6 +2,8 @@ import express from 'express';
 import { validate } from '../../middlewares/validator.js';
 import { authenticate, authorize } from '../../middlewares/auth.js';
 import { uploadSingle } from '../../middlewares/upload.js';
+import { cacheRoute } from '../../middlewares/cache.js';
+import { CACHE_TAGS } from '../../helpers/cacheTags.js';
 import * as employeeController from './employee.controller.js';
 import { createEmployeeSchema, updateEmployeeSchema } from '../../validators/schemas/employee.schema.js';
 
@@ -11,8 +13,8 @@ const router = express.Router();
 router.use(authenticate);
 
 // GET routes - allow all authenticated users (needed for task assignment)
-router.get('/', employeeController.getEmployees);
-router.get('/:id', employeeController.getEmployeeById);
+router.get('/', cacheRoute([CACHE_TAGS.EMPLOYEES], { ttl: 120 }), employeeController.getEmployees);
+router.get('/:id', cacheRoute([CACHE_TAGS.EMPLOYEES], { ttl: 120 }), employeeController.getEmployeeById);
 
 // Write operations - admin only
 router.use(authorize('ADMIN'));

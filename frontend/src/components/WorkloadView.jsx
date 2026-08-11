@@ -1,5 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { tasksApi } from "@/api/tasks";
+import { useTaskWorkload } from "@/api/queries";
 import { Avatar } from "@/components/Avatar";
 import { LoaderWithText } from "@/components/Loader";
 import { AlertTriangle, CheckCircle2, Clock, ListTodo } from "lucide-react";
@@ -21,10 +20,7 @@ const STATUS_LABELS = {
 const OVERLOAD_THRESHOLD = 10;
 
 export const WorkloadView = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ["tasks", "workload"],
-    queryFn: () => tasksApi.getWorkload(),
-  });
+  const { data, isLoading } = useTaskWorkload();
 
   const workload = data?.data?.workload || [];
 

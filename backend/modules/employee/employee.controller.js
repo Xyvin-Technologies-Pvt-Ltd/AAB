@@ -1,9 +1,15 @@
 import { successResponse } from '../../helpers/response.js';
 import * as employeeService from './employee.service.js';
+import { parsePage, parseLimit } from '../../helpers/pagination.js';
+import { invalidateTags } from '../../helpers/cache.js';
+import { CACHE_TAGS } from '../../helpers/cacheTags.js';
+
+const EMPLOYEE_TAGS = [CACHE_TAGS.EMPLOYEES, CACHE_TAGS.ANALYTICS];
 
 export const createEmployee = async (req, res, next) => {
   try {
     const employee = await employeeService.createEmployee(req.body);
+    await invalidateTags(EMPLOYEE_TAGS);
     return successResponse(res, 201, 'Employee created successfully', employee);
   } catch (error) {
     next(error);
@@ -15,8 +21,9 @@ export const getEmployees = async (req, res, next) => {
     const filters = {
       search: req.query.search,
       isActive: req.query.isActive,
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 10,
+      page: parsePage(req.query.page),
+      // Employee documents are lightweight; several pickers fetch the full list.
+      limit: parseLimit(req.query.limit, 10, 2000),
     };
 
     const result = await employeeService.getEmployees(filters);
@@ -38,6 +45,7 @@ export const getEmployeeById = async (req, res, next) => {
 export const updateEmployee = async (req, res, next) => {
   try {
     const employee = await employeeService.updateEmployee(req.params.id, req.body);
+    await invalidateTags(EMPLOYEE_TAGS);
     return successResponse(res, 200, 'Employee updated successfully', employee);
   } catch (error) {
     next(error);
@@ -47,6 +55,7 @@ export const updateEmployee = async (req, res, next) => {
 export const deleteEmployee = async (req, res, next) => {
   try {
     await employeeService.deleteEmployee(req.params.id);
+    await invalidateTags(EMPLOYEE_TAGS);
     return successResponse(res, 200, 'Employee deleted successfully');
   } catch (error) {
     next(error);
@@ -70,6 +79,7 @@ export const uploadDocument = async (req, res, next) => {
     };
 
     const employee = await employeeService.addDocument(req.params.id, documentData);
+    await invalidateTags([CACHE_TAGS.EMPLOYEES]);
     return successResponse(res, 200, 'Document uploaded successfully', employee);
   } catch (error) {
     next(error);
@@ -87,6 +97,7 @@ export const deleteDocument = async (req, res, next) => {
     const { deleteFile } = await import('../../helpers/s3Storage.js');
     await deleteFile(document.key);
 
+    await invalidateTags([CACHE_TAGS.EMPLOYEES]);
     return successResponse(res, 200, 'Document deleted successfully', employee);
   } catch (error) {
     next(error);
@@ -113,6 +124,7 @@ export const uploadProfilePicture = async (req, res, next) => {
     };
 
     const employee = await employeeService.updateProfilePicture(req.params.id, profilePictureData);
+    await invalidateTags([CACHE_TAGS.EMPLOYEES]);
     return successResponse(res, 200, 'Profile picture uploaded successfully', employee);
   } catch (error) {
     next(error);
@@ -129,6 +141,7 @@ export const deleteProfilePicture = async (req, res, next) => {
       await deleteFile(oldKey);
     }
 
+    await invalidateTags([CACHE_TAGS.EMPLOYEES]);
     return successResponse(res, 200, 'Profile picture deleted successfully', employee);
   } catch (error) {
     next(error);
@@ -148,4 +161,3 @@ export const sendEmployeeCredentials = async (req, res, next) => {
     next(error);
   }
 };
-

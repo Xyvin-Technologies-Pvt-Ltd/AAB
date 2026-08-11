@@ -86,6 +86,8 @@ timeEntrySchema.index({ clientId: 1, date: -1 });
 timeEntrySchema.index({ employeeId: 1, isRunning: 1 });
 timeEntrySchema.index({ employeeId: 1, isPaused: 1 });
 timeEntrySchema.index({ invoiceId: 1 });
+timeEntrySchema.index({ taskId: 1 });
+timeEntrySchema.index({ date: -1 });
 
 const TimeEntry = mongoose.model('TimeEntry', timeEntrySchema);
 

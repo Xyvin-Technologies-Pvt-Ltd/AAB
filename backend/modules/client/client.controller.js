@@ -2,10 +2,14 @@ import { successResponse } from '../../helpers/response.js';
 import * as clientService from './client.service.js';
 import logger from '../../helpers/logger.js';
 import { startOfDay, endOfDay } from '../../helpers/dateRange.js';
+import { parsePage, parseLimit } from '../../helpers/pagination.js';
+import { invalidateTags } from '../../helpers/cache.js';
+import { CACHE_TAGS } from '../../helpers/cacheTags.js';
 
 export const createClient = async (req, res, next) => {
   try {
     const client = await clientService.createClient(req.body);
+    await invalidateTags([CACHE_TAGS.CLIENTS, CACHE_TAGS.ANALYTICS]);
     return successResponse(res, 201, 'Client created successfully', client);
   } catch (error) {
     next(error);
@@ -29,8 +33,12 @@ export const getClients = async (req, res, next) => {
       status: req.query.status,
       vatMonths: vatMonths.length > 0 ? vatMonths : undefined,
       packageId: req.query.packageId,
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 10,
+      page: parsePage(req.query.page),
+      // Clients.jsx intentionally fetches the whole matching set (up to 500) to
+      // paginate client-side. The projection fix above (documents.extractedData
+      // excluded) makes that payload cheap now, so this endpoint gets a higher
+      // ceiling than the generic 100-row cap used elsewhere.
+      limit: parseLimit(req.query.limit, 10, 500),
     };
 
     const result = await clientService.getClients(filters);
@@ -52,6 +60,7 @@ export const getClientById = async (req, res, next) => {
 export const updateClient = async (req, res, next) => {
   try {
     const client = await clientService.updateClient(req.params.id, req.body);
+    await invalidateTags([CACHE_TAGS.CLIENTS, CACHE_TAGS.ANALYTICS]);
     return successResponse(res, 200, 'Client updated successfully', client);
   } catch (error) {
     next(error);
@@ -61,6 +70,8 @@ export const updateClient = async (req, res, next) => {
 export const deleteClient = async (req, res, next) => {
   try {
     await clientService.deleteClient(req.params.id);
+    // deleteClient also cascades to deleting the client's packages.
+    await invalidateTags([CACHE_TAGS.CLIENTS, CACHE_TAGS.PACKAGES, CACHE_TAGS.ANALYTICS]);
     return successResponse(res, 200, 'Client deleted successfully');
   } catch (error) {
     next(error);
@@ -84,6 +95,7 @@ export const uploadDocument = async (req, res, next) => {
     };
 
     const client = await clientService.addDocument(req.params.id, documentData);
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
     return successResponse(res, 200, 'Document uploaded successfully', client);
   } catch (error) {
     next(error);
@@ -100,6 +112,7 @@ export const updateDocumentAssignment = async (req, res, next) => {
       documentId,
       personId
     );
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     logger.info('Document assignment updated', {
       clientId: req.params.id,
@@ -121,6 +134,7 @@ export const deleteDocument = async (req, res, next) => {
       req.params.id,
       req.params.documentId
     );
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     logger.info('Document deleted', {
       clientId: req.params.id,
@@ -405,6 +419,7 @@ export const uploadDocumentByType = async (req, res, next) => {
       // Automatically process the document
       try {
         const processedClient = await processDocumentHelper(req.params.id, uploadedDocument._id);
+        await invalidateTags([CACHE_TAGS.CLIENTS]);
         return successResponse(res, 200, 'Document uploaded and processed successfully', processedClient);
       } catch (processingError) {
         // Document uploaded but processing failed - still return success for upload
@@ -413,10 +428,12 @@ export const uploadDocumentByType = async (req, res, next) => {
           documentId: uploadedDocument._id,
           error: processingError.message,
         });
+        await invalidateTags([CACHE_TAGS.CLIENTS]);
         return successResponse(res, 200, 'Document uploaded successfully, but processing failed', client);
       }
     }
 
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
     return successResponse(res, 200, 'Document uploaded successfully', client);
   } catch (error) {
     next(error);
@@ -427,6 +444,7 @@ export const processDocument = async (req, res, next) => {
   try {
     const { documentId } = req.params;
     const updatedClient = await processDocumentHelper(req.params.id, documentId);
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     return successResponse(res, 200, 'Document processed successfully', updatedClient);
   } catch (error) {
@@ -449,6 +467,8 @@ export const verifyDocument = async (req, res, next) => {
       req.user._id
     );
 
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
+
     logger.info('Document verified', {
       clientId: req.params.id,
       documentId,
@@ -464,6 +484,7 @@ export const verifyDocument = async (req, res, next) => {
 export const updateBusinessInfo = async (req, res, next) => {
   try {
     const client = await clientService.updateBusinessInfo(req.params.id, req.body);
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     logger.info('Business info updated', {
       clientId: req.params.id,
@@ -479,6 +500,7 @@ export const updateBusinessInfo = async (req, res, next) => {
 export const updateEmaraTaxCredentials = async (req, res, next) => {
   try {
     const client = await clientService.updateEmaraTaxCredentials(req.params.id, req.body);
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     logger.info('EmaraTax credentials updated', {
       clientId: req.params.id,
@@ -498,6 +520,7 @@ export const addPerson = async (req, res, next) => {
     const personData = { ...req.body, role };
 
     const client = await clientService.addPerson(req.params.id, personData);
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     logger.info('Person added', {
       clientId: req.params.id,
@@ -518,6 +541,7 @@ export const updatePerson = async (req, res, next) => {
     const role = req.path.includes('/partners') ? 'PARTNER' : 'MANAGER';
 
     const client = await clientService.updatePerson(req.params.id, personId, req.body, role);
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     logger.info('Person updated', {
       clientId: req.params.id,
@@ -539,6 +563,7 @@ export const removePerson = async (req, res, next) => {
     const role = req.path.includes('/partners') ? 'PARTNER' : 'MANAGER';
 
     const client = await clientService.removePerson(req.params.id, personId, role);
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     logger.info('Person removed', {
       clientId: req.params.id,
@@ -580,6 +605,7 @@ export const getAllAlerts = async (req, res, next) => {
 export const syncDocumentDataToPersons = async (req, res, next) => {
   try {
     const { syncedCount } = await clientService.syncDocumentDataToPersons(req.params.id);
+    await invalidateTags([CACHE_TAGS.CLIENTS]);
 
     logger.info('Document data synced to persons', {
       clientId: req.params.id,
@@ -643,6 +669,8 @@ export const bulkUploadClients = async (req, res, next) => {
 
     // Process CSV file
     const results = await clientService.bulkCreateClientsFromCSV(req.file.buffer);
+    // Rows can also create a Package per client (see client.service.js).
+    await invalidateTags([CACHE_TAGS.CLIENTS, CACHE_TAGS.PACKAGES, CACHE_TAGS.ANALYTICS]);
 
     logger.info('Bulk CSV upload completed', {
       success: results.success,

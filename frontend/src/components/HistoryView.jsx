@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { tasksApi, adminApi } from "@/api/tasks";
-import { useToast } from "@/hooks/useToast";
+import { useArchivedTasks, useUnarchiveTask, useTriggerArchive } from "@/api/queries";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/ui/button";
 import { Avatar } from "@/components/Avatar";
@@ -10,39 +8,14 @@ import { RotateCcw, Archive, Search, Building2, User, Calendar, Zap, Loader2 } f
 import { LoaderWithText } from "@/components/Loader";
 
 export const HistoryView = ({ clients = [], employees = [] }) => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const [searchText, setSearchText] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
 
-  const { data: archivedData, isLoading } = useQuery({
-    queryKey: ["tasks", "archived"],
-    queryFn: () => tasksApi.getArchived(),
-  });
-
-  const unarchiveMutation = useMutation({
-    mutationFn: tasksApi.unarchive,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast({ title: "Restored", description: "Task moved back to Done", type: "success" });
-    },
-    onError: (error) => {
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to restore", type: "destructive" });
-    },
-  });
-
-  const triggerArchiveMutation = useMutation({
-    mutationFn: adminApi.triggerArchive,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast({ title: "Archive complete", description: data?.message || "Auto-archive ran successfully", type: "success" });
-    },
-    onError: (error) => {
-      toast({ title: "Failed", description: error.response?.data?.message || "Could not run archive", type: "destructive" });
-    },
-  });
+  const { data: archivedData, isLoading } = useArchivedTasks();
+  const unarchiveMutation = useUnarchiveTask();
+  const triggerArchiveMutation = useTriggerArchive();
 
   const archivedTasks = archivedData?.data?.tasks || [];
 

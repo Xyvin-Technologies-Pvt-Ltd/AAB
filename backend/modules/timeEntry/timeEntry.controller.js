@@ -1,5 +1,13 @@
 import { successResponse } from '../../helpers/response.js';
 import * as timeEntryService from './timeEntry.service.js';
+import { parsePage, parseLimit } from '../../helpers/pagination.js';
+import { invalidateTags } from '../../helpers/cache.js';
+import { CACHE_TAGS } from '../../helpers/cacheTags.js';
+
+const TIME_ENTRY_TAGS = [CACHE_TAGS.TIME_ENTRIES, CACHE_TAGS.ANALYTICS];
+// startTimerForTask flips a TODO task to IN_PROGRESS; stopTimer can create a
+// task (misc timers) or mark one DONE - both need the tasks tag invalidated too.
+const TIME_ENTRY_AND_TASK_TAGS = [...TIME_ENTRY_TAGS, CACHE_TAGS.TASKS];
 
 export const createTimeEntry = async (req, res, next) => {
   try {
@@ -8,6 +16,7 @@ export const createTimeEntry = async (req, res, next) => {
       req.user.id,
       req.user.role
     );
+    await invalidateTags(TIME_ENTRY_TAGS);
     return successResponse(res, 201, 'Time entry created successfully', timeEntry);
   } catch (error) {
     next(error);
@@ -24,8 +33,9 @@ export const getTimeEntries = async (req, res, next) => {
       startDate: req.query.startDate,
       endDate: req.query.endDate,
       isMiscellaneous: req.query.isMiscellaneous !== undefined ? req.query.isMiscellaneous === 'true' : undefined,
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 10,
+      page: parsePage(req.query.page),
+      // TimeEntries.jsx requests up to 500 rows for its weekly view.
+      limit: parseLimit(req.query.limit, 10, 1000),
     };
 
     // Apply RBAC filtering
@@ -68,6 +78,7 @@ export const updateTimeEntry = async (req, res, next) => {
       req.user.id,
       req.user.role
     );
+    await invalidateTags(TIME_ENTRY_TAGS);
     return successResponse(res, 200, 'Time entry updated successfully', timeEntry);
   } catch (error) {
     next(error);
@@ -77,6 +88,7 @@ export const updateTimeEntry = async (req, res, next) => {
 export const deleteTimeEntry = async (req, res, next) => {
   try {
     await timeEntryService.deleteTimeEntry(req.params.id, req.user.id, req.user.role);
+    await invalidateTags(TIME_ENTRY_TAGS);
     return successResponse(res, 200, 'Time entry deleted successfully');
   } catch (error) {
     next(error);
@@ -90,6 +102,7 @@ export const startTimer = async (req, res, next) => {
       req.user._id,
       req.user.role
     );
+    await invalidateTags(TIME_ENTRY_TAGS);
     return successResponse(res, 201, 'Timer started successfully', timer);
   } catch (error) {
     next(error);
@@ -105,6 +118,7 @@ export const stopTimer = async (req, res, next) => {
       req.user.role,
       markTaskComplete
     );
+    await invalidateTags(TIME_ENTRY_AND_TASK_TAGS);
     return successResponse(res, 200, 'Timer stopped successfully', timer);
   } catch (error) {
     next(error);
@@ -140,6 +154,7 @@ export const pauseTimer = async (req, res, next) => {
       req.user._id,
       req.user.role
     );
+    await invalidateTags([CACHE_TAGS.TIME_ENTRIES]);
     return successResponse(res, 200, 'Timer paused successfully', timer);
   } catch (error) {
     next(error);
@@ -153,6 +168,7 @@ export const resumeTimer = async (req, res, next) => {
       req.user._id,
       req.user.role
     );
+    await invalidateTags([CACHE_TAGS.TIME_ENTRIES]);
     return successResponse(res, 200, 'Timer resumed successfully', timer);
   } catch (error) {
     next(error);
@@ -168,9 +184,9 @@ export const startTimerForTask = async (req, res, next) => {
       req.user._id,
       req.user.role
     );
+    await invalidateTags(TIME_ENTRY_AND_TASK_TAGS);
     return successResponse(res, 201, 'Timer started for task successfully', timer);
   } catch (error) {
     next(error);
   }
 };
-

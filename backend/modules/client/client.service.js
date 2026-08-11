@@ -67,7 +67,10 @@ export const getClients = async (filters = {}) => {
     }
   }
 
-  let allClients = await Client.find(query).sort({ createdAt: -1 }).lean();
+  let allClients = await Client.find(query)
+    .select('-documents.extractedData')
+    .sort({ createdAt: -1 })
+    .lean();
 
   // Filter by VAT months if provided
   if (vatMonths && Array.isArray(vatMonths) && vatMonths.length > 0) {

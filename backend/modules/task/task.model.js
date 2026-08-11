@@ -199,6 +199,8 @@ taskSchema.index({ status: 1 });
 taskSchema.index({ clientId: 1, status: 1 });
 taskSchema.index({ assignedTo: 1 });
 taskSchema.index({ dueDate: 1 });
+taskSchema.index({ status: 1, dueDate: 1 });
+taskSchema.index({ order: 1, createdAt: -1 });
 
 const Task = mongoose.model('Task', taskSchema);
 

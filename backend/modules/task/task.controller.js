@@ -1,9 +1,15 @@
 import { successResponse } from '../../helpers/response.js';
 import * as taskService from './task.service.js';
+import { parsePage, parseLimit } from '../../helpers/pagination.js';
+import { invalidateTags } from '../../helpers/cache.js';
+import { CACHE_TAGS } from '../../helpers/cacheTags.js';
+
+const TASK_TAGS = [CACHE_TAGS.TASKS, CACHE_TAGS.ANALYTICS];
 
 export const createTask = async (req, res, next) => {
   try {
     const task = await taskService.createTask(req.body, req.user._id);
+    await invalidateTags(TASK_TAGS);
     return successResponse(res, 201, 'Task created successfully', task);
   } catch (error) {
     next(error);
@@ -21,8 +27,10 @@ export const getTasks = async (req, res, next) => {
       search: req.query.search,
       dateFrom: req.query.dateFrom,
       dateTo: req.query.dateTo,
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 10,
+      page: parsePage(req.query.page),
+      // Tasks.jsx and the TimeEntries task-picker legitimately fetch up to 1000
+      // tasks in one page (no server-side pagination on those views yet).
+      limit: parseLimit(req.query.limit, 10, 1000),
     };
 
     const result = await taskService.getTasks(filters);
@@ -44,6 +52,7 @@ export const getTaskById = async (req, res, next) => {
 export const updateTask = async (req, res, next) => {
   try {
     const task = await taskService.updateTask(req.params.id, req.body, req.user._id);
+    await invalidateTags(TASK_TAGS);
     return successResponse(res, 200, 'Task updated successfully', task);
   } catch (error) {
     next(error);
@@ -53,6 +62,7 @@ export const updateTask = async (req, res, next) => {
 export const archiveTask = async (req, res, next) => {
   try {
     const task = await taskService.archiveTask(req.params.id, req.user._id);
+    await invalidateTags(TASK_TAGS);
     return successResponse(res, 200, 'Task archived successfully', task);
   } catch (error) {
     next(error);
@@ -62,6 +72,7 @@ export const archiveTask = async (req, res, next) => {
 export const unarchiveTask = async (req, res, next) => {
   try {
     const task = await taskService.unarchiveTask(req.params.id, req.user._id);
+    await invalidateTags(TASK_TAGS);
     return successResponse(res, 200, 'Task unarchived successfully', task);
   } catch (error) {
     next(error);
@@ -81,6 +92,7 @@ export const getWorkload = async (req, res, next) => {
 export const deleteTask = async (req, res, next) => {
   try {
     await taskService.deleteTask(req.params.id);
+    await invalidateTags(TASK_TAGS);
     return successResponse(res, 200, 'Task deleted successfully');
   } catch (error) {
     next(error);
@@ -91,6 +103,7 @@ export const updateTaskOrder = async (req, res, next) => {
   try {
     const { order } = req.body;
     const task = await taskService.updateTaskOrder(req.params.id, order);
+    await invalidateTags([CACHE_TAGS.TASKS]);
     return successResponse(res, 200, 'Task order updated successfully', task);
   } catch (error) {
     next(error);
@@ -126,6 +139,7 @@ export const addComment = async (req, res, next) => {
     }
 
     const task = await taskService.addComment(req.params.id, { content }, req.user._id);
+    await invalidateTags([CACHE_TAGS.TASKS]);
     return successResponse(res, 200, 'Comment added successfully', task);
   } catch (error) {
     next(error);
@@ -139,6 +153,7 @@ export const deleteComment = async (req, res, next) => {
       req.params.commentId,
       req.user._id
     );
+    await invalidateTags([CACHE_TAGS.TASKS]);
     return successResponse(res, 200, 'Comment deleted successfully', task);
   } catch (error) {
     next(error);
@@ -158,6 +173,7 @@ export const addAttachment = async (req, res, next) => {
     const fileData = await uploadFile(req.file, 'tasks');
 
     const task = await taskService.addAttachment(req.params.id, fileData, req.user._id);
+    await invalidateTags([CACHE_TAGS.TASKS]);
     return successResponse(res, 200, 'Attachment uploaded successfully', task);
   } catch (error) {
     next(error);
@@ -171,9 +187,9 @@ export const deleteAttachment = async (req, res, next) => {
       req.params.attachmentId,
       req.user._id
     );
+    await invalidateTags([CACHE_TAGS.TASKS]);
     return successResponse(res, 200, 'Attachment deleted successfully', task);
   } catch (error) {
     next(error);
   }
 };
-

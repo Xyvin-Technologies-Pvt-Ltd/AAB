@@ -1,7 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Loader2, Bot, User, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { ToolCallCard } from './ToolCallCard';
 
 const MarkdownComponents = {
@@ -67,7 +67,7 @@ const MarkdownComponents = {
   hr: () => <hr className="my-2 border-border/50" />,
 };
 
-export function ChatMessage({ message }) {
+function ChatMessageBase({ message }) {
   const { role, content, toolCalls, isStreaming, isError, isStopped } = message;
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
@@ -162,3 +162,9 @@ export function ChatMessage({ message }) {
     </div>
   );
 }
+
+// appendDelta (chatStore.js) only creates a new object reference for the
+// message currently streaming - every other message keeps its prior
+// reference - so memo here skips a markdown re-parse for the rest of the
+// conversation on every streamed token, instead of re-parsing all of it.
+export const ChatMessage = memo(ChatMessageBase);

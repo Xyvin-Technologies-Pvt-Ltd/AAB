@@ -83,7 +83,7 @@ employeeSchema.virtual('hourlyCost').get(function () {
   return this.monthlyCost / this.monthlyWorkingHours;
 });
 
-employeeSchema.index({ email: 1 });
+// email already gets an index via `unique: true, sparse: true` above.
 employeeSchema.index({ isActive: 1 });
 
 employeeSchema.set('toJSON', { virtuals: true });

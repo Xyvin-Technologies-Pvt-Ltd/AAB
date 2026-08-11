@@ -1,12 +1,15 @@
 import { successResponse } from '../../helpers/response.js';
 import * as notificationService from './notification.service.js';
+import { parsePage, parseLimit } from '../../helpers/pagination.js';
+import { invalidateTags } from '../../helpers/cache.js';
+import { CACHE_TAGS } from '../../helpers/cacheTags.js';
 
 export const getNotifications = async (req, res, next) => {
   try {
     const { page, limit } = req.query;
     const result = await notificationService.getNotifications(req.user._id, {
-      page: parseInt(page) || 1,
-      limit: parseInt(limit) || 20,
+      page: parsePage(page),
+      limit: parseLimit(limit, 20),
     });
     return successResponse(res, 200, 'Notifications retrieved successfully', result);
   } catch (error) {
@@ -26,6 +29,7 @@ export const getUnreadCount = async (req, res, next) => {
 export const markAsRead = async (req, res, next) => {
   try {
     const notification = await notificationService.markAsRead(req.params.id, req.user._id);
+    await invalidateTags([CACHE_TAGS.NOTIFICATIONS]);
     return successResponse(res, 200, 'Notification marked as read', notification);
   } catch (error) {
     next(error);
@@ -35,6 +39,7 @@ export const markAsRead = async (req, res, next) => {
 export const markAllAsRead = async (req, res, next) => {
   try {
     await notificationService.markAllAsRead(req.user._id);
+    await invalidateTags([CACHE_TAGS.NOTIFICATIONS]);
     return successResponse(res, 200, 'All notifications marked as read');
   } catch (error) {
     next(error);

@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
-import { clientsApi } from "@/api/clients";
-import { packagesApi } from "@/api/packages";
-import { servicesApi } from "@/api/services";
-import { activitiesApi } from "@/api/activities";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/ui/tabs";
@@ -32,7 +27,10 @@ import { PartnersManagers } from "@/components/PartnersManagers";
 import { EmaraTaxCredentials } from "@/components/EmaraTaxCredentials";
 import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 import { Badge } from "@/ui/badge";
-import { useBusinessInfoUpdate } from "@/api/queries/clientQueries";
+import { useBusinessInfoUpdate, useClientDetails, useUpdateClient } from "@/api/queries/clientQueries";
+import { usePackages, usePackagesByClient, useCreatePackage, useUpdatePackage, useDeletePackage } from "@/api/queries/packageQueries";
+import { useServices } from "@/api/queries/serviceQueries";
+import { useActivities } from "@/api/queries/activityQueries";
 import { LoaderWithText } from "@/components/Loader";
 import { Pagination } from "@/components/Pagination";
 import { SearchInput } from "@/components/SearchInput";
@@ -56,7 +54,6 @@ import { SelectSearch } from "@/ui/select-search";
 export const ClientDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showPackageForm, setShowPackageForm] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
@@ -86,34 +83,16 @@ export const ClientDetails = () => {
     isFetching: clientFetching,
     isError: clientError,
     isPending,
-  } = useQuery({
-    queryKey: ["client", id],
-    queryFn: () => clientsApi.getById(id),
-    enabled: !!id,
-    retry: 1,
-    retryDelay: 1000,
-  });
+  } = useClientDetails(id, {}, { retry: 1, retryDelay: 1000 });
 
-  const { data: packagesData, isLoading: packagesLoading } = useQuery({
-    queryKey: ["packages", id],
-    queryFn: () => packagesApi.getAll({ clientId: id, limit: 100 }),
-  });
+  const { data: packagesData, isLoading: packagesLoading } = usePackagesByClient(
+    id,
+    { limit: 100 }
+  );
 
-  const { data: servicesData } = useQuery({
-    queryKey: ["services"],
-    queryFn: () => servicesApi.getAll({ limit: 10000 }),
-  });
-
-  const { data: activitiesData } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => activitiesApi.getAll({ limit: 10000 }),
-  });
-
-  // Fetch all packages for template dropdown
-  const { data: allPackagesData } = useQuery({
-    queryKey: ["packages", "all"],
-    queryFn: () => packagesApi.getAll({ limit: 1000 }),
-  });
+  const { data: servicesData } = useServices({ limit: 10000 });
+  const { data: activitiesData } = useActivities({ limit: 10000 });
+  const { data: allPackagesData } = usePackages({ limit: 1000 });
 
   const allPackages = allPackagesData?.data?.packages || [];
 
@@ -250,28 +229,7 @@ export const ClientDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client?._id, isEditingContact]);
 
-  const updateClientMutation = useMutation({
-    mutationFn: (data) => clientsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client", id] });
-      setIsEditingContact(false);
-      toast({
-        title: "Success",
-        description: "Contact information updated successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message ||
-          "Failed to update contact information",
-        type: "error",
-      });
-    },
-  });
-
+  const updateClientMutation = useUpdateClient();
   const businessInfoUpdateMutation = useBusinessInfoUpdate();
 
   const handleExtractedDataUpdate = async (document, extractedData) => {
@@ -307,7 +265,10 @@ export const ClientDetails = () => {
   };
 
   const handleContactSave = () => {
-    updateClientMutation.mutate(contactFormData);
+    updateClientMutation.mutate(
+      { id, data: contactFormData },
+      { onSuccess: () => setIsEditingContact(false) }
+    );
   };
 
   const handleContactCancel = () => {
@@ -545,46 +506,9 @@ export const ClientDetails = () => {
     ? calculateNextCorporateTaxSubmissionDate(client)
     : null;
 
-  const createPackageMutation = useMutation({
-    mutationFn: packagesApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages", id] });
-      setShowPackageForm(false);
-      resetPackageForm();
-      toast({
-        title: "Success",
-        description: "Package created successfully",
-        type: "success",
-      });
-    },
-  });
-
-  const updatePackageMutation = useMutation({
-    mutationFn: ({ id, data }) => packagesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages", id] });
-      setShowPackageForm(false);
-      setEditingPackage(null);
-      resetPackageForm();
-      toast({
-        title: "Success",
-        description: "Package updated successfully",
-        type: "success",
-      });
-    },
-  });
-
-  const deletePackageMutation = useMutation({
-    mutationFn: packagesApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages", id] });
-      toast({
-        title: "Success",
-        description: "Package deleted successfully",
-        type: "success",
-      });
-    },
-  });
+  const createPackageMutation = useCreatePackage();
+  const updatePackageMutation = useUpdatePackage();
+  const deletePackageMutation = useDeletePackage();
 
   const resetPackageForm = () => {
     setEditingPackage(null);
@@ -684,9 +608,23 @@ export const ClientDetails = () => {
     };
 
     if (editingPackage) {
-      updatePackageMutation.mutate({ id: editingPackage._id, data });
+      updatePackageMutation.mutate(
+        { id: editingPackage._id, data },
+        {
+          onSuccess: () => {
+            setShowPackageForm(false);
+            setEditingPackage(null);
+            resetPackageForm();
+          },
+        }
+      );
     } else {
-      createPackageMutation.mutate(data);
+      createPackageMutation.mutate(data, {
+        onSuccess: () => {
+          setShowPackageForm(false);
+          resetPackageForm();
+        },
+      });
     }
   };
 
@@ -927,10 +865,7 @@ export const ClientDetails = () => {
               </Card>
 
               {/* EmaraTax Credentials */}
-              <EmaraTaxCredentials
-                clientId={id}
-                credentials={client.emaraTaxAccount}
-              />
+              <EmaraTaxCredentials clientId={id} />
             </div>
 
             {/* Next Tax Submissions */}

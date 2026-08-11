@@ -2,30 +2,23 @@ import { useState, useEffect } from "react";
 import { Edit2, Save, X } from "lucide-react";
 import { Button } from "@/ui/button";
 import { Card } from "@/ui/card";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { clientsApi } from "@/api/clients";
-import { useToast } from "@/hooks/useToast";
+import {
+  useClientDetails,
+  useUpdateEmaraTaxCredentials,
+} from "@/api/queries/clientQueries";
 
-export const EmaraTaxCredentials = ({ clientId, credentials }) => {
+export const EmaraTaxCredentials = ({ clientId }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
 
-  // Fetch credentials using React Query for proper caching and refetching
-  const { data: credentialsData, isLoading: isLoadingCredentials } = useQuery({
-    queryKey: ["client", clientId, "emaraTaxCredentials"],
-    queryFn: async () => {
-      const response = await clientsApi.getById(clientId);
-      return response?.data?.emaraTaxAccount || null;
-    },
-    enabled: !!clientId,
-  });
+  const { data: clientData, isLoading: isLoadingCredentials } =
+    useClientDetails(clientId);
+  const credentialsData = clientData?.data?.emaraTaxAccount || null;
+  const updateMutation = useUpdateEmaraTaxCredentials();
 
-  // Update formData when credentials are loaded (only when not editing)
   useEffect(() => {
     if (credentialsData && !isEditing) {
       setFormData({
@@ -35,38 +28,20 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
     }
   }, [credentialsData, isEditing]);
 
-  const updateMutation = useMutation({
-    mutationFn: (data) => clientsApi.updateEmaraTaxCredentials(clientId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["client", clientId, "emaraTaxCredentials"],
-      });
-      queryClient.invalidateQueries({ queryKey: ["client", clientId] });
-      setIsEditing(false);
-      setFormData({ username: formData.username, password: "" });
-      toast({
-        title: "Success",
-        description: "EmaraTax credentials updated successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to update credentials",
-        type: "destructive",
-      });
-    },
-  });
-
   const handleSave = () => {
     const updateData = {
       username: formData.username || null,
-      // Only send password if it's provided (empty string means don't update password)
       password: formData.password ? formData.password : undefined,
     };
-    updateMutation.mutate(updateData);
+    updateMutation.mutate(
+      { clientId, data: updateData },
+      {
+        onSuccess: () => {
+          setIsEditing(false);
+          setFormData({ username: formData.username, password: "" });
+        },
+      }
+    );
   };
 
   const handleCancel = () => {
@@ -97,7 +72,6 @@ export const EmaraTaxCredentials = ({ clientId, credentials }) => {
     if (isLoadingCredentials) {
       return "Loading...";
     }
-    // Show password if it exists, otherwise show '-'
     if (
       credentialsData?.password !== undefined &&
       credentialsData?.password !== null

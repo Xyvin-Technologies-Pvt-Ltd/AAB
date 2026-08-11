@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
-import { analyticsApi } from "@/api/analytics";
-import { employeesApi } from "@/api/employees";
+import { usePackageAnalytics } from "@/api/queries/analyticsQueries";
+import { useEmployees } from "@/api/queries/employeeQueries";
 import { formatCurrency } from "@/utils/currencyFormat";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
@@ -24,16 +23,8 @@ export const PackageAnalytics = () => {
     endDate: "",
   });
 
-  const { data: analyticsData, isLoading } = useQuery({
-    queryKey: ["analytics", "package", packageId, filters],
-    queryFn: () => analyticsApi.getPackageAnalytics(packageId, filters),
-    enabled: !!packageId,
-  });
-
-  const { data: employeesData } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => employeesApi.getAll({ limit: 10000 }),
-  });
+  const { data: analyticsData, isLoading } = usePackageAnalytics(packageId, filters);
+  const { data: employeesData } = useEmployees({ limit: 10000 });
 
   const employees = employeesData?.data?.employees || [];
   const analytics = analyticsData?.data || {};

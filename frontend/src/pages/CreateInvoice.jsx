@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/layout/AppLayout";
-import { invoicesApi } from "@/api/invoices";
-import { clientsApi } from "@/api/clients";
+import { useClients } from "@/api/queries/clientQueries";
+import { useUnbilledTimeEntries, useCreateInvoice } from "@/api/queries/invoiceQueries";
 import { Button } from "@/ui/button";
 import { Card } from "@/ui/card";
 import { Plus, Trash2, ArrowLeft } from "lucide-react";
@@ -17,7 +16,6 @@ const defaultLineItem = () => ({ description: "", quantity: 1, rate: 0, amount: 
 
 export const CreateInvoice = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [clientId, setClientId] = useState("");
   const [selectedTimeEntryIds, setSelectedTimeEntryIds] = useState([]);
@@ -33,16 +31,9 @@ export const CreateInvoice = () => {
   const [notes, setNotes] = useState("");
   const [suggestedHourlyRate, setSuggestedHourlyRate] = useState(200);
 
-  const { data: clientsData } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 10000 }),
-  });
-
-  const { data: unbilledData, isLoading: loadingUnbilled } = useQuery({
-    queryKey: ["invoices", "unbilled-time-entries", clientId],
-    queryFn: () => invoicesApi.getUnbilledTimeEntries(clientId),
-    enabled: !!clientId,
-  });
+  const { data: clientsData } = useClients({ limit: 500 });
+  const { data: unbilledData, isLoading: loadingUnbilled } = useUnbilledTimeEntries(clientId);
+  const createMutation = useCreateInvoice();
 
   const clients = clientsData?.data?.clients || [];
   const unbilledEntries = unbilledData?.data ?? [];
@@ -126,28 +117,6 @@ export const CreateInvoice = () => {
     }, 0);
   }, [selectedEntries]);
 
-  const createMutation = useMutation({
-    mutationFn: (payload) => invoicesApi.create(payload),
-    onSuccess: (res) => {
-      const inv = res?.data;
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      if (inv?._id) navigate(`/invoices/${inv._id}`);
-      toast({
-        title: "Success",
-        description: "Invoice created successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to create invoice",
-        type: "destructive",
-      });
-    },
-  });
-
   const handleSubmit = (status) => {
     if (!clientId) {
       toast({ title: "Validation", description: "Please select a client", type: "destructive" });
@@ -180,7 +149,12 @@ export const CreateInvoice = () => {
       notes: notes.trim(),
       status: status === "SENT" ? "SENT" : "DRAFT",
     };
-    createMutation.mutate(payload);
+    createMutation.mutate(payload, {
+      onSuccess: (res) => {
+        const inv = res?.data;
+        if (inv?._id) navigate(`/invoices/${inv._id}`);
+      },
+    });
   };
 
   return (

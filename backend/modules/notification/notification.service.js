@@ -1,13 +1,22 @@
 import Notification from './notification.model.js';
+import { invalidateTags } from '../../helpers/cache.js';
+import { CACHE_TAGS } from '../../helpers/cacheTags.js';
 
+// Creation also happens outside the controller layer (scheduler.js cron
+// jobs), so invalidation lives here rather than in notification.controller.js
+// to cover every caller in one place.
 export const createNotification = async ({ userId, type, title, message, data = {} }) => {
-  return Notification.create({ userId, type, title, message, data });
+  const notification = await Notification.create({ userId, type, title, message, data });
+  await invalidateTags([CACHE_TAGS.NOTIFICATIONS]);
+  return notification;
 };
 
 export const createNotificationsForUsers = async (userIds, payload) => {
   const notifications = userIds.map((userId) => ({ ...payload, userId }));
   if (notifications.length === 0) return [];
-  return Notification.insertMany(notifications);
+  const created = await Notification.insertMany(notifications);
+  await invalidateTags([CACHE_TAGS.NOTIFICATIONS]);
+  return created;
 };
 
 export const getNotifications = async (userId, { page = 1, limit = 20 } = {}) => {

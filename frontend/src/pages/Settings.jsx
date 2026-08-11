@@ -1,8 +1,17 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
-import { servicesApi } from "@/api/services";
-import { activitiesApi } from "@/api/activities";
+import {
+  useServices,
+  useCreateService,
+  useUpdateService,
+  useDeleteService,
+} from "@/api/queries/serviceQueries";
+import {
+  useActivities,
+  useCreateActivity,
+  useUpdateActivity,
+  useDeleteActivity,
+} from "@/api/queries/activityQueries";
 import { Button } from "@/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/ui/tabs";
 import { Card } from "@/ui/card";
@@ -20,38 +29,11 @@ const ServicesTab = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [search, setSearch] = useState("");
-  const queryClient = useQueryClient();
 
-  const { data: servicesData, isLoading } = useQuery({
-    queryKey: ["services"],
-    queryFn: () => servicesApi.getAll({ limit: 100 }),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: servicesApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["services"] });
-      setShowForm(false);
-      resetForm();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => servicesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["services"] });
-      setShowForm(false);
-      setEditingService(null);
-      resetForm();
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: servicesApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["services"] });
-    },
-  });
+  const { data: servicesData, isLoading } = useServices({ limit: 100 });
+  const createMutation = useCreateService();
+  const updateMutation = useUpdateService();
+  const deleteMutation = useDeleteService();
 
   const resetForm = () => {
     setEditingService(null);
@@ -76,9 +58,22 @@ const ServicesTab = () => {
     };
 
     if (editingService) {
-      updateMutation.mutate({ id: editingService._id, data });
+      updateMutation.mutate(
+        { id: editingService._id, data },
+        {
+          onSuccess: () => {
+            setShowForm(false);
+            resetForm();
+          },
+        }
+      );
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          setShowForm(false);
+          resetForm();
+        },
+      });
     }
   };
 
@@ -237,38 +232,11 @@ const ActivitiesTab = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
   const [search, setSearch] = useState("");
-  const queryClient = useQueryClient();
 
-  const { data: activitiesData, isLoading } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => activitiesApi.getAll({ limit: 100 }),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: activitiesApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-      setShowForm(false);
-      resetForm();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => activitiesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-      setShowForm(false);
-      setEditingActivity(null);
-      resetForm();
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: activitiesApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-    },
-  });
+  const { data: activitiesData, isLoading } = useActivities({ limit: 100 });
+  const createMutation = useCreateActivity();
+  const updateMutation = useUpdateActivity();
+  const deleteMutation = useDeleteActivity();
 
   const resetForm = () => {
     setEditingActivity(null);
@@ -293,9 +261,22 @@ const ActivitiesTab = () => {
     };
 
     if (editingActivity) {
-      updateMutation.mutate({ id: editingActivity._id, data });
+      updateMutation.mutate(
+        { id: editingActivity._id, data },
+        {
+          onSuccess: () => {
+            setShowForm(false);
+            resetForm();
+          },
+        }
+      );
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          setShowForm(false);
+          resetForm();
+        },
+      });
     }
   };
 

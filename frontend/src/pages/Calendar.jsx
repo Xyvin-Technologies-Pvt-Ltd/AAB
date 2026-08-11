@@ -1,9 +1,12 @@
 import { useState, useMemo, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/layout/AppLayout";
-import { tasksApi } from "@/api/tasks";
-import { clientsApi } from "@/api/clients";
+import {
+  useClients,
+  useClientCalendarEvents,
+  useNextSubmissionDates,
+} from "@/api/queries/clientQueries";
+import { useCalendarTasks } from "@/api/queries/taskQueries";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -55,40 +58,21 @@ export const Calendar = () => {
     return { start, end };
   });
 
-  const { data: clientsData } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 100 }),
-  });
+  const calendarParams = useMemo(
+    () => ({
+      start: dateRange.start.toISOString(),
+      end: dateRange.end.toISOString(),
+      clientId: selectedClientId || undefined,
+    }),
+    [dateRange.start, dateRange.end, selectedClientId]
+  );
 
-  const { data: calendarEventsData, isLoading: calendarLoading } = useQuery({
-    queryKey: [
-      "calendar-events",
-      dateRange.start.toISOString(),
-      dateRange.end.toISOString(),
-      selectedClientId,
-    ],
-    queryFn: () =>
-      clientsApi.getCalendarEvents({
-        start: dateRange.start.toISOString(),
-        end: dateRange.end.toISOString(),
-        clientId: selectedClientId || undefined,
-      }),
-  });
-
-  const { data: tasksData, isLoading: tasksLoading } = useQuery({
-    queryKey: [
-      "calendar-tasks",
-      dateRange.start.toISOString(),
-      dateRange.end.toISOString(),
-      selectedClientId,
-    ],
-    queryFn: () =>
-      tasksApi.getCalendarTasks({
-        start: dateRange.start.toISOString(),
-        end: dateRange.end.toISOString(),
-        clientId: selectedClientId || undefined,
-      }),
-  });
+  const { data: clientsData } = useClients({ limit: 100 });
+  const { data: calendarEventsData, isLoading: calendarLoading } =
+    useClientCalendarEvents(calendarParams);
+  const { data: tasksData, isLoading: tasksLoading } =
+    useCalendarTasks(calendarParams);
+  useNextSubmissionDates();
 
   const clients = clientsData?.data?.clients || [];
   const renewalEvents = calendarEventsData?.data?.events || [];

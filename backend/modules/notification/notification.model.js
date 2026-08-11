@@ -6,7 +6,6 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      index: true,
     },
     type: {
       type: String,
@@ -36,12 +35,13 @@ const notificationSchema = new mongoose.Schema(
     read: {
       type: Boolean,
       default: false,
-      index: true,
     },
   },
   { timestamps: true }
 );
 
+// Both compounds are prefixed by userId, which every query filters on first -
+// no separate single-field userId/read indexes needed.
 notificationSchema.index({ userId: 1, read: 1 });
 notificationSchema.index({ userId: 1, createdAt: -1 });
 

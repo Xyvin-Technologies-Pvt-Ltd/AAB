@@ -58,97 +58,109 @@ export const getPackageProfitability = async (filters = {}, user = null) => {
     ];
   }
 
-  const packages = await Package.find(query).populate('clientId', 'name');
+  const packages = await Package.find(query).populate('clientId', 'name').lean();
 
-  const results = await Promise.all(
-    packages.map(async (pkg) => {
-      // Get time entries for this package within date range
-      const timeEntryQuery = { packageId: pkg._id };
-      if (startDate || endDate) {
-        timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
-      }
+  // The per-package TimeEntry filter below (date range, employee filter, and
+  // MANAGER/EMPLOYEE team scoping) is identical for every package in this
+  // request - only packageId varied. Build it once and fetch every package's
+  // time entries in a single $in query instead of one query per package.
+  const timeEntryFilter = {};
+  if (startDate || endDate) {
+    timeEntryFilter.date = buildDateRangeQuery(startDate, endDate);
+  }
+  if (employeeId) {
+    timeEntryFilter.employeeId = employeeId;
+  }
 
-      // Apply employee filter
-      if (employeeId) {
-        timeEntryQuery.employeeId = employeeId;
-      }
-
-      // Apply team filtering for MANAGER role
-      if (user && user.role === 'MANAGER' && _accessibleEmployeeIds && _accessibleEmployeeIds.length > 0) {
-        if (employeeId) {
-          // If employeeId filter is set, ensure it's in accessible list
-          if (!_accessibleEmployeeIds.includes(employeeId)) {
-            return null; // Skip this package if employee not accessible
-          }
-          timeEntryQuery.employeeId = employeeId;
-        } else {
-          timeEntryQuery.employeeId = { $in: _accessibleEmployeeIds };
-        }
-      } else if (user && user.role === 'EMPLOYEE' && user.employeeId) {
-        timeEntryQuery.employeeId = user.employeeId;
-      }
-
-      const timeEntries = await TimeEntry.find(timeEntryQuery).populate(
-        'employeeId',
-        'name monthlyCost monthlyWorkingHours'
-      );
-
-      // Get unique employee IDs and fetch their data
-      const employeeIds = [...new Set(timeEntries.map((te) => te.employeeId._id.toString()))];
-      const employees = await Employee.find({ _id: { $in: employeeIds } });
-
-      // Create employees map with hourly costs
-      const employeesMap = {};
-      employees.forEach((emp) => {
-        employeesMap[emp._id.toString()] = {
-          ...emp.toObject(),
-          hourlyCost: getEmployeeHourlyRate(emp),
+  // MANAGER scoping: if an employeeId filter is set and it isn't in the
+  // accessible list, every package used to return null (access denied) -
+  // i.e. the whole result set is empty. Check that once up front.
+  if (user && user.role === 'MANAGER' && _accessibleEmployeeIds && _accessibleEmployeeIds.length > 0) {
+    if (employeeId) {
+      if (!_accessibleEmployeeIds.includes(employeeId)) {
+        return {
+          results: [],
+          pagination: { page: parseInt(page), limit: parseInt(limit), total: 0, pages: 0 },
         };
-      });
+      }
+      timeEntryFilter.employeeId = employeeId;
+    } else {
+      timeEntryFilter.employeeId = { $in: _accessibleEmployeeIds };
+    }
+  } else if (user && user.role === 'EMPLOYEE' && user.employeeId) {
+    timeEntryFilter.employeeId = user.employeeId;
+  }
 
-      // Calculate monthly cost
-      const monthlyCost = calculatePackageCost(timeEntries, employeesMap);
+  const packageIds = packages.map((pkg) => pkg._id);
+  const timeEntries = packageIds.length
+    ? await TimeEntry.find({ ...timeEntryFilter, packageId: { $in: packageIds } }).lean()
+    : [];
 
-      // Get monthly revenue (normalized)
-      const monthlyRevenue = normalizeRevenueToMonthly(
-        pkg.contractValue,
-        pkg.billingFrequency,
-        pkg.type
-      );
+  // Group time entries by package
+  const entriesByPackage = new Map();
+  for (const entry of timeEntries) {
+    const key = entry.packageId.toString();
+    if (!entriesByPackage.has(key)) {
+      entriesByPackage.set(key, []);
+    }
+    entriesByPackage.get(key).push(entry);
+  }
 
-      // Calculate normalized profitability
-      const profitability = calculatePackageProfitability(monthlyRevenue, monthlyCost);
+  // Fetch every referenced employee once instead of re-fetching per package.
+  const allEmployeeIds = [...new Set(timeEntries.map((te) => te.employeeId?.toString()).filter(Boolean))];
+  const employees = allEmployeeIds.length
+    ? await Employee.find({ _id: { $in: allEmployeeIds } }).lean()
+    : [];
+  const employeesMap = {};
+  employees.forEach((emp) => {
+    employeesMap[emp._id.toString()] = {
+      ...emp,
+      hourlyCost: getEmployeeHourlyRate(emp),
+    };
+  });
 
-      // Calculate cycle metrics
-      const cycleMetrics = calculateCycleMetrics(
-        pkg.type,
-        pkg.billingFrequency,
-        pkg.contractValue,
-        timeEntries,
-        employeesMap,
-        startDate,
-        endDate,
-        pkg.startDate
-      );
+  const filteredResults = packages.map((pkg) => {
+    const pkgTimeEntries = entriesByPackage.get(pkg._id.toString()) || [];
 
-      return {
-        packageId: pkg._id,
-        packageName: pkg.name,
-        clientId: pkg.clientId._id,
-        clientName: pkg.clientId.name,
-        type: pkg.type,
-        billingFrequency: pkg.billingFrequency,
-        contractValue: pkg.contractValue,
-        ...profitability, // Normalized monthly metrics
-        ...cycleMetrics, // Per-cycle metrics
-        timeEntriesCount: timeEntries.length,
-        totalHours: timeEntries.reduce((sum, te) => sum + te.minutesSpent / 3600, 0),
-      };
-    })
-  );
+    // Calculate monthly cost
+    const monthlyCost = calculatePackageCost(pkgTimeEntries, employeesMap);
 
-  // Filter out null results (from access control)
-  const filteredResults = results.filter((r) => r !== null);
+    // Get monthly revenue (normalized)
+    const monthlyRevenue = normalizeRevenueToMonthly(
+      pkg.contractValue,
+      pkg.billingFrequency,
+      pkg.type
+    );
+
+    // Calculate normalized profitability
+    const profitability = calculatePackageProfitability(monthlyRevenue, monthlyCost);
+
+    // Calculate cycle metrics
+    const cycleMetrics = calculateCycleMetrics(
+      pkg.type,
+      pkg.billingFrequency,
+      pkg.contractValue,
+      pkgTimeEntries,
+      employeesMap,
+      startDate,
+      endDate,
+      pkg.startDate
+    );
+
+    return {
+      packageId: pkg._id,
+      packageName: pkg.name,
+      clientId: pkg.clientId._id,
+      clientName: pkg.clientId.name,
+      type: pkg.type,
+      billingFrequency: pkg.billingFrequency,
+      contractValue: pkg.contractValue,
+      ...profitability, // Normalized monthly metrics
+      ...cycleMetrics, // Per-cycle metrics
+      timeEntriesCount: pkgTimeEntries.length,
+      totalHours: pkgTimeEntries.reduce((sum, te) => sum + te.minutesSpent / 3600, 0),
+    };
+  });
 
   // Apply search filter on results (client name, package name)
   let finalResults = filteredResults;
@@ -206,125 +218,150 @@ export const getClientProfitability = async (filters = {}, user = null) => {
     query.name = { $regex: search, $options: 'i' };
   }
 
-  const clients = await Client.find(query);
+  const clients = await Client.find(query).lean();
 
-  const results = await Promise.all(
-    clients.map(async (client) => {
-      // Get all packages for this client with filters
-      const packageQuery = { clientId: client._id };
-      if (packageType) {
-        packageQuery.type = packageType;
+  // Fetch every package for every matching client in one query instead of
+  // one query per client.
+  const clientIds = clients.map((c) => c._id);
+  const packageQuery = { clientId: { $in: clientIds } };
+  if (packageType) {
+    packageQuery.type = packageType;
+  }
+  if (billingFrequency) {
+    packageQuery.billingFrequency = billingFrequency;
+  }
+  const allPackages = clientIds.length ? await Package.find(packageQuery).lean() : [];
+
+  const packagesByClient = new Map();
+  for (const pkg of allPackages) {
+    const key = pkg.clientId.toString();
+    if (!packagesByClient.has(key)) {
+      packagesByClient.set(key, []);
+    }
+    packagesByClient.get(key).push(pkg);
+  }
+
+  // The per-package TimeEntry filter below (date range, employee filter, and
+  // MANAGER/EMPLOYEE team scoping) is identical for every package under
+  // every client - only packageId varied before. Build it once.
+  const timeEntryFilter = {};
+  if (startDate || endDate) {
+    timeEntryFilter.date = buildDateRangeQuery(startDate, endDate);
+  }
+  if (employeeId) {
+    timeEntryFilter.employeeId = employeeId;
+  }
+
+  // MANAGER scoping: if an employeeId filter is set and it isn't in the
+  // accessible list, every package under every client used to resolve to
+  // null (access denied), so every client ends up with zero packages.
+  // accessDenied captures that without running any TimeEntry/Employee query.
+  let accessDenied = false;
+  if (user && user.role === 'MANAGER' && _accessibleEmployeeIds && _accessibleEmployeeIds.length > 0) {
+    if (employeeId) {
+      if (!_accessibleEmployeeIds.includes(employeeId)) {
+        accessDenied = true;
+      } else {
+        timeEntryFilter.employeeId = employeeId;
       }
-      if (billingFrequency) {
-        packageQuery.billingFrequency = billingFrequency;
-      }
-      const packages = await Package.find(packageQuery);
+    } else {
+      timeEntryFilter.employeeId = { $in: _accessibleEmployeeIds };
+    }
+  } else if (user && user.role === 'EMPLOYEE' && user.employeeId) {
+    timeEntryFilter.employeeId = user.employeeId;
+  }
 
-      // Get package profitability for each package
-      const packageProfits = await Promise.all(
-        packages.map(async (pkg) => {
-          const timeEntryQuery = { packageId: pkg._id };
-          if (startDate || endDate) {
-            timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
-          }
+  const allPackageIds = allPackages.map((pkg) => pkg._id);
+  const timeEntries = !accessDenied && allPackageIds.length
+    ? await TimeEntry.find({ ...timeEntryFilter, packageId: { $in: allPackageIds } }).lean()
+    : [];
 
-          // Apply employee filter
-          if (employeeId) {
-            timeEntryQuery.employeeId = employeeId;
-          }
+  const entriesByPackage = new Map();
+  for (const entry of timeEntries) {
+    const key = entry.packageId.toString();
+    if (!entriesByPackage.has(key)) {
+      entriesByPackage.set(key, []);
+    }
+    entriesByPackage.get(key).push(entry);
+  }
 
-          // Apply team filtering for MANAGER role
-          if (user && user.role === 'MANAGER' && _accessibleEmployeeIds && _accessibleEmployeeIds.length > 0) {
-            if (employeeId) {
-              if (!_accessibleEmployeeIds.includes(employeeId)) {
-                return null;
-              }
-              timeEntryQuery.employeeId = employeeId;
-            } else {
-              timeEntryQuery.employeeId = { $in: _accessibleEmployeeIds };
-            }
-          } else if (user && user.role === 'EMPLOYEE' && user.employeeId) {
-            timeEntryQuery.employeeId = user.employeeId;
-          }
+  // Fetch every referenced employee once instead of re-fetching per package.
+  const allEmployeeIds = [...new Set(timeEntries.map((te) => te.employeeId?.toString()).filter(Boolean))];
+  const employees = allEmployeeIds.length
+    ? await Employee.find({ _id: { $in: allEmployeeIds } }).lean()
+    : [];
+  const employeesMap = {};
+  employees.forEach((emp) => {
+    employeesMap[emp._id.toString()] = {
+      ...emp,
+      hourlyCost: getEmployeeHourlyRate(emp),
+    };
+  });
 
-          const timeEntries = await TimeEntry.find(timeEntryQuery).populate(
-            'employeeId',
-            'name monthlyCost monthlyWorkingHours'
-          );
+  const results = clients.map((client) => {
+    const clientPackages = accessDenied ? [] : (packagesByClient.get(client._id.toString()) || []);
 
-          const employeeIds = [...new Set(timeEntries.map((te) => te.employeeId._id.toString()))];
-          const employees = await Employee.find({ _id: { $in: employeeIds } });
+    // Get package profitability for each package
+    const validPackageProfits = clientPackages.map((pkg) => {
+      const pkgTimeEntries = entriesByPackage.get(pkg._id.toString()) || [];
 
-          const employeesMap = {};
-          employees.forEach((emp) => {
-            employeesMap[emp._id.toString()] = {
-              ...emp.toObject(),
-              hourlyCost: getEmployeeHourlyRate(emp),
-            };
-          });
+      const monthlyCost = calculatePackageCost(pkgTimeEntries, employeesMap);
+      const monthlyRevenue = normalizeRevenueToMonthly(
+        pkg.contractValue,
+        pkg.billingFrequency,
+        pkg.type
+      );
+      const profitability = calculatePackageProfitability(monthlyRevenue, monthlyCost);
 
-          const monthlyCost = calculatePackageCost(timeEntries, employeesMap);
-          const monthlyRevenue = normalizeRevenueToMonthly(
-            pkg.contractValue,
-            pkg.billingFrequency,
-            pkg.type
-          );
-          const profitability = calculatePackageProfitability(monthlyRevenue, monthlyCost);
-
-          // Calculate cycle metrics
-          const cycleMetrics = calculateCycleMetrics(
-            pkg.type,
-            pkg.billingFrequency,
-            pkg.contractValue,
-            timeEntries,
-            employeesMap,
-            startDate,
-            endDate,
-            pkg.startDate
-          );
-
-          return {
-            packageId: pkg._id,
-            packageName: pkg.name,
-            type: pkg.type,
-            billingFrequency: pkg.billingFrequency,
-            ...profitability, // Normalized monthly metrics
-            ...cycleMetrics, // Per-cycle metrics
-          };
-        })
+      // Calculate cycle metrics
+      const cycleMetrics = calculateCycleMetrics(
+        pkg.type,
+        pkg.billingFrequency,
+        pkg.contractValue,
+        pkgTimeEntries,
+        employeesMap,
+        startDate,
+        endDate,
+        pkg.startDate
       );
 
-      // Filter out null results
-      const validPackageProfits = packageProfits.filter((p) => p !== null);
-
-      // Aggregate client totals (normalized monthly)
-      const totalRevenue = validPackageProfits.reduce((sum, p) => sum + p.revenue, 0);
-      const totalCost = validPackageProfits.reduce((sum, p) => sum + p.cost, 0);
-      const totalProfit = totalRevenue - totalCost;
-      const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-
-      // Aggregate cycle totals
-      const totalCycleRevenue = validPackageProfits.reduce((sum, p) => sum + (p.totalCycleRevenue || 0), 0);
-      const totalCycleCost = validPackageProfits.reduce((sum, p) => sum + (p.totalCycleCost || 0), 0);
-      const totalCycleProfit = totalCycleRevenue - totalCycleCost;
-      const cycleMargin = totalCycleRevenue > 0 ? (totalCycleProfit / totalCycleRevenue) * 100 : 0;
-
       return {
-        clientId: client._id,
-        clientName: client.name,
-        totalRevenue,
-        totalCost,
-        totalProfit,
-        margin: parseFloat(margin.toFixed(2)),
-        totalCycleRevenue: parseFloat(totalCycleRevenue.toFixed(2)),
-        totalCycleCost: parseFloat(totalCycleCost.toFixed(2)),
-        totalCycleProfit: parseFloat(totalCycleProfit.toFixed(2)),
-        cycleMargin: parseFloat(cycleMargin.toFixed(2)),
-        packagesCount: validPackageProfits.length,
-        packages: validPackageProfits,
+        packageId: pkg._id,
+        packageName: pkg.name,
+        type: pkg.type,
+        billingFrequency: pkg.billingFrequency,
+        ...profitability, // Normalized monthly metrics
+        ...cycleMetrics, // Per-cycle metrics
       };
-    })
-  );
+    });
+
+    // Aggregate client totals (normalized monthly)
+    const totalRevenue = validPackageProfits.reduce((sum, p) => sum + p.revenue, 0);
+    const totalCost = validPackageProfits.reduce((sum, p) => sum + p.cost, 0);
+    const totalProfit = totalRevenue - totalCost;
+    const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+    // Aggregate cycle totals
+    const totalCycleRevenue = validPackageProfits.reduce((sum, p) => sum + (p.totalCycleRevenue || 0), 0);
+    const totalCycleCost = validPackageProfits.reduce((sum, p) => sum + (p.totalCycleCost || 0), 0);
+    const totalCycleProfit = totalCycleRevenue - totalCycleCost;
+    const cycleMargin = totalCycleRevenue > 0 ? (totalCycleProfit / totalCycleRevenue) * 100 : 0;
+
+    return {
+      clientId: client._id,
+      clientName: client.name,
+      totalRevenue,
+      totalCost,
+      totalProfit,
+      margin: parseFloat(margin.toFixed(2)),
+      totalCycleRevenue: parseFloat(totalCycleRevenue.toFixed(2)),
+      totalCycleCost: parseFloat(totalCycleCost.toFixed(2)),
+      totalCycleProfit: parseFloat(totalCycleProfit.toFixed(2)),
+      cycleMargin: parseFloat(cycleMargin.toFixed(2)),
+      packagesCount: validPackageProfits.length,
+      packages: validPackageProfits,
+    };
+  });
 
   // Filter out null results
   const filteredResults = results.filter((r) => r !== null);
@@ -397,19 +434,13 @@ export const getEmployeeUtilization = async (filters = {}, user = null) => {
     timeEntryQuery.employeeId = user.employeeId;
   }
 
-  // Aggregate time entries by employee
+  // Aggregate time entries by employee. The employeeId populate already
+  // selects every field the calculations below need (including hourlyRate),
+  // so there's no need to separately re-fetch full Employee documents.
   const timeEntries = await TimeEntry.find(timeEntryQuery).populate(
     'employeeId',
     'name monthlyCost monthlyWorkingHours hourlyRate'
-  ).populate('clientId', 'name').populate('packageId', 'name');
-
-  // Get full employee documents to ensure we have hourlyRate
-  const employeeIds = [...new Set(timeEntries.map((te) => te.employeeId?._id?.toString()).filter(Boolean))];
-  const employees = await Employee.find({ _id: { $in: employeeIds } });
-  const employeesFullMap = {};
-  employees.forEach((emp) => {
-    employeesFullMap[emp._id.toString()] = emp.toObject();
-  });
+  ).populate('clientId', 'name').populate('packageId', 'name').lean();
 
   // Group by employee
   const employeeMap = {};
@@ -417,16 +448,15 @@ export const getEmployeeUtilization = async (filters = {}, user = null) => {
 
   timeEntries.forEach((entry) => {
     const empId = entry.employeeId._id.toString();
-    const fullEmployee = employeesFullMap[empId] || {};
     if (!employeeMap[empId]) {
       employeeMap[empId] = {
         employeeId: entry.employeeId._id,
         employeeName: entry.employeeId.name,
-        monthlyCost: fullEmployee.monthlyCost || entry.employeeId.monthlyCost,
-        monthlyWorkingHours: fullEmployee.monthlyWorkingHours || entry.employeeId.monthlyWorkingHours,
-        hourlyRate: fullEmployee.hourlyRate,
+        monthlyCost: entry.employeeId.monthlyCost,
+        monthlyWorkingHours: entry.employeeId.monthlyWorkingHours,
+        hourlyRate: entry.employeeId.hourlyRate,
         hoursLogged: 0,
-        timeEntries: [],
+        timeEntriesCount: 0,
         costContribution: 0,
         breakdown: {}, // Breakdown by client/package
       };
@@ -459,13 +489,7 @@ export const getEmployeeUtilization = async (filters = {}, user = null) => {
     employeeMap[empId].breakdown[key].hours += hours;
     employeeMap[empId].breakdown[key].cost += entryCost;
 
-    employeeMap[empId].timeEntries.push({
-      date: entry.date,
-      hours,
-      clientId: entry.clientId,
-      packageId: entry.packageId,
-      taskId: entry.taskId,
-    });
+    employeeMap[empId].timeEntriesCount += 1;
   });
 
   // Calculate utilization and cost contribution
@@ -493,7 +517,7 @@ export const getEmployeeUtilization = async (filters = {}, user = null) => {
       hoursLogged: parseFloat(emp.hoursLogged.toFixed(2)),
       utilizationRate: parseFloat(utilizationRate.toFixed(2)),
       costContribution: parseFloat(costContribution.toFixed(2)),
-      timeEntriesCount: emp.timeEntries.length,
+      timeEntriesCount: emp.timeEntriesCount,
       breakdown: breakdown.length > 0 ? breakdown : undefined, // Only include if filters applied
     };
   });
@@ -531,13 +555,13 @@ export const getClientDashboard = async (clientId, filters = {}) => {
   const { startDate, endDate } = filters;
 
   const Client = (await import('../client/client.model.js')).default;
-  const client = await Client.findById(clientId);
+  const client = await Client.findById(clientId).lean();
   if (!client) {
     throw new Error('Client not found');
   }
 
   // Get all packages for this client
-  const packages = await Package.find({ clientId });
+  const packages = await Package.find({ clientId }).lean();
 
   // Get time entries for date range
   const timeEntryQuery = { clientId };
@@ -548,19 +572,19 @@ export const getClientDashboard = async (clientId, filters = {}) => {
   const timeEntries = await TimeEntry.find(timeEntryQuery).populate(
     'employeeId',
     'name monthlyCost monthlyWorkingHours'
-  );
+  ).lean();
 
   // Calculate total hours logged (minutesSpent is stored in seconds)
   const totalHours = timeEntries.reduce((sum, te) => sum + te.minutesSpent / 3600, 0);
 
   // Get employee IDs and calculate costs
   const employeeIds = [...new Set(timeEntries.map((te) => te.employeeId._id.toString()))];
-  const employees = await Employee.find({ _id: { $in: employeeIds } });
+  const employees = await Employee.find({ _id: { $in: employeeIds } }).lean();
 
   const employeesMap = {};
   employees.forEach((emp) => {
     employeesMap[emp._id.toString()] = {
-      ...emp.toObject(),
+      ...emp,
       hourlyCost: getEmployeeHourlyRate(emp),
     };
   });
@@ -615,12 +639,16 @@ export const getClientDashboard = async (clientId, filters = {}) => {
     profitabilityStatus = 'OVERPAYING'; // Might be overcharging
   }
 
-  // Get tasks summary
+  // Get tasks summary - counts only, so count in the DB instead of loading
+  // every Task document (which can carry large comments/attachments/
+  // activityLog arrays) just to filter by status in memory.
   const Task = (await import('../task/task.model.js')).default;
-  const tasks = await Task.find({ clientId });
-  const openTasks = tasks.filter((t) => t.status !== 'DONE').length;
-  const completedTasks = tasks.filter((t) => t.status === 'DONE').length;
-  const completionRate = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+  const [totalTasks, completedTasks] = await Promise.all([
+    Task.countDocuments({ clientId }),
+    Task.countDocuments({ clientId, status: 'DONE' }),
+  ]);
+  const openTasks = totalTasks - completedTasks;
+  const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
   // Monthly trends (last 6 months if no date range specified)
   const months = [];
@@ -924,18 +952,20 @@ export const getPackageAnalytics = async (packageId, filters = {}, user = null) 
 
   const timeEntries = await TimeEntry.find(timeEntryQuery)
     .populate('employeeId', 'name monthlyCost monthlyWorkingHours hourlyRate')
-    .populate('taskId', 'name');
+    .populate('taskId', 'name')
+    .lean();
 
-  // Get employees data
-  const employeeIds = [...new Set(timeEntries.map((te) => te.employeeId?._id?.toString()).filter(Boolean))];
-  const employees = await Employee.find({ _id: { $in: employeeIds } });
-
+  // Build employeesMap straight from the populate above - it already selects
+  // every field used below (including hourlyRate), so a separate
+  // Employee.find({_id: {$in: employeeIds}}) re-fetch is unnecessary.
   const employeesMap = {};
-  employees.forEach((emp) => {
-    employeesMap[emp._id.toString()] = {
-      ...emp.toObject(),
-      hourlyCost: getEmployeeHourlyRate(emp),
-    };
+  timeEntries.forEach((te) => {
+    if (te.employeeId && !employeesMap[te.employeeId._id.toString()]) {
+      employeesMap[te.employeeId._id.toString()] = {
+        ...te.employeeId,
+        hourlyCost: getEmployeeHourlyRate(te.employeeId),
+      };
+    }
   });
 
   // Calculate summary
@@ -966,9 +996,9 @@ export const getPackageAnalytics = async (packageId, filters = {}, user = null) 
   const margin = periodRevenue > 0 ? (totalProfit / periodRevenue) * 100 : 0;
   const totalHours = timeEntries.reduce((sum, te) => sum + (te.minutesSpent || 0) / 3600, 0);
 
-  // Get tasks
-  const Task = (await import('../task/task.model.js')).default;
-  const tasks = await Task.find({ packageId: pkg._id });
+  // taskCount below is derived from timeEntries' taskId field, not a
+  // separate Task query - a `Task.find({ packageId })` fetch used to run
+  // here but its result was never read.
   const taskIds = new Set(timeEntries.map((te) => te.taskId?._id?.toString()).filter(Boolean));
 
   // Calculate monthly trends (if recurring)
@@ -1168,91 +1198,120 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
     packageQuery._id = packageId;
   }
 
-  const packages = await Package.find(packageQuery);
+  const packages = await Package.find(packageQuery).lean();
+  const packageIds = packages.map((pkg) => pkg._id);
+
+  // packageBreakdown's per-package TimeEntry filter (date range, employee
+  // filter, and MANAGER/EMPLOYEE team scoping) was identical for every
+  // package before - batch it into one $in query instead of one per package.
+  const scopedFilter = {};
+  if (startDate || endDate) {
+    scopedFilter.date = buildDateRangeQuery(startDate, endDate);
+  }
+  if (employeeId) {
+    scopedFilter.employeeId = employeeId;
+  }
+
+  // If an employeeId filter is set and it isn't in the accessible list,
+  // every package used to resolve to null (access denied) - i.e. the whole
+  // packageBreakdown/topPackages set is empty.
+  let breakdownAccessDenied = false;
+  if (user && user.role === 'MANAGER' && _accessibleEmployeeIds && _accessibleEmployeeIds.length > 0) {
+    if (employeeId) {
+      if (!_accessibleEmployeeIds.includes(employeeId)) {
+        breakdownAccessDenied = true;
+      } else {
+        scopedFilter.employeeId = employeeId;
+      }
+    } else {
+      scopedFilter.employeeId = { $in: _accessibleEmployeeIds };
+    }
+  } else if (user && user.role === 'EMPLOYEE' && user.employeeId) {
+    scopedFilter.employeeId = user.employeeId;
+  }
+
+  const scopedTimeEntries = !breakdownAccessDenied && packageIds.length
+    ? await TimeEntry.find({ ...scopedFilter, packageId: { $in: packageIds } }).lean()
+    : [];
+
+  const scopedEntriesByPackage = new Map();
+  for (const entry of scopedTimeEntries) {
+    const key = entry.packageId.toString();
+    if (!scopedEntriesByPackage.has(key)) {
+      scopedEntriesByPackage.set(key, []);
+    }
+    scopedEntriesByPackage.get(key).push(entry);
+  }
+
+  // monthlyTrends/topEmployees below never applied MANAGER/EMPLOYEE team
+  // scoping in the original code (only the explicit employeeId filter, if
+  // any) - preserve that distinct, unscoped filter shape as its own query.
+  const unscopedFilter = {};
+  if (startDate || endDate) {
+    unscopedFilter.date = buildDateRangeQuery(startDate, endDate);
+  }
+  if (employeeId) {
+    unscopedFilter.employeeId = employeeId;
+  }
+  const clientTimeEntries = await TimeEntry.find({ ...unscopedFilter, clientId: client._id }).lean();
+
+  const allEmployeeIds = [...new Set([
+    ...scopedTimeEntries.map((te) => te.employeeId?.toString()),
+    ...clientTimeEntries.map((te) => te.employeeId?.toString()),
+  ].filter(Boolean))];
+  const employees = allEmployeeIds.length
+    ? await Employee.find({ _id: { $in: allEmployeeIds } }).lean()
+    : [];
+  const employeesMap = {};
+  employees.forEach((emp) => {
+    employeesMap[emp._id.toString()] = {
+      ...emp,
+      hourlyCost: getEmployeeHourlyRate(emp),
+    };
+  });
 
   // Get package breakdown
-  const packageBreakdown = await Promise.all(
-    packages.map(async (pkg) => {
-      const timeEntryQuery = { packageId: pkg._id };
-      if (startDate || endDate) {
-        timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
+  const validPackages = breakdownAccessDenied ? [] : packages.map((pkg) => {
+    const timeEntries = scopedEntriesByPackage.get(pkg._id.toString()) || [];
+
+    const cost = calculatePackageCost(timeEntries, employeesMap);
+    const monthlyRevenue = normalizeRevenueToMonthly(
+      pkg.contractValue,
+      pkg.billingFrequency,
+      pkg.type
+    );
+
+    // Calculate period revenue
+    let periodRevenue = monthlyRevenue;
+    if (startDate && endDate && pkg.type === 'RECURRING') {
+      const rangeStart = startOfDay(startDate);
+      const pkgStart = pkg.startDate ? startOfDay(toDateString(pkg.startDate)) : rangeStart;
+      const effectiveStart = pkgStart > rangeStart ? toDateString(pkgStart) : startDate;
+
+      if (startOfDay(effectiveStart) <= endOfDay(endDate)) {
+        periodRevenue = getProratedPeriodCost(monthlyRevenue, effectiveStart, endDate);
+      } else {
+        periodRevenue = 0;
       }
+    } else if (pkg.type === 'ONE_TIME') {
+      periodRevenue = pkg.contractValue;
+    }
 
-      if (employeeId) {
-        timeEntryQuery.employeeId = employeeId;
-      }
+    const profit = periodRevenue - cost;
+    const margin = periodRevenue > 0 ? (profit / periodRevenue) * 100 : 0;
+    const hours = timeEntries.reduce((sum, te) => sum + (te.minutesSpent || 0) / 3600, 0);
 
-      // Apply team filtering
-      if (user && user.role === 'MANAGER' && _accessibleEmployeeIds && _accessibleEmployeeIds.length > 0) {
-        if (employeeId) {
-          if (!_accessibleEmployeeIds.includes(employeeId)) {
-            return null;
-          }
-          timeEntryQuery.employeeId = employeeId;
-        } else {
-          timeEntryQuery.employeeId = { $in: _accessibleEmployeeIds };
-        }
-      } else if (user && user.role === 'EMPLOYEE' && user.employeeId) {
-        timeEntryQuery.employeeId = user.employeeId;
-      }
-
-      const timeEntries = await TimeEntry.find(timeEntryQuery).populate(
-        'employeeId',
-        'name monthlyCost monthlyWorkingHours'
-      );
-
-      const employeeIds = [...new Set(timeEntries.map((te) => te.employeeId?._id?.toString()).filter(Boolean))];
-      const employees = await Employee.find({ _id: { $in: employeeIds } });
-
-      const employeesMap = {};
-      employees.forEach((emp) => {
-        employeesMap[emp._id.toString()] = {
-          ...emp.toObject(),
-          hourlyCost: getEmployeeHourlyRate(emp),
-        };
-      });
-
-      const cost = calculatePackageCost(timeEntries, employeesMap);
-      const monthlyRevenue = normalizeRevenueToMonthly(
-        pkg.contractValue,
-        pkg.billingFrequency,
-        pkg.type
-      );
-
-      // Calculate period revenue
-      let periodRevenue = monthlyRevenue;
-      if (startDate && endDate && pkg.type === 'RECURRING') {
-        const rangeStart = startOfDay(startDate);
-        const pkgStart = pkg.startDate ? startOfDay(toDateString(pkg.startDate)) : rangeStart;
-        const effectiveStart = pkgStart > rangeStart ? toDateString(pkgStart) : startDate;
-
-        if (startOfDay(effectiveStart) <= endOfDay(endDate)) {
-          periodRevenue = getProratedPeriodCost(monthlyRevenue, effectiveStart, endDate);
-        } else {
-          periodRevenue = 0;
-        }
-      } else if (pkg.type === 'ONE_TIME') {
-        periodRevenue = pkg.contractValue;
-      }
-
-      const profit = periodRevenue - cost;
-      const margin = periodRevenue > 0 ? (profit / periodRevenue) * 100 : 0;
-      const hours = timeEntries.reduce((sum, te) => sum + (te.minutesSpent || 0) / 3600, 0);
-
-      return {
-        packageId: pkg._id,
-        name: pkg.name,
-        type: pkg.type,
-        revenue: parseFloat(periodRevenue.toFixed(2)),
-        cost: parseFloat(cost.toFixed(2)),
-        profit: parseFloat(profit.toFixed(2)),
-        margin: parseFloat(margin.toFixed(2)),
-        hours: parseFloat(hours.toFixed(2)),
-      };
-    })
-  );
-
-  const validPackages = packageBreakdown.filter((p) => p !== null);
+    return {
+      packageId: pkg._id,
+      name: pkg.name,
+      type: pkg.type,
+      revenue: parseFloat(periodRevenue.toFixed(2)),
+      cost: parseFloat(cost.toFixed(2)),
+      profit: parseFloat(profit.toFixed(2)),
+      margin: parseFloat(margin.toFixed(2)),
+      hours: parseFloat(hours.toFixed(2)),
+    };
+  });
 
   // Aggregate totals
   const totalRevenue = validPackages.reduce((sum, p) => sum + p.revenue, 0);
@@ -1261,36 +1320,30 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
   const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
   const totalHours = validPackages.reduce((sum, p) => sum + p.hours, 0);
 
-  // Monthly trends (combined across all packages)
+  // Monthly trends (combined across all packages). Reuses clientTimeEntries
+  // (fetched above) grouped by package, instead of a separate TimeEntry +
+  // Employee query per package. Packages are still processed in the same
+  // order as before, since the revenue-accumulation logic below is
+  // order-sensitive (a RECURRING package adds its monthly revenue once per
+  // time entry in that month, and only the first ONE_TIME package processed
+  // for a given month contributes its contractValue) - preserved exactly.
   const monthlyTrends = [];
   const monthMap = {};
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+  const packageIdSet = new Set(packageIds.map((id) => id.toString()));
+  const trendsEntriesByPackage = new Map();
+  for (const entry of clientTimeEntries) {
+    const key = entry.packageId?.toString();
+    if (!key || !packageIdSet.has(key)) continue;
+    if (!trendsEntriesByPackage.has(key)) {
+      trendsEntriesByPackage.set(key, []);
+    }
+    trendsEntriesByPackage.get(key).push(entry);
+  }
+
   for (const pkg of packages) {
-    const timeEntryQuery = { packageId: pkg._id };
-    if (startDate || endDate) {
-      timeEntryQuery.date = buildDateRangeQuery(startDate, endDate);
-    }
-
-    if (employeeId) {
-      timeEntryQuery.employeeId = employeeId;
-    }
-
-    const timeEntries = await TimeEntry.find(timeEntryQuery).populate(
-      'employeeId',
-      'name monthlyCost monthlyWorkingHours'
-    );
-
-    const employeeIds = [...new Set(timeEntries.map((te) => te.employeeId?._id?.toString()).filter(Boolean))];
-    const employees = await Employee.find({ _id: { $in: employeeIds } });
-
-    const employeesMap = {};
-    employees.forEach((emp) => {
-      employeesMap[emp._id.toString()] = {
-        ...emp.toObject(),
-        hourlyCost: getEmployeeHourlyRate(emp),
-      };
-    });
+    const timeEntries = trendsEntriesByPackage.get(pkg._id.toString()) || [];
 
     const monthlyRevenue = normalizeRevenueToMonthly(
       pkg.contractValue,
@@ -1311,7 +1364,7 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
       }
 
       const hours = (entry.minutesSpent || 0) / 3600;
-      const hourlyCost = employeesMap[entry.employeeId?._id?.toString()]?.hourlyCost || 0;
+      const hourlyCost = employeesMap[entry.employeeId?.toString()]?.hourlyCost || 0;
       monthMap[monthKey].cost += hours * hourlyCost;
 
       // Add monthly revenue for recurring packages
@@ -1352,24 +1405,21 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
     .sort((a, b) => b.profit - a.profit)
     .slice(0, 5);
 
-  // Top employees
-  const allTimeEntries = await TimeEntry.find({
-    clientId: client._id,
-    ...(startDate || endDate ? {
-      date: buildDateRangeQuery(startDate, endDate),
-    } : {}),
-    ...(employeeId ? { employeeId } : {}),
-  }).populate('employeeId', 'name monthlyCost monthlyWorkingHours hourlyRate');
-
+  // Top employees - reuses clientTimeEntries and employeesMap fetched above
+  // instead of a separate TimeEntry + Employee query. The original
+  // populate('employeeId', ...) resolved to null for a time entry whose
+  // employee had been hard-deleted, which silently excluded that entry from
+  // this aggregation - replicate that with an explicit employeesMap lookup
+  // since these entries are unpopulated (lean) raw ObjectIds.
   const employeeTime = {};
-  allTimeEntries.forEach((entry) => {
-    if (entry.employeeId) {
-      const empId = entry.employeeId._id.toString();
+  clientTimeEntries.forEach((entry) => {
+    const empId = entry.employeeId?.toString();
+    if (empId && employeesMap[empId]) {
       const hours = (entry.minutesSpent || 0) / 3600;
       if (!employeeTime[empId]) {
         employeeTime[empId] = {
           employeeId: empId,
-          name: entry.employeeId.name,
+          name: employeesMap[empId].name,
           hours: 0,
           tasks: new Set(),
         };
@@ -1379,16 +1429,6 @@ export const getClientAnalytics = async (clientId, filters = {}, user = null) =>
         employeeTime[empId].tasks.add(entry.taskId.toString());
       }
     }
-  });
-
-  const employeeIds = [...new Set(Object.keys(employeeTime))];
-  const employees = await Employee.find({ _id: { $in: employeeIds } });
-  const employeesMap = {};
-  employees.forEach((emp) => {
-    employeesMap[emp._id.toString()] = {
-      ...emp.toObject(),
-      hourlyCost: getEmployeeHourlyRate(emp),
-    };
   });
 
   const topEmployees = Object.values(employeeTime)

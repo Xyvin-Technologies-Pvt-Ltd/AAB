@@ -8,8 +8,7 @@ import {
   DialogFooter,
 } from "@/ui/dialog";
 import { Button } from "@/ui/button";
-import { authApi } from "@/api/auth";
-import { useToast } from "@/hooks/useToast";
+import { useChangePassword } from "@/api/queries/authQueries";
 
 export const PasswordChangeDialog = ({ open, onOpenChange }) => {
   const [formData, setFormData] = useState({
@@ -17,9 +16,8 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
     newPassword: "",
     confirmPassword: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const { toast } = useToast();
+  const changePasswordMutation = useChangePassword();
 
   const validateForm = () => {
     const newErrors = {};
@@ -49,43 +47,30 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await authApi.changePassword({
+    changePasswordMutation.mutate(
+      {
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
-      });
-
-      toast({
-        title: "Success",
-        description: "Password changed successfully",
-        variant: "success",
-      });
-
-      setFormData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      setErrors({});
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to change password",
-        variant: "error",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setFormData({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          });
+          setErrors({});
+          onOpenChange(false);
+        },
+      }
+    );
   };
 
   const handleChange = (field, value) => {
@@ -94,6 +79,8 @@ export const PasswordChangeDialog = ({ open, onOpenChange }) => {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
+
+  const isLoading = changePasswordMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -1,12 +1,21 @@
-import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
 import { tasksApi } from "@/api/tasks";
-import { clientsApi } from "@/api/clients";
-import { packagesApi } from "@/api/packages";
-import { employeesApi } from "@/api/employees";
-import { servicesApi } from "@/api/services";
-import { activitiesApi } from "@/api/activities";
+import { queryKeys } from "@/api/queries/queryKeys";
+import { useClients, useCreateClient } from "@/api/queries/clientQueries";
+import { usePackages, useCreatePackage } from "@/api/queries/packageQueries";
+import { useEmployees } from "@/api/queries/employeeQueries";
+import { useServices } from "@/api/queries/serviceQueries";
+import { useActivities } from "@/api/queries/activityQueries";
+import {
+  useTasks,
+  useCreateTask,
+  useUpdateTask,
+  useDeleteTask,
+  useUpdateTaskOrder,
+  useArchiveTask,
+} from "@/api/queries/taskQueries";
 import { Button } from "@/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { HistoryView } from "@/components/HistoryView";
@@ -100,7 +109,9 @@ export const Tasks = () => {
   const { toast } = useToast();
   const { user, isAdmin } = useAuthStore();
 
-  // Use centralized timer hook
+  // Use centralized timer hook. This page never displays the live-ticking
+  // elapsedSeconds/formattedTime, only which row has an active timer, so
+  // trackElapsed:false keeps this whole page from re-rendering every second.
   const {
     runningTimer,
     isRunning,
@@ -113,7 +124,7 @@ export const Tasks = () => {
     pauseTimerMutation,
     resumeTimerMutation,
     stopTimerMutation,
-  } = useTimer();
+  } = useTimer({ trackElapsed: false });
 
   // Build effective filters - include assignedTo for non-admin users by default
   const effectiveFilters = { ...filters };
@@ -133,63 +144,27 @@ export const Tasks = () => {
     }
   }
 
-  const { data: tasksData, isLoading } = useQuery({
-    queryKey: ["tasks", effectiveFilters],
-    queryFn: () => tasksApi.getAll({ ...effectiveFilters, limit: 1000 }),
-  });
+  const { data: tasksData, isLoading } = useTasks(
+    { ...effectiveFilters, limit: 1000 }
+  );
 
-  const { data: clientsData } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 10000 }),
-  });
+  const { data: clientsData } = useClients({ limit: 500 });
 
-  const { data: packagesData } = useQuery({
-    queryKey: [
-      "packages",
-      filters.clientId ||
-        selectedClientId ||
-        editingTask?.clientId?._id ||
-        editingTask?.clientId,
-    ],
-    queryFn: () =>
-      packagesApi.getAll({
-        clientId:
-          filters.clientId ||
-          selectedClientId ||
-          editingTask?.clientId?._id ||
-          editingTask?.clientId,
-        limit: 10000,
-      }),
-    enabled: !!(
-      filters.clientId ||
-      selectedClientId ||
-      editingTask?.clientId?._id ||
-      editingTask?.clientId
-    ),
-  });
+  const packageClientId =
+    filters.clientId ||
+    selectedClientId ||
+    editingTask?.clientId?._id ||
+    editingTask?.clientId;
 
-  const { data: employeesData } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => employeesApi.getAll({ limit: 10000 }),
-  });
+  const { data: packagesData } = usePackages(
+    { clientId: packageClientId, limit: 10000 },
+    { enabled: !!packageClientId }
+  );
 
-  const { data: servicesData } = useQuery({
-    queryKey: ["services"],
-    queryFn: () => servicesApi.getAll({ limit: 10000 }),
-    enabled: true,
-  });
-
-  const { data: activitiesData } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => activitiesApi.getAll({ limit: 10000 }),
-    enabled: true,
-  });
-
-  // Fetch all packages for template dropdown
-  const { data: allPackagesData } = useQuery({
-    queryKey: ["packages", "all"],
-    queryFn: () => packagesApi.getAll({ limit: 1000 }),
-  });
+  const { data: employeesData } = useEmployees({ limit: 10000 });
+  const { data: servicesData } = useServices({ limit: 10000 });
+  const { data: activitiesData } = useActivities({ limit: 10000 });
+  const { data: allPackagesData } = usePackages({ limit: 1000 });
 
   // Filter packages by type for template selection
   const allPackages = allPackagesData?.data?.packages || [];
@@ -258,145 +233,28 @@ export const Tasks = () => {
     ? availableActivities.filter((a) => packageActivityIds.includes(a._id))
     : availableActivities;
 
-  const createMutation = useMutation({
-    mutationFn: tasksApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      setShowForm(false);
-      resetForm();
-      toast({
-        title: "Success",
-        description: "Task created successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to create task",
-        type: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => tasksApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      setShowForm(false);
-      setEditingTask(null);
-      resetForm();
-      toast({
-        title: "Success",
-        description: "Task updated successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update task",
-        type: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: tasksApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast({
-        title: "Success",
-        description: "Task deleted successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to delete task",
-        type: "destructive",
-      });
-    },
-  });
-
-  const updateOrderMutation = useMutation({
-    mutationFn: ({ id, order }) => tasksApi.updateOrder(id, order),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    },
-  });
-
-  const archiveMutation = useMutation({
-    mutationFn: tasksApi.archive,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast({ title: "Archived", description: "Task archived successfully", type: "success" });
-    },
-    onError: (error) => {
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to archive task", type: "destructive" });
-    },
-  });
+  const createMutation = useCreateTask();
+  const updateMutation = useUpdateTask();
+  const deleteMutation = useDeleteTask();
+  const updateOrderMutation = useUpdateTaskOrder();
+  const archiveMutation = useArchiveTask();
+  const createClientMutation = useCreateClient();
+  const createPackageMutation = useCreatePackage();
 
   const handleArchive = (taskId) => {
     if (confirm("Archive this task? It will be moved to History.")) {
-      archiveMutation.mutate(taskId);
+      archiveMutation.mutate(taskId, {
+        onSuccess: () => {
+          toast({
+            title: "Archived",
+            description: "Task archived successfully",
+            type: "success",
+          });
+        },
+      });
     }
   };
 
-  const createClientMutation = useMutation({
-    mutationFn: clientsApi.create,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      setShowClientForm(false);
-      // Select the newly created client
-      if (data?.data?._id) {
-        setSelectedClientId(data.data._id);
-      }
-      toast({
-        title: "Success",
-        description: "Client created successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to create client",
-        type: "destructive",
-      });
-    },
-  });
-
-  const createPackageMutation = useMutation({
-    mutationFn: packagesApi.create,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["packages"] });
-      setShowPackageForm(false);
-      // Reset package form state
-      setPackageType("RECURRING");
-      setPackageSelectedServices([]);
-      setPackageSelectedActivities([]);
-      setTemplatePackageId("");
-      // Select the newly created package
-      if (data?.data?._id) {
-        setSelectedPackageId(data.data._id);
-      }
-      toast({
-        title: "Success",
-        description: "Package created successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to create package",
-        type: "destructive",
-      });
-    },
-  });
 
   const resetForm = () => {
     setEditingTask(null);
@@ -469,7 +327,14 @@ export const Tasks = () => {
       phone: formData.get("phone"),
       status: formData.get("status") || "ACTIVE",
     };
-    createClientMutation.mutate(data);
+    createClientMutation.mutate(data, {
+      onSuccess: (response) => {
+        setShowClientForm(false);
+        if (response?.data?._id) {
+          setSelectedClientId(response.data._id);
+        }
+      },
+    });
   };
 
   const handlePackageSubmit = (e) => {
@@ -489,7 +354,18 @@ export const Tasks = () => {
       services: packageSelectedServices,
       activities: packageSelectedActivities,
     };
-    createPackageMutation.mutate(data);
+    createPackageMutation.mutate(data, {
+      onSuccess: (response) => {
+        setShowPackageForm(false);
+        setPackageType("RECURRING");
+        setPackageSelectedServices([]);
+        setPackageSelectedActivities([]);
+        setTemplatePackageId("");
+        if (response?.data?._id) {
+          setSelectedPackageId(response.data._id);
+        }
+      },
+    });
   };
 
   const handleTemplatePackageSelect = (packageId) => {
@@ -716,9 +592,23 @@ export const Tasks = () => {
     if (editingTask) {
       // Include status for updates
       data.status = editingTask.status || "TODO";
-      updateMutation.mutate({ id: editingTask._id, data });
+      updateMutation.mutate(
+        { id: editingTask._id, data },
+        {
+          onSuccess: () => {
+            setShowForm(false);
+            setEditingTask(null);
+            resetForm();
+          },
+        }
+      );
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          setShowForm(false);
+          resetForm();
+        },
+      });
     }
   };
 
@@ -728,7 +618,7 @@ export const Tasks = () => {
     if (editingTask) {
       try {
         await tasksApi.addAttachment(editingTask._id, file);
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
         toast({
           title: "Success",
           description: "File uploaded successfully",
@@ -748,7 +638,7 @@ export const Tasks = () => {
     if (!editingTask) return;
     try {
       await tasksApi.deleteAttachment(editingTask._id, fileId);
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
       toast({
         title: "Success",
         description: "File deleted successfully",
@@ -804,35 +694,43 @@ export const Tasks = () => {
     }));
   };
 
-  const sortedTasks = [...(inlineSearch ? tasks.filter((t) => t.name?.toLowerCase().includes(inlineSearch.toLowerCase())) : tasks)].sort((a, b) => {
-    if (!sortConfig.key) return 0;
+  // Memoized so this filter+sort (up to 1000 rows) only re-runs when tasks,
+  // the search term, or the sort config actually change - previously this
+  // ran on every render, including the 1Hz ticks from an active timer.
+  const sortedTasks = useMemo(() => {
+    const filtered = inlineSearch
+      ? tasks.filter((t) => t.name?.toLowerCase().includes(inlineSearch.toLowerCase()))
+      : tasks;
+    return [...filtered].sort((a, b) => {
+      if (!sortConfig.key) return 0;
 
-    let aValue = a[sortConfig.key];
-    let bValue = b[sortConfig.key];
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
 
-    // Handle nested properties
-    if (sortConfig.key === "dueDate") {
-      aValue = a.dueDate ? new Date(a.dueDate) : new Date(0);
-      bValue = b.dueDate ? new Date(b.dueDate) : new Date(0);
-    } else if (sortConfig.key === "assignedTo") {
-      // For sorting, use first assigned employee name
-      const aAssigned = Array.isArray(a.assignedTo)
-        ? a.assignedTo[0]?.name || a.assignedTo[0]?.email || ""
-        : a.assignedTo?.name || a.assignedTo?.email || "";
-      const bAssigned = Array.isArray(b.assignedTo)
-        ? b.assignedTo[0]?.name || b.assignedTo[0]?.email || ""
-        : b.assignedTo?.name || b.assignedTo?.email || "";
-      aValue = aAssigned;
-      bValue = bAssigned;
-    } else if (sortConfig.key === "clientId") {
-      aValue = a.clientId?.name || "";
-      bValue = b.clientId?.name || "";
-    }
+      // Handle nested properties
+      if (sortConfig.key === "dueDate") {
+        aValue = a.dueDate ? new Date(a.dueDate) : new Date(0);
+        bValue = b.dueDate ? new Date(b.dueDate) : new Date(0);
+      } else if (sortConfig.key === "assignedTo") {
+        // For sorting, use first assigned employee name
+        const aAssigned = Array.isArray(a.assignedTo)
+          ? a.assignedTo[0]?.name || a.assignedTo[0]?.email || ""
+          : a.assignedTo?.name || a.assignedTo?.email || "";
+        const bAssigned = Array.isArray(b.assignedTo)
+          ? b.assignedTo[0]?.name || b.assignedTo[0]?.email || ""
+          : b.assignedTo?.name || b.assignedTo?.email || "";
+        aValue = aAssigned;
+        bValue = bAssigned;
+      } else if (sortConfig.key === "clientId") {
+        aValue = a.clientId?.name || "";
+        bValue = b.clientId?.name || "";
+      }
 
-    if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
-    return 0;
-  });
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [tasks, inlineSearch, sortConfig.key, sortConfig.direction]);
 
   const handleTaskClick = async (task) => {
     // Fetch full task details with comments and attachments
@@ -845,10 +743,16 @@ export const Tasks = () => {
     }
   };
 
-  // Inline search filter (client-side, fast)
-  const boardTasks = inlineSearch
-    ? tasks.filter((t) => t.name?.toLowerCase().includes(inlineSearch.toLowerCase()))
-    : tasks;
+  // Inline search filter (client-side, fast). Memoized for the same reason
+  // as sortedTasks above, and so KanbanBoard's `tasks` prop keeps a stable
+  // reference across renders that don't change the underlying data.
+  const boardTasks = useMemo(
+    () =>
+      inlineSearch
+        ? tasks.filter((t) => t.name?.toLowerCase().includes(inlineSearch.toLowerCase()))
+        : tasks,
+    [tasks, inlineSearch]
+  );
 
   const KANBAN_COLUMNS = [
     { id: "TODO", title: "To Do", color: "from-slate-600 to-slate-700" },

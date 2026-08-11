@@ -1,41 +1,22 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/ui/card';
 import { TrendingUp, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
-import { authApi } from '@/api/auth';
-import { useToast } from '@/hooks/useToast';
+import { useForgotPassword } from '@/api/queries/authQueries';
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  const forgotPasswordMutation = useMutation({
-    mutationFn: (email) => authApi.forgotPassword(email),
-    onSuccess: () => {
-      setIsSubmitted(true);
-      toast({
-        title: 'Success',
-        description: 'Password reset email sent! Please check your inbox.',
-        type: 'success',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description:
-          error?.response?.data?.message || 'Failed to send reset email. Please try again.',
-        type: 'destructive',
-      });
-    },
-  });
+  const forgotPasswordMutation = useForgotPassword();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    forgotPasswordMutation.mutate(email);
+    forgotPasswordMutation.mutate(email, {
+      onSuccess: () => setIsSubmitted(true),
+    });
   };
 
   if (isSubmitted) {

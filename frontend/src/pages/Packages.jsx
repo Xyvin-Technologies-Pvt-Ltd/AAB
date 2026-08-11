@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/layout/AppLayout';
-import { packagesApi } from '@/api/packages';
+import { usePackagesPaginated } from '@/api/queries/packageQueries';
 import { Card } from '@/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
@@ -16,9 +15,10 @@ export const Packages = () => {
   const [page, setPage] = useState(1);
   const limit = 25;
 
-  const { data: packagesData, isLoading } = useQuery({
-    queryKey: ['packages', page, search],
-    queryFn: () => packagesApi.getAll({ page, limit, search }),
+  const { data: packagesData, isLoading } = usePackagesPaginated({
+    page,
+    limit,
+    search,
   });
 
   const packages = packagesData?.data?.packages || [];

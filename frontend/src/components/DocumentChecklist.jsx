@@ -20,8 +20,12 @@ import {
   useDocumentVerify,
   useDocumentDelete,
   useDocumentReprocess,
+  useAddPartner,
+  useAddManager,
+  useAssignDocument,
 } from "@/api/queries/clientQueries";
-import { useAddPartner, useAddManager } from "@/api/queries/clientQueries";
+import { queryKeys } from "@/api/queries/queryKeys";
+import { clientsApi } from "@/api/clients";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDateDDMonthYear } from "@/utils/dateFormat";
 import { useToast } from "@/hooks/useToast";
@@ -236,6 +240,7 @@ export const DocumentChecklist = ({
   const reprocessMutation = useDocumentReprocess();
   const addPartnerMutation = useAddPartner();
   const addManagerMutation = useAddManager();
+  const assignDocumentMutation = useAssignDocument();
 
   const handleFileSelect = (category, personId = null) => {
     const key = personId ? `${category}_${personId}` : category;
@@ -278,9 +283,13 @@ export const DocumentChecklist = ({
         });
 
         setTimeout(async () => {
-          await queryClient.refetchQueries({ queryKey: ["client", clientId] });
+          await queryClient.refetchQueries({
+            queryKey: queryKeys.clients.detail(clientId),
+          });
 
-          const clientData = queryClient.getQueryData(["client", clientId]);
+          const clientData = queryClient.getQueryData(
+            queryKeys.clients.detail(clientId)
+          );
           const updatedDocument = clientData?.data?.documents?.find(
             (doc) => doc._id === document._id
           );
@@ -413,7 +422,8 @@ export const DocumentChecklist = ({
       while (attempts < maxAttempts) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         const clientData = await queryClient.fetchQuery({
-          queryKey: ["client", clientId],
+          queryKey: queryKeys.clients.detail(clientId),
+          queryFn: () => clientsApi.getById(clientId),
         });
 
         const documents = clientData?.data?.documents || [];
@@ -514,12 +524,11 @@ export const DocumentChecklist = ({
         );
         if (newPartner?._id) {
           try {
-            const { clientsApi } = await import("@/api/clients");
-            await clientsApi.assignDocument(
+            await assignDocumentMutation.mutateAsync({
               clientId,
-              processedDocument._id,
-              newPartner._id
-            );
+              documentId: processedDocument._id,
+              personId: newPartner._id,
+            });
           } catch (assignError) {
             console.error("Failed to link document to partner:", assignError);
             // Don't fail the whole operation, just log the error
@@ -528,7 +537,9 @@ export const DocumentChecklist = ({
       }
 
       // Refetch to ensure sync
-      await queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.clients.detail(clientId),
+      });
 
       setPartnerFormData({ name: "", documentType: "PASSPORT" });
       setPartnerFile(null);
@@ -672,7 +683,8 @@ export const DocumentChecklist = ({
       while (attempts < maxAttempts) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         const clientData = await queryClient.fetchQuery({
-          queryKey: ["client", clientId],
+          queryKey: queryKeys.clients.detail(clientId),
+          queryFn: () => clientsApi.getById(clientId),
         });
 
         const documents = clientData?.data?.documents || [];
@@ -775,12 +787,11 @@ export const DocumentChecklist = ({
         );
         if (newManager?._id) {
           try {
-            const { clientsApi } = await import("@/api/clients");
-            await clientsApi.assignDocument(
+            await assignDocumentMutation.mutateAsync({
               clientId,
-              processedDocument._id,
-              newManager._id
-            );
+              documentId: processedDocument._id,
+              personId: newManager._id,
+            });
           } catch (assignError) {
             console.error("Failed to link document to manager:", assignError);
             // Don't fail the whole operation, just log the error
@@ -789,7 +800,9 @@ export const DocumentChecklist = ({
       }
 
       // Refetch to ensure sync
-      await queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.clients.detail(clientId),
+      });
 
       setManagerFormData({ name: "", documentType: "PASSPORT" });
       setManagerFile(null);

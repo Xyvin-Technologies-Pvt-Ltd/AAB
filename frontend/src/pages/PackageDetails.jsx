@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
-import { packagesApi } from "@/api/packages";
-import { servicesApi } from "@/api/services";
-import { activitiesApi } from "@/api/activities";
+import { usePackageDetail, useUpdatePackage } from "@/api/queries/packageQueries";
+import { useServices } from "@/api/queries/serviceQueries";
+import { useActivities } from "@/api/queries/activityQueries";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import {
@@ -15,8 +14,6 @@ import {
   DollarSign,
   Package,
 } from "lucide-react";
-import { useToast } from "@/hooks/useToast";
-import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 import { Badge } from "@/ui/badge";
 import { LoaderWithText } from "@/components/Loader";
 import {
@@ -28,12 +25,11 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { MultiSelect } from "@/ui/multi-select";
+import { formatDateDDMMYYYY } from "@/utils/dateFormat";
 
 export const PackageDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedServices, setSelectedServices] = useState([]);
   const [selectedActivities, setSelectedActivities] = useState([]);
@@ -47,23 +43,14 @@ export const PackageDetails = () => {
     isFetching: packageFetching,
     isError: packageError,
     isPending,
-  } = useQuery({
-    queryKey: ["package", id],
-    queryFn: () => packagesApi.getById(id),
-    enabled: !!id,
+  } = usePackageDetail(id, {
     retry: 1,
     retryDelay: 1000,
   });
 
-  const { data: servicesData } = useQuery({
-    queryKey: ["services"],
-    queryFn: () => servicesApi.getAll({ limit: 10000 }),
-  });
-
-  const { data: activitiesData } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => activitiesApi.getAll({ limit: 10000 }),
-  });
+  const { data: servicesData } = useServices({ limit: 10000 });
+  const { data: activitiesData } = useActivities({ limit: 10000 });
+  const updatePackageMutation = useUpdatePackage();
 
   const pkg = packageData?.data;
   const services = servicesData?.data?.services || servicesData?.data || [];
@@ -83,28 +70,6 @@ export const PackageDetails = () => {
       setPackageType(pkg.type || "RECURRING");
     }
   }, [pkg?._id, showEditForm]);
-
-  const updatePackageMutation = useMutation({
-    mutationFn: ({ id, data }) => packagesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["package", id] });
-      queryClient.invalidateQueries({ queryKey: ["packages"] });
-      setShowEditForm(false);
-      toast({
-        title: "Success",
-        description: "Package updated successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to update package",
-        type: "error",
-      });
-    },
-  });
 
   const handleEdit = () => {
     if (pkg) {
@@ -140,7 +105,10 @@ export const PackageDetails = () => {
       activities: selectedActivities,
     };
 
-    updatePackageMutation.mutate({ id: pkg._id, data });
+    updatePackageMutation.mutate(
+      { id: pkg._id, data },
+      { onSuccess: () => setShowEditForm(false) }
+    );
   };
 
   if (packageLoading || packageFetching || isPending) {

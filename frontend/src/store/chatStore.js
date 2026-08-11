@@ -19,16 +19,8 @@ export const useChatStore = create(subscribeWithSelector((set, get) => ({
   streamingMessageId: null,
   abortController: null,
 
-  // Sessions list cache
-  sessions: [],
-  sessionsLoading: false,
-
   // Page context injected from current page
   pageContext: null,
-
-  // Insights for dashboard widget
-  insights: [],
-  insightsLoading: false,
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -228,23 +220,4 @@ export const useChatStore = create(subscribeWithSelector((set, get) => ({
   },
 
   setAbortController: (ctrl) => set({ abortController: ctrl }),
-
-  // Sessions list
-  setSessions: (sessions) => set({ sessions }),
-  setSessionsLoading: (loading) => set({ sessionsLoading: loading }),
-
-  removeSession: (sessionId) => {
-    set((state) => ({
-      sessions: state.sessions.filter((s) => s._id !== sessionId),
-    }));
-    // If current session was deleted, start new
-    const { activeSessionId } = get();
-    if (activeSessionId === sessionId) {
-      get().startNewChat();
-    }
-  },
-
-  // Insights
-  setInsights: (insights) => set({ insights }),
-  setInsightsLoading: (loading) => set({ insightsLoading: loading }),
 })));

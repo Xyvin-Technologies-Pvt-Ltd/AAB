@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientsApi } from '@/api/clients';
+import { useBulkUploadClients } from '@/api/queries';
 import { Button } from '@/ui/button';
 import {
   Dialog,
@@ -20,45 +19,9 @@ export const ClientBulkUpload = ({ open, onOpenChange }) => {
   const [uploadResults, setUploadResults] = useState(null);
   const [showErrors, setShowErrors] = useState(false);
   const fileInputRef = useRef(null);
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const uploadMutation = useMutation({
-    mutationFn: (file) =>
-      clientsApi.bulkUploadClients(file, (progress) => {
-        setUploadProgress(progress);
-      }),
-    onSuccess: (data) => {
-      const results = data.data || data;
-      setUploadResults(results);
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      queryClient.invalidateQueries({ queryKey: ['packages'] });
-      
-      if (results.success > 0) {
-        toast({
-          title: 'Upload Successful',
-          description: `Successfully created ${results.success} client(s)`,
-          type: 'success',
-        });
-      }
-      
-      if (results.failed > 0 || results.skipped > 0) {
-        toast({
-          title: 'Upload Completed with Issues',
-          description: `${results.success} succeeded, ${results.failed} failed, ${results.skipped} skipped`,
-          type: 'warning',
-        });
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: 'Upload Failed',
-        description: error.response?.data?.message || 'Failed to upload CSV file',
-        type: 'destructive',
-      });
-      setUploadProgress(0);
-    },
-  });
+  const uploadMutation = useBulkUploadClients();
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
@@ -87,7 +50,37 @@ export const ClientBulkUpload = ({ open, onOpenChange }) => {
       return;
     }
 
-    uploadMutation.mutate(selectedFile);
+    uploadMutation.mutate(
+      {
+        file: selectedFile,
+        onUploadProgress: (progress) => setUploadProgress(progress),
+      },
+      {
+        onSuccess: (data) => {
+          const results = data.data || data;
+          setUploadResults(results);
+
+          if (results.success > 0) {
+            toast({
+              title: 'Upload Successful',
+              description: `Successfully created ${results.success} client(s)`,
+              type: 'success',
+            });
+          }
+
+          if (results.failed > 0 || results.skipped > 0) {
+            toast({
+              title: 'Upload Completed with Issues',
+              description: `${results.success} succeeded, ${results.failed} failed, ${results.skipped} skipped`,
+              type: 'warning',
+            });
+          }
+        },
+        onError: () => {
+          setUploadProgress(0);
+        },
+      }
+    );
   };
 
   const handleDownloadTemplate = () => {
@@ -309,4 +302,3 @@ Example Client 3,VAT,Not Active,user3@example.com,Password789,Mar Jun Sep Dec`;
     </Dialog>
   );
 };
-

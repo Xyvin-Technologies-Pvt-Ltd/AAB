@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/layout/AppLayout";
-import { analyticsApi } from "@/api/analytics";
+import {
+  useClientProfitability,
+  useEmployeeUtilization,
+} from "@/api/queries/analyticsQueries";
 import { formatCurrency } from "@/utils/currencyFormat";
 import { Button } from "@/ui/button";
 import { LoaderWithText } from "@/components/Loader";
@@ -42,25 +44,21 @@ export const Analytics = () => {
     return base;
   }, [search, user?.role, viewMode]);
 
-  const { data: clientData, isLoading: clientsLoading } = useQuery({
-    queryKey: ["analytics", "clients", page, search, viewMode],
-    queryFn: () =>
-      analyticsApi.getClientProfitability({ ...apiParams, page, limit }),
-    enabled: !isEmployee,
+  const { data: clientData, isLoading: clientsLoading } = useClientProfitability(
+    { ...apiParams, page, limit },
+    { enabled: !isEmployee }
+  );
+
+  const { data: employeeData, isLoading: employeesLoading } = useEmployeeUtilization({
+    ...apiParams,
+    page,
+    limit,
   });
 
-  const { data: employeeData, isLoading: employeesLoading } = useQuery({
-    queryKey: ["analytics", "employees", page, search, viewMode],
-    queryFn: () =>
-      analyticsApi.getEmployeeUtilization({ ...apiParams, page, limit }),
-  });
-
-  // Fetch all client data for KPI calculations (without pagination)
-  const { data: allClientsData, isLoading: allClientsLoading } = useQuery({
-    queryKey: ["analytics", "clients", "all", search, viewMode],
-    queryFn: () => analyticsApi.getClientProfitability(allApiParams),
-    enabled: !isEmployee && effectiveTab === "clients",
-  });
+  const { data: allClientsData, isLoading: allClientsLoading } = useClientProfitability(
+    allApiParams,
+    { enabled: !isEmployee && effectiveTab === "clients" }
+  );
 
   const clientsList =
     clientData?.data?.results ??

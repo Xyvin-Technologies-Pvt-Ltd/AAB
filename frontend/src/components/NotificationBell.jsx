@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { notificationsApi } from "@/api/notifications";
+import {
+  useInfiniteNotifications,
+  useUnreadNotificationCount,
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+} from "@/api/queries";
 import { Bell, CheckCheck, Clock, MessageSquare, UserCheck, AlertTriangle, Archive, CheckSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/ui/button";
 
 const NOTIFICATION_ICONS = {
   TASK_ASSIGNED: UserCheck,
@@ -25,36 +30,19 @@ const NOTIFICATION_COLORS = {
 
 export const NotificationBell = () => {
   const [open, setOpen] = useState(false);
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => notificationsApi.getAll({ limit: 20 }),
-    refetchInterval: 60000,
-  });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteNotifications({ limit: 20 }, { refetchInterval: 60000 });
+  const { data: countData } = useUnreadNotificationCount();
+  const markReadMutation = useMarkNotificationRead();
+  const markAllReadMutation = useMarkAllNotificationsRead();
 
-  const { data: countData } = useQuery({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: () => notificationsApi.getUnreadCount(),
-    refetchInterval: 30000,
-  });
-
-  const markReadMutation = useMutation({
-    mutationFn: notificationsApi.markAsRead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
-  });
-
-  const markAllReadMutation = useMutation({
-    mutationFn: notificationsApi.markAllAsRead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
-  });
-
-  const notifications = data?.data?.notifications || [];
+  const notifications = data?.pages.flatMap((p) => p?.data?.notifications || []) || [];
   const unreadCount = countData?.data?.count || 0;
 
   const handleNotificationClick = (notification) => {
@@ -84,10 +72,8 @@ export const NotificationBell = () => {
 
       {open && (
         <>
-          {/* Backdrop */}
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
 
-          {/* Dropdown */}
           <div className="absolute right-0 top-10 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-40 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-800">Notifications</span>
@@ -139,9 +125,23 @@ export const NotificationBell = () => {
               )}
             </div>
 
+            {hasNextPage && (
+              <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? "Loading..." : "Load more"}
+                </Button>
+              </div>
+            )}
+
             {notifications.length > 0 && (
               <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
-                <p className="text-[10px] text-center text-gray-400">Showing last {notifications.length} notifications</p>
+                <p className="text-[10px] text-center text-gray-400">Showing {notifications.length} notifications</p>
               </div>
             )}
           </div>

@@ -1,7 +1,15 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/layout/AppLayout";
-import { employeesApi } from "@/api/employees";
+import {
+  useEmployeesPaginated,
+  useCreateEmployee,
+  useUpdateEmployee,
+  useDeleteEmployee,
+  useUploadEmployeeDocument,
+  useDeleteEmployeeDocument,
+  useUploadEmployeeProfilePicture,
+  useDeleteEmployeeProfilePicture,
+} from "@/api/queries/employeeQueries";
 import { Button } from "@/ui/button";
 import { Card } from "@/ui/card";
 import {
@@ -16,7 +24,6 @@ import { FileUpload } from "@/components/FileUpload";
 import { Avatar } from "@/components/Avatar";
 import { Plus, Pencil, Trash2, Eye, FileText, Upload, X, MoreVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/useToast";
 import { LoaderWithText } from "@/components/Loader";
 import { Pagination } from "@/components/Pagination";
 import { SearchInput } from "@/components/SearchInput";
@@ -31,166 +38,20 @@ import {
 export const Employees = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const limit = 25;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["employees", page, search],
-    queryFn: () => employeesApi.getAll({ page, limit, search }),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: employeesApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      setShowForm(false);
-      resetForm();
-      toast({
-        title: "Success",
-        description: "Employee created successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to create employee",
-        type: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => employeesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      setShowForm(false);
-      setEditingEmployee(null);
-      resetForm();
-      toast({
-        title: "Success",
-        description: "Employee updated successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to update employee",
-        type: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: employeesApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      toast({
-        title: "Success",
-        description: "Employee deleted successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to delete employee",
-        type: "destructive",
-      });
-    },
-  });
-
-  const uploadDocumentMutation = useMutation({
-    mutationFn: ({ employeeId, file }) =>
-      employeesApi.uploadDocument(employeeId, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      toast({
-        title: "Success",
-        description: "Document uploaded successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to upload document",
-        type: "destructive",
-      });
-    },
-  });
-
-  const uploadProfilePictureMutation = useMutation({
-    mutationFn: ({ employeeId, file }) =>
-      employeesApi.uploadProfilePicture(employeeId, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      toast({
-        title: "Success",
-        description: "Profile picture uploaded successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to upload profile picture",
-        type: "destructive",
-      });
-    },
-  });
-
-  const deleteProfilePictureMutation = useMutation({
-    mutationFn: (employeeId) => employeesApi.deleteProfilePicture(employeeId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      toast({
-        title: "Success",
-        description: "Profile picture deleted successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to delete profile picture",
-        type: "destructive",
-      });
-    },
-  });
-
-  const deleteDocumentMutation = useMutation({
-    mutationFn: ({ employeeId, documentId }) =>
-      employeesApi.deleteDocument(employeeId, documentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      toast({
-        title: "Success",
-        description: "Document deleted successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to delete document",
-        type: "destructive",
-      });
-    },
-  });
+  const { data, isLoading } = useEmployeesPaginated({ page, limit, search });
+  const createMutation = useCreateEmployee();
+  const updateMutation = useUpdateEmployee();
+  const deleteMutation = useDeleteEmployee();
+  const uploadDocumentMutation = useUploadEmployeeDocument();
+  const uploadProfilePictureMutation = useUploadEmployeeProfilePicture();
+  const deleteProfilePictureMutation = useDeleteEmployeeProfilePicture();
+  const deleteDocumentMutation = useDeleteEmployeeDocument();
 
   const resetForm = () => {
     setEditingEmployee(null);
@@ -225,16 +86,29 @@ export const Employees = () => {
     };
 
     if (editingEmployee) {
-      updateMutation.mutate({ id: editingEmployee._id, data });
+      updateMutation.mutate(
+        { id: editingEmployee._id, data },
+        {
+          onSuccess: () => {
+            setShowForm(false);
+            resetForm();
+          },
+        }
+      );
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          setShowForm(false);
+          resetForm();
+        },
+      });
     }
   };
 
   const handleUploadDocument = async (file) => {
     if (!editingEmployee?._id) return;
     await uploadDocumentMutation.mutateAsync({
-      employeeId: editingEmployee._id,
+      id: editingEmployee._id,
       file,
     });
   };
@@ -242,7 +116,7 @@ export const Employees = () => {
   const handleDeleteDocument = async (documentId) => {
     if (!editingEmployee?._id) return;
     await deleteDocumentMutation.mutateAsync({
-      employeeId: editingEmployee._id,
+      id: editingEmployee._id,
       documentId,
     });
   };
@@ -477,7 +351,7 @@ export const Employees = () => {
                           const file = e.target.files?.[0];
                           if (file && editingEmployee?._id) {
                             uploadProfilePictureMutation.mutate({
-                              employeeId: editingEmployee._id,
+                              id: editingEmployee._id,
                               file,
                             });
                           }

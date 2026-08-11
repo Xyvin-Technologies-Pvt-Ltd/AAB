@@ -17,9 +17,22 @@ const transports = [];
 // Only add file transports if logs directory is writable
 try {
   fs.accessSync(logsDir, fs.constants.W_OK);
+  // maxsize/maxFiles bound these files - without a cap combined.log grows
+  // unbounded on the container's writable layer (every request logs a line).
   transports.push(
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' })
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error',
+      maxsize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 5,
+      tailable: true,
+    }),
+    new winston.transports.File({
+      filename: 'logs/combined.log',
+      maxsize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 5,
+      tailable: true,
+    })
   );
 } catch (error) {
   console.warn('Logs directory is not writable, using console transport only');

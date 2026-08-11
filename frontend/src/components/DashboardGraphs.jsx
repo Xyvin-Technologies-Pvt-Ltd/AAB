@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { analyticsApi } from '@/api/analytics';
+import { useDashboardStatistics } from '@/api/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
 import { LoaderWithText } from '@/components/Loader';
 import {
@@ -14,10 +13,7 @@ import {
 } from 'recharts';
 
 export const DashboardGraphs = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboard-statistics'],
-    queryFn: () => analyticsApi.getDashboardStatistics(),
-  });
+  const { data, isLoading } = useDashboardStatistics();
 
   if (isLoading) {
     return (
@@ -111,4 +107,3 @@ export const DashboardGraphs = () => {
     </div>
   );
 };
-

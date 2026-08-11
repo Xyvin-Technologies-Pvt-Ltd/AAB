@@ -2,6 +2,8 @@ import express from 'express';
 import { validate } from '../../middlewares/validator.js';
 import { authenticate, authorize } from '../../middlewares/auth.js';
 import { uploadSingle, uploadCSVSingle } from '../../middlewares/upload.js';
+import { cacheRoute } from '../../middlewares/cache.js';
+import { CACHE_TAGS } from '../../helpers/cacheTags.js';
 import * as clientController from './client.controller.js';
 import {
   createClientSchema,
@@ -21,18 +23,18 @@ router.use(authenticate);
 
 // All routes accessible to both ADMIN and EMPLOYEE
 router.post('/', validate(createClientSchema), clientController.createClient);
-router.get('/', clientController.getClients);
+router.get('/', cacheRoute([CACHE_TAGS.CLIENTS, CACHE_TAGS.PACKAGES], { ttl: 60 }), clientController.getClients);
 
 // Bulk upload route (must be before /:id route to avoid route conflicts)
 router.post('/bulk-upload', uploadCSVSingle, clientController.bulkUploadClients);
 
 // Compliance routes (must be before /:id route to avoid route conflicts)
-router.get('/alerts/all', clientController.getAllAlerts);
-router.get('/submission-dates/next', clientController.getNextSubmissionDates);
-router.get('/calendar-events', clientController.getCalendarEvents);
+router.get('/alerts/all', cacheRoute([CACHE_TAGS.CLIENTS], { ttl: 60 }), clientController.getAllAlerts);
+router.get('/submission-dates/next', cacheRoute([CACHE_TAGS.CLIENTS], { ttl: 300 }), clientController.getNextSubmissionDates);
+router.get('/calendar-events', cacheRoute([CACHE_TAGS.CLIENTS], { ttl: 300 }), clientController.getCalendarEvents);
 
 // Client-specific routes
-router.get('/:id', clientController.getClientById);
+router.get('/:id', cacheRoute([CACHE_TAGS.CLIENTS], { ttl: 60 }), clientController.getClientById);
 router.put('/:id', validate(updateClientSchema), clientController.updateClient);
 router.delete('/:id', clientController.deleteClient);
 
@@ -76,7 +78,7 @@ router.patch(
 router.delete('/:id/managers/:personId', clientController.removePerson);
 
 // Compliance routes
-router.get('/:id/compliance', clientController.getComplianceStatus);
+router.get('/:id/compliance', cacheRoute([CACHE_TAGS.CLIENTS], { ttl: 60 }), clientController.getComplianceStatus);
 
 // Sync document data to persons
 router.post('/:id/sync-documents', clientController.syncDocumentDataToPersons);

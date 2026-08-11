@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/layout/AppLayout";
-import { invoicesApi } from "@/api/invoices";
-import { clientsApi } from "@/api/clients";
+import { useInvoicesPaginated } from "@/api/queries/invoiceQueries";
+import { useClients } from "@/api/queries/clientQueries";
 import { Button } from "@/ui/button";
 import { Card } from "@/ui/card";
 import { Plus, Filter, FileText } from "lucide-react";
@@ -32,23 +31,16 @@ export const Invoices = () => {
   const [showFilters, setShowFilters] = useState(false);
   const limit = 25;
 
-  const { data: invoicesData, isLoading } = useQuery({
-    queryKey: ["invoices", filters, page],
-    queryFn: () =>
-      invoicesApi.getAll({
-        page,
-        limit,
-        clientId: filters.clientId || undefined,
-        status: filters.status || undefined,
-        startDate: filters.startDate || undefined,
-        endDate: filters.endDate || undefined,
-      }),
+  const { data: invoicesData, isLoading } = useInvoicesPaginated({
+    page,
+    limit,
+    clientId: filters.clientId || undefined,
+    status: filters.status || undefined,
+    startDate: filters.startDate || undefined,
+    endDate: filters.endDate || undefined,
   });
 
-  const { data: clientsData } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 10000 }),
-  });
+  const { data: clientsData } = useClients({ limit: 500 });
 
   const invoices = invoicesData?.data?.invoices || [];
   const pagination = invoicesData?.data?.pagination;

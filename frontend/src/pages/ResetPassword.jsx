@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/ui/card';
 import { TrendingUp, ArrowLeft, Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { authApi } from '@/api/auth';
+import { useResetPassword } from '@/api/queries/authQueries';
 import { useToast } from '@/hooks/useToast';
 
 export const ResetPassword = () => {
@@ -29,28 +28,7 @@ export const ResetPassword = () => {
     }
   }, [token, navigate, toast]);
 
-  const resetPasswordMutation = useMutation({
-    mutationFn: ({ token, newPassword }) => authApi.resetPassword(token, newPassword),
-    onSuccess: () => {
-      setIsSuccess(true);
-      toast({
-        title: 'Success',
-        description: 'Password reset successfully! You can now login with your new password.',
-        type: 'success',
-      });
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description:
-          error?.response?.data?.message || 'Failed to reset password. The token may have expired.',
-        type: 'destructive',
-      });
-    },
-  });
+  const resetPasswordMutation = useResetPassword();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -82,7 +60,15 @@ export const ResetPassword = () => {
       return;
     }
 
-    resetPasswordMutation.mutate({ token, newPassword });
+    resetPasswordMutation.mutate(
+      { token, newPassword },
+      {
+        onSuccess: () => {
+          setIsSuccess(true);
+          setTimeout(() => navigate('/login'), 3000);
+        },
+      }
+    );
   };
 
   if (isSuccess) {

@@ -6,6 +6,7 @@ import {
   getLoginUrl,
 } from '../../helpers/emailService.js';
 import logger from '../../helpers/logger.js';
+import { invalidateCachedUser } from '../../helpers/userCache.js';
 
 /**
  * Generate a secure random password
@@ -216,6 +217,7 @@ export const sendEmployeeCredentials = async (employeeId) => {
     }
     user.isActive = true;
     await user.save();
+    await invalidateCachedUser(user._id);
   } else {
     user = await User.create({
       email: employee.email,

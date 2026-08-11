@@ -1,11 +1,16 @@
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useMemo } from "react";
 import { AppLayout } from "@/layout/AppLayout";
-import { timeEntriesApi } from "@/api/timeEntries";
-import { employeesApi } from "@/api/employees";
-import { clientsApi } from "@/api/clients";
-import { packagesApi } from "@/api/packages";
-import { tasksApi } from "@/api/tasks";
+import {
+  useInfiniteTimeEntries,
+  useTimeEntries,
+  useStartMiscTimer,
+  useDeleteTimeEntry,
+  useUpdateTimeEntry,
+} from "@/api/queries/timeEntryQueries";
+import { useEmployees } from "@/api/queries/employeeQueries";
+import { useClients } from "@/api/queries/clientQueries";
+import { usePackages, usePackagesByClient } from "@/api/queries/packageQueries";
+import { useTasks } from "@/api/queries/taskQueries";
 import { useAuthStore } from "@/store/authStore";
 import { useTimer } from "@/hooks/useTimer";
 import { TimeFilterDrawer } from "@/components/TimeFilterDrawer";
@@ -23,7 +28,6 @@ import {
 import { useToast } from "@/hooks/useToast";
 import { formatTimeFromSeconds, formatDateForDisplay } from "@/utils/dateFormat";
 import { LoaderWithText } from "@/components/Loader";
-import { Pagination } from "@/components/Pagination";
 import { SearchInput } from "@/components/SearchInput";
 import {
   Dialog,
@@ -58,7 +62,6 @@ export const TimeEntries = () => {
     isMiscellaneous: null,
   });
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const limit = 25;
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [expandedGroups, setExpandedGroups] = useState(new Set());
@@ -75,7 +78,6 @@ export const TimeEntries = () => {
   const [timeValidationError, setTimeValidationError] = useState("");
   const { user } = useAuthStore();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Use centralized timer hook
   const {
@@ -99,116 +101,61 @@ export const TimeEntries = () => {
 
   const isEmployee = user?.role === "EMPLOYEE";
 
-  const { data: entriesData, isLoading } = useQuery({
-    queryKey: ["time-entries", filters, viewMode === "weekly" ? 1 : page, search, viewMode],
-    queryFn: () =>
-      timeEntriesApi.getAll({
-        page: viewMode === "weekly" ? 1 : page,
-        limit: viewMode === "weekly" ? 500 : limit,
-        search,
-        ...filters,
-        employeeId: filters.employeeId || undefined,
-        clientId: filters.clientId || undefined,
-        packageId: filters.packageId || undefined,
-        startDate: filters.startDate || undefined,
-        endDate: filters.endDate || undefined,
-        isMiscellaneous:
-          filters.isMiscellaneous !== null &&
-          filters.isMiscellaneous !== undefined
-            ? String(filters.isMiscellaneous)
-            : undefined,
-      }),
+  const entryFilters = useMemo(
+    () => ({
+      limit,
+      search,
+      employeeId: filters.employeeId || undefined,
+      clientId: filters.clientId || undefined,
+      packageId: filters.packageId || undefined,
+      startDate: filters.startDate || undefined,
+      endDate: filters.endDate || undefined,
+      isMiscellaneous:
+        filters.isMiscellaneous !== null && filters.isMiscellaneous !== undefined
+          ? String(filters.isMiscellaneous)
+          : undefined,
+    }),
+    [filters, search, limit]
+  );
+
+  const {
+    data: infiniteEntriesData,
+    isLoading: infiniteLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteTimeEntries(entryFilters, {
+    enabled: viewMode === "table",
   });
 
-  const { data: employeesData } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => employeesApi.getAll({ limit: 10000 }),
-  });
+  const { data: weeklyEntriesData, isLoading: weeklyLoading } = useTimeEntries(
+    { ...entryFilters, page: 1, limit: 500 },
+    { enabled: viewMode === "weekly" }
+  );
 
-  const { data: clientsData } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 10000 }),
-  });
+  const { data: employeesData } = useEmployees({ limit: 10000 });
+  const { data: clientsData } = useClients({ limit: 500 });
 
-  // Fetch tasks for searchable dropdown
-  // For employees, only show tasks assigned to them
-  const { data: tasksData } = useQuery({
-    queryKey: ["tasks", "all", isEmployee ? employeeId : null],
-    queryFn: () => {
-      const params = { limit: 1000 };
-      // If user is an employee, filter by assignedTo
-      if (isEmployee && employeeId) {
-        params.assignedTo = employeeId;
-      }
-      return tasksApi.getAll(params);
-    },
+  const taskFilters = useMemo(() => {
+    const params = { limit: 1000 };
+    if (isEmployee && employeeId) {
+      params.assignedTo = employeeId;
+    }
+    return params;
+  }, [isEmployee, employeeId]);
+
+  const { data: tasksData } = useTasks(taskFilters, {
     enabled: !isEmployee || !!employeeId,
   });
 
-  // Fetch all packages for filter drawer
-  const { data: packagesData } = useQuery({
-    queryKey: ["packages", "all"],
-    queryFn: () => packagesApi.getAll({ limit: 1000 }),
-  });
+  const { data: packagesData } = usePackages({ limit: 1000 });
+  const { data: miscPackagesData } = usePackagesByClient(miscClientId, { limit: 10000 });
 
-  const { data: miscPackagesData } = useQuery({
-    queryKey: ["packages", miscClientId],
-    queryFn: () => packagesApi.getAll({ clientId: miscClientId, limit: 10000 }),
-    enabled: !!miscClientId,
-  });
+  const startMiscTimerMutation = useStartMiscTimer();
+  const deleteMutation = useDeleteTimeEntry();
+  const updateMutation = useUpdateTimeEntry();
 
-  // Miscellaneous timer start mutation (special case not in centralized hook)
-  const startMiscTimerMutation = useMutation({
-    mutationFn: (data) => timeEntriesApi.startMiscellaneousTimer(data),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ["running-timer"] });
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      toast({ title: "Success", description: "Timer started", type: "success" });
-      setMiscDescription("");
-      setMiscClientId("");
-      setMiscPackageId("");
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to start timer",
-        type: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: timeEntriesApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      toast({
-        title: "Success",
-        description: "Time entry deleted",
-        type: "success",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => timeEntriesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      setShowEditDialog(false);
-      setEditingEntry(null);
-      toast({
-        title: "Success",
-        description: "Time entry updated successfully",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update time entry",
-        type: "destructive",
-      });
-    },
-  });
+  const isLoading = viewMode === "weekly" ? weeklyLoading : infiniteLoading;
 
   const handleStart = async () => {
     if (timerMode === "task") {
@@ -238,13 +185,22 @@ export const TimeEntries = () => {
         const stopped = await stopCurrentTimer();
         if (!stopped) return;
       }
-      startMiscTimerMutation.mutate({
-        employeeId,
-        miscellaneousDescription: miscDescription,
-        clientId: miscClientId || undefined,
-        packageId: miscPackageId || undefined,
-        date: new Date().toISOString(),
-      });
+      startMiscTimerMutation.mutate(
+        {
+          employeeId,
+          miscellaneousDescription: miscDescription,
+          clientId: miscClientId || undefined,
+          packageId: miscPackageId || undefined,
+          date: new Date().toISOString(),
+        },
+        {
+          onSuccess: () => {
+            setMiscDescription("");
+            setMiscClientId("");
+            setMiscPackageId("");
+          },
+        }
+      );
     }
   };
 
@@ -442,7 +398,15 @@ export const TimeEntries = () => {
       updateData.packageId = editFormData.packageId;
     }
 
-    updateMutation.mutate({ id: editingEntry._id, data: updateData });
+    updateMutation.mutate(
+      { id: editingEntry._id, data: updateData },
+      {
+        onSuccess: () => {
+          setShowEditDialog(false);
+          setEditingEntry(null);
+        },
+      }
+    );
   };
 
   const handleStartFromEntry = async (entry) => {
@@ -494,8 +458,15 @@ export const TimeEntries = () => {
     });
   };
 
-  const entries = entriesData?.data?.timeEntries || [];
-  const entriesPagination = entriesData?.data?.pagination;
+  const entries =
+    viewMode === "weekly"
+      ? weeklyEntriesData?.data?.timeEntries || []
+      : infiniteEntriesData?.pages.flatMap((p) => p?.data?.timeEntries || []) || [];
+
+  const entriesPagination =
+    viewMode === "weekly"
+      ? weeklyEntriesData?.data?.pagination
+      : infiniteEntriesData?.pages[infiniteEntriesData.pages.length - 1]?.data?.pagination;
   const employees = employeesData?.data?.employees || [];
   const clients = clientsData?.data?.clients || [];
 
@@ -1207,11 +1178,22 @@ export const TimeEntries = () => {
                 )}
               </tbody>
             </table>
-            {entriesPagination && (
-              <Pagination
-                pagination={entriesPagination}
-                onPageChange={setPage}
-              />
+            {viewMode === "table" && hasNextPage && (
+              <div className="flex justify-center px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? "Loading..." : "Load more"}
+                </Button>
+              </div>
+            )}
+            {viewMode === "table" && entriesPagination && (
+              <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 text-center">
+                Showing {entries.length} of {entriesPagination.total} entries
+              </div>
             )}
           </div>
         )}

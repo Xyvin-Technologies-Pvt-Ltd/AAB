@@ -1,18 +1,50 @@
+import { lazy, Suspense, useMemo } from "react";
 import { AppLayout } from "@/layout/AppLayout";
-import { useQuery } from "@tanstack/react-query";
-import { clientsApi } from "@/api/clients";
-import { packagesApi } from "@/api/packages";
-import { employeesApi } from "@/api/employees";
-import { tasksApi } from "@/api/tasks";
+import { useClientCount, useClientAlerts } from "@/api/queries/clientQueries";
+import { usePackages } from "@/api/queries/packageQueries";
+import { useEmployees } from "@/api/queries/employeeQueries";
+import { useDashboardTasks } from "@/api/queries/taskQueries";
 import { StatCard } from "@/components/StatCard";
-import { DashboardGraphs } from "@/components/DashboardGraphs";
 import { AIInsightsWidget } from "@/components/ai-chat/AIInsightsWidget";
 import { Users, Package, UserCog, Calendar, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
+import { LoaderWithText } from "@/components/Loader";
 import { Button } from "@/ui/button";
 import { useAuthStore } from "@/store/authStore";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
+
+// Recharts (~100KB gzip) is only needed once these charts render, so it's
+// kept out of the main Dashboard chunk and fetched in parallel with the
+// dashboard-statistics query instead of blocking the rest of the page.
+const DashboardGraphs = lazy(() =>
+  import("@/components/DashboardGraphs").then((m) => ({ default: m.DashboardGraphs }))
+);
+
+const DashboardGraphsFallback = () => (
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <Card>
+      <CardHeader>
+        <CardTitle>Upcoming Tasks (Next 4 Months)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-64">
+          <LoaderWithText text="Loading tasks statistics..." />
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader>
+        <CardTitle>Upcoming Submissions (Next 4 Months)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-64">
+          <LoaderWithText text="Loading submissions statistics..." />
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
 
 export const Dashboard = () => {
   const { user } = useAuthStore();
@@ -38,25 +70,18 @@ export const Dashboard = () => {
 
   const firstName = getFirstName();
 
-  const { data: clientsData, isLoading: clientsLoading } = useQuery({
-    queryKey: ["clients", "count"],
-    queryFn: () => clientsApi.getAll({ limit: 1 }),
+  const { data: clientsData, isLoading: clientsLoading } = useClientCount();
+
+  const { data: packagesData, isLoading: packagesLoading } = usePackages({
+    limit: 1,
+    status: "ACTIVE",
   });
 
-  const { data: packagesData, isLoading: packagesLoading } = useQuery({
-    queryKey: ["packages", "count"],
-    queryFn: () => packagesApi.getAll({ limit: 1, status: "ACTIVE" }),
+  const { data: employeesData, isLoading: employeesLoading } = useEmployees({
+    limit: 1,
   });
 
-  const { data: employeesData, isLoading: employeesLoading } = useQuery({
-    queryKey: ["employees", "count"],
-    queryFn: () => employeesApi.getAll({ limit: 1 }),
-  });
-
-  const { data: tasksData, isLoading: tasksLoading } = useQuery({
-    queryKey: ["tasks", "dashboard"],
-    queryFn: () => tasksApi.getAll({ limit: 1000 }),
-  });
+  const { data: tasksData, isLoading: tasksLoading } = useDashboardTasks();
 
   // Get current and next month for alerts count
   const now = new Date();
@@ -68,27 +93,20 @@ export const Dashboard = () => {
 
   // Fetch alerts for both current and next month to get total count
   const { data: currentMonthAlerts, isLoading: currentAlertsLoading } =
-    useQuery({
-      queryKey: ["allAlerts", currentMonth, currentYear, "all"],
-      queryFn: () =>
-        clientsApi.getAllAlerts({
-          type: undefined,
-          severity: undefined,
-          month: currentMonth,
-          year: currentYear,
-        }),
+    useClientAlerts({
+      type: undefined,
+      severity: undefined,
+      month: currentMonth,
+      year: currentYear,
     });
 
-  const { data: nextMonthAlerts, isLoading: nextAlertsLoading } = useQuery({
-    queryKey: ["allAlerts", nextMonth, nextYear, "all"],
-    queryFn: () =>
-      clientsApi.getAllAlerts({
-        type: undefined,
-        severity: undefined,
-        month: nextMonth,
-        year: nextYear,
-      }),
-  });
+  const { data: nextMonthAlerts, isLoading: nextAlertsLoading } =
+    useClientAlerts({
+      type: undefined,
+      severity: undefined,
+      month: nextMonth,
+      year: nextYear,
+    });
 
   const totalClients = clientsData?.data?.pagination?.total || 0;
   const totalPackages = packagesData?.data?.pagination?.total || 0;
@@ -106,32 +124,45 @@ export const Dashboard = () => {
     nextAlerts.length +
     nextDeadlines.length;
 
-  // Filter overdue tasks
-  const overdueTasks = allTasks.filter(
-    (task) =>
-      task.dueDate && new Date(task.dueDate) < now && task.status !== "DONE"
-  );
+  // overdueTasks/upcomingTasks/taskStatusSummary were four separate passes
+  // over up to 1000 tasks on every render. Memoized so they only recompute
+  // when the task list itself changes - `now`/sevenDaysFromNow are
+  // intentionally left out of the dependency array since they're new Date
+  // objects every render; a few minutes of drift in "overdue"/"upcoming" is
+  // not noticeable on a dashboard, and this is what lets the memo actually
+  // skip recomputation between task-data refetches.
+  const { overdueTasks, upcomingTasks, taskStatusSummary } = useMemo(() => {
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
-  // Filter upcoming deadlines (next 7 days)
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-  const upcomingTasks = allTasks
-    .filter(
+    const overdue = allTasks.filter(
       (task) =>
-        task.dueDate &&
-        new Date(task.dueDate) >= now &&
-        new Date(task.dueDate) <= sevenDaysFromNow &&
-        task.status !== "DONE"
-    )
-    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
-    .slice(0, 5);
+        task.dueDate && new Date(task.dueDate) < now && task.status !== "DONE"
+    );
 
-  // Task status summary
-  const taskStatusSummary = {
-    TODO: allTasks.filter((t) => t.status === "TODO").length,
-    IN_PROGRESS: allTasks.filter((t) => t.status === "IN_PROGRESS").length,
-    DONE: allTasks.filter((t) => t.status === "DONE").length,
-  };
+    const upcoming = allTasks
+      .filter(
+        (task) =>
+          task.dueDate &&
+          new Date(task.dueDate) >= now &&
+          new Date(task.dueDate) <= sevenDaysFromNow &&
+          task.status !== "DONE"
+      )
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .slice(0, 5);
+
+    const statusSummary = {
+      TODO: 0,
+      IN_PROGRESS: 0,
+      DONE: 0,
+    };
+    allTasks.forEach((t) => {
+      if (statusSummary[t.status] !== undefined) statusSummary[t.status] += 1;
+    });
+
+    return { overdueTasks: overdue, upcomingTasks: upcoming, taskStatusSummary: statusSummary };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTasks]);
 
   return (
     <AppLayout>
@@ -238,7 +269,9 @@ export const Dashboard = () => {
         <AIInsightsWidget />
 
         {/* Dashboard Graphs */}
-        <DashboardGraphs />
+        <Suspense fallback={<DashboardGraphsFallback />}>
+          <DashboardGraphs />
+        </Suspense>
 
         {/* Deadlines and Overdue */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

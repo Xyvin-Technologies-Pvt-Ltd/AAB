@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import { AppLayout } from '@/layout/AppLayout';
-import { employeesApi } from '@/api/employees';
-import { timeEntriesApi } from '@/api/timeEntries';
-import { tasksApi } from '@/api/tasks';
-import { analyticsApi } from '@/api/analytics';
+import {
+  useEmployeeDetail,
+  useSendEmployeeCredentials,
+} from '@/api/queries/employeeQueries';
+import { useEmployeeTimeEntries } from '@/api/queries/timeEntryQueries';
+import { useEmployeeTasks } from '@/api/queries/taskQueries';
+import { useEmployeeUtilization } from '@/api/queries/analyticsQueries';
 import { Button } from '@/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
 import {
@@ -22,68 +24,26 @@ import { StatCard } from '@/components/StatCard';
 import { format } from 'date-fns';
 import { formatTimeFromSeconds } from '@/utils/dateFormat';
 import { LoaderWithText } from '@/components/Loader';
-import { useToast } from '@/hooks/useToast';
 
 export const EmployeeDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
   const [dateRange, setDateRange] = useState({
     startDate: '',
     endDate: '',
   });
 
-  const { data: employeeData, isLoading: employeeLoading } = useQuery({
-    queryKey: ['employee', id],
-    queryFn: () => employeesApi.getById(id),
-  });
-
-  const { data: timeEntriesData } = useQuery({
-    queryKey: ['time-entries', 'employee', id, dateRange],
-    queryFn: () =>
-      timeEntriesApi.getAll({
-        employeeId: id,
-        limit: 1000,
-        startDate: dateRange.startDate || undefined,
-        endDate: dateRange.endDate || undefined,
-      }),
-  });
-
-  const { data: tasksData } = useQuery({
-    queryKey: ['tasks', 'employee', id],
-    queryFn: () => tasksApi.getAll({ assignedTo: id, limit: 1000 }),
-  });
-
-  const { data: teamData } = useQuery({
-    queryKey: ['analytics', 'employees'],
-    queryFn: () => analyticsApi.getEmployeeUtilization(),
-  });
-
-  const sendCredentialsMutation = useMutation({
-    mutationFn: () => employeesApi.sendCredentials(id),
-    onSuccess: (response) => {
-      setShowCredentialsDialog(false);
-      toast({
-        title: 'Success',
-        description: response.message || 'Credentials sent successfully',
-        type: 'success',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description:
-          error.response?.data?.message || 'Failed to send login credentials',
-        type: 'destructive',
-      });
-    },
-  });
+  const { data: employeeData, isLoading: employeeLoading } = useEmployeeDetail(id);
+  const { data: timeEntriesData } = useEmployeeTimeEntries(id, dateRange);
+  const { data: tasksData } = useEmployeeTasks(id);
+  const { data: teamData } = useEmployeeUtilization();
+  const sendCredentialsMutation = useSendEmployeeCredentials();
 
   const employee = employeeData?.data;
   const timeEntries = timeEntriesData?.data?.timeEntries || [];
   const tasks = tasksData?.data?.tasks || [];
-  const teamMembers = teamData?.data || [];
+  const teamMembers = teamData?.data?.results ?? (Array.isArray(teamData?.data) ? teamData.data : []);
 
   const totalHours = timeEntries.reduce((sum, entry) => sum + entry.minutesSpent / 3600, 0);
   const openTasks = tasks.filter((t) => t.status !== 'DONE').length;
@@ -171,7 +131,11 @@ export const EmployeeDetails = () => {
                 Cancel
               </Button>
               <Button
-                onClick={() => sendCredentialsMutation.mutate()}
+                onClick={() =>
+                  sendCredentialsMutation.mutate(id, {
+                    onSuccess: () => setShowCredentialsDialog(false),
+                  })
+                }
                 disabled={sendCredentialsMutation.isPending}
               >
                 {sendCredentialsMutation.isPending ? 'Sending...' : 'Send credentials'}
@@ -406,4 +370,3 @@ export const EmployeeDetails = () => {
     </AppLayout>
   );
 };
-

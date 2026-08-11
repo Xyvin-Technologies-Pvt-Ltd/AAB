@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/layout/AppLayout';
-import { clientsApi } from '@/api/clients';
+import { useClientAlerts } from '@/api/queries/clientQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
 import { Badge } from '@/ui/badge';
 import { Button } from '@/ui/button';
@@ -160,78 +159,64 @@ export const Alerts = () => {
   const selectedMonth = activeTab === 'thisMonth' ? currentMonth : nextMonth;
   const selectedYear = activeTab === 'thisMonth' ? currentYear : nextYear;
 
-  // Fetch data for both months
-  const { data: currentMonthData, isLoading: isLoadingCurrent } = useQuery({
-    queryKey: ['allAlerts', currentMonth, currentYear, typeFilter],
-    queryFn: () => clientsApi.getAllAlerts({ 
-      type: typeFilter || undefined, 
-      severity: undefined,
-      month: currentMonth,
-      year: currentYear,
-    }),
+  const { data: currentMonthData, isLoading: isLoadingCurrent } = useClientAlerts({
+    type: typeFilter || undefined,
+    month: currentMonth,
+    year: currentYear,
   });
 
-  const { data: nextMonthData, isLoading: isLoadingNext } = useQuery({
-    queryKey: ['allAlerts', nextMonth, nextYear, typeFilter],
-    queryFn: () => clientsApi.getAllAlerts({ 
-      type: typeFilter || undefined, 
-      severity: undefined,
-      month: nextMonth,
-      year: nextYear,
-    }),
+  const { data: nextMonthData, isLoading: isLoadingNext } = useClientAlerts({
+    type: typeFilter || undefined,
+    month: nextMonth,
+    year: nextYear,
   });
 
   // Get data based on active tab
   const data = activeTab === 'thisMonth' ? currentMonthData : nextMonthData;
   const isLoading = activeTab === 'thisMonth' ? isLoadingCurrent : isLoadingNext;
 
-  const allAlerts = data?.data?.alerts || [];
-  const allDeadlines = data?.data?.deadlines || [];
-
-  // Merge all alerts and deadlines
+  // Merge all alerts and deadlines. Built from `data` directly (rather than
+  // `data?.data?.alerts || []` intermediate consts) so the dependency array
+  // below tracks the actual query result instead of a fallback that can
+  // itself allocate a new array reference.
   const allUnifiedItems = useMemo(() => {
+    const alerts = data?.data?.alerts || [];
+    const deadlines = data?.data?.deadlines || [];
     return [
-      ...allAlerts.map(alert => ({ ...alert, itemType: 'alert' })),
-      ...allDeadlines.map(deadline => ({ ...deadline, itemType: 'deadline' })),
+      ...alerts.map(alert => ({ ...alert, itemType: 'alert' })),
+      ...deadlines.map(deadline => ({ ...deadline, itemType: 'deadline' })),
     ];
-  }, [allAlerts, allDeadlines]);
+  }, [data]);
 
-  // Fetch all data without type filter for counts (combine both months)
-  const { data: allDataForCountsCurrent } = useQuery({
-    queryKey: ['allAlerts', currentMonth, currentYear, 'all'],
-    queryFn: () => clientsApi.getAllAlerts({ 
-      type: undefined, 
-      severity: undefined,
-      month: currentMonth,
-      year: currentYear,
-    }),
+  const { data: allDataForCountsCurrent } = useClientAlerts({
+    month: currentMonth,
+    year: currentYear,
   });
 
-  const { data: allDataForCountsNext } = useQuery({
-    queryKey: ['allAlerts', nextMonth, nextYear, 'all'],
-    queryFn: () => clientsApi.getAllAlerts({ 
-      type: undefined, 
-      severity: undefined,
-      month: nextMonth,
-      year: nextYear,
-    }),
+  const { data: allDataForCountsNext } = useClientAlerts({
+    month: nextMonth,
+    year: nextYear,
   });
 
-  const allAlertsForCounts = [
-    ...(allDataForCountsCurrent?.data?.alerts || []),
-    ...(allDataForCountsNext?.data?.alerts || []),
-  ];
-  const allDeadlinesForCounts = [
-    ...(allDataForCountsCurrent?.data?.deadlines || []),
-    ...(allDataForCountsNext?.data?.deadlines || []),
-  ];
-  
+  // allAlertsForCounts/allDeadlinesForCounts used to be built with [...a, ...b]
+  // spreads outside this memo - that allocates a new array on every render
+  // regardless of whether the underlying query data changed, so the memo
+  // below never actually hit its cache. Building them from the raw query
+  // results inside the memo, keyed on those results, fixes that.
   const allItemsForCounts = useMemo(() => {
-    return [
-      ...allAlertsForCounts.map(alert => ({ ...alert, itemType: 'alert' })),
-      ...allDeadlinesForCounts.map(deadline => ({ ...deadline, itemType: 'deadline' })),
+    const alertsForCounts = [
+      ...(allDataForCountsCurrent?.data?.alerts || []),
+      ...(allDataForCountsNext?.data?.alerts || []),
     ];
-  }, [allAlertsForCounts, allDeadlinesForCounts]);
+    const deadlinesForCounts = [
+      ...(allDataForCountsCurrent?.data?.deadlines || []),
+      ...(allDataForCountsNext?.data?.deadlines || []),
+    ];
+    return [
+      ...alertsForCounts.map(alert => ({ ...alert, itemType: 'alert' })),
+      ...deadlinesForCounts.map(deadline => ({ ...deadline, itemType: 'deadline' })),
+    ];
+  }, [allDataForCountsCurrent, allDataForCountsNext]);
 
   // Filter and sort unified items for display
   const unifiedItems = useMemo(() => {

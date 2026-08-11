@@ -1,10 +1,14 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppLayout } from "@/layout/AppLayout";
-import { invoicesApi } from "@/api/invoices";
-import { clientsApi } from "@/api/clients";
-import { packagesApi } from "@/api/packages";
+import { useClients } from "@/api/queries/clientQueries";
+import {
+  useInvoiceDetail,
+  useUnbilledTimeEntries,
+  useUpdateInvoice,
+  useUpdateInvoiceStatus,
+  useDeleteInvoice,
+} from "@/api/queries/invoiceQueries";
 import { Button } from "@/ui/button";
 import { Card } from "@/ui/card";
 import {
@@ -44,7 +48,6 @@ const defaultLineItem = () => ({ description: "", quantity: 1, rate: 0, amount: 
 export const InvoiceDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [editLineItems, setEditLineItems] = useState([]);
@@ -57,21 +60,18 @@ export const InvoiceDetails = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editSuggestedHourlyRate, setEditSuggestedHourlyRate] = useState(200);
 
-  const { data: invoiceData, isLoading } = useQuery({
-    queryKey: ["invoice", id],
-    queryFn: () => invoicesApi.getById(id),
-    enabled: !!id,
-  });
+  const { data: invoiceData, isLoading } = useInvoiceDetail(id);
+  const { data: clientsData } = useClients({ limit: 500 });
 
-  const { data: clientsData } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsApi.getAll({ limit: 10000 }),
-  });
-  const { data: unbilledData } = useQuery({
-    queryKey: ["invoices", "unbilled-time-entries", invoiceData?.data?.clientId?._id || invoiceData?.data?.clientId],
-    queryFn: () => invoicesApi.getUnbilledTimeEntries(invoiceData?.data?.clientId?._id || invoiceData?.data?.clientId),
+  const clientIdForUnbilled =
+    invoiceData?.data?.clientId?._id || invoiceData?.data?.clientId;
+  const { data: unbilledData } = useUnbilledTimeEntries(clientIdForUnbilled, {
     enabled: !!invoiceData?.data && editMode && !!invoiceData.data.clientId,
   });
+
+  const updateMutation = useUpdateInvoice();
+  const statusMutation = useUpdateInvoiceStatus();
+  const deleteMutation = useDeleteInvoice();
 
   const invoice = invoiceData?.data;
   const clients = clientsData?.data?.clients || [];
@@ -167,58 +167,6 @@ export const InvoiceDetails = () => {
     });
   };
 
-  const updateMutation = useMutation({
-    mutationFn: (payload) => invoicesApi.update(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoice", id] });
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      setEditMode(false);
-      toast({ title: "Success", description: "Invoice updated", type: "success" });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update invoice",
-        type: "destructive",
-      });
-    },
-  });
-
-  const statusMutation = useMutation({
-    mutationFn: (status) => invoicesApi.updateStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoice", id] });
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      toast({ title: "Success", description: "Status updated", type: "success" });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update status",
-        type: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: () => invoicesApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      setShowDeleteConfirm(false);
-      navigate("/invoices");
-      toast({ title: "Success", description: "Invoice deleted", type: "success" });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to delete invoice",
-        type: "destructive",
-      });
-    },
-  });
-
   const handleSaveEdit = () => {
     const validLines = editLineItems.filter(
       (item) => (item.description || "").trim() && (Number(item.amount) || 0) >= 0
@@ -227,20 +175,26 @@ export const InvoiceDetails = () => {
       toast({ title: "Validation", description: "At least one line item required", type: "destructive" });
       return;
     }
-    updateMutation.mutate({
-      lineItems: validLines.map((item) => ({
-        description: item.description.trim(),
-        quantity: Number(item.quantity) || 0,
-        rate: Number(item.rate) || 0,
-        amount: Number(item.amount) || 0,
-      })),
-      timeEntries: editTimeEntryIds,
-      issueDate: editIssueDate ? new Date(editIssueDate).toISOString() : undefined,
-      dueDate: editDueDate ? new Date(editDueDate).toISOString() : undefined,
-      taxRate: Number(editTaxRate) || 0,
-      discount: Number(editDiscount) || 0,
-      notes: editNotes.trim(),
-    });
+    updateMutation.mutate(
+      {
+        id,
+        data: {
+          lineItems: validLines.map((item) => ({
+            description: item.description.trim(),
+            quantity: Number(item.quantity) || 0,
+            rate: Number(item.rate) || 0,
+            amount: Number(item.amount) || 0,
+          })),
+          timeEntries: editTimeEntryIds,
+          issueDate: editIssueDate ? new Date(editIssueDate).toISOString() : undefined,
+          dueDate: editDueDate ? new Date(editDueDate).toISOString() : undefined,
+          taxRate: Number(editTaxRate) || 0,
+          discount: Number(editDiscount) || 0,
+          notes: editNotes.trim(),
+        },
+      },
+      { onSuccess: () => setEditMode(false) }
+    );
   };
 
   if (isLoading || !invoice) {
@@ -296,7 +250,7 @@ export const InvoiceDetails = () => {
               <Button
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => statusMutation.mutate("SENT")}
+                onClick={() => statusMutation.mutate({ id, status: "SENT" })}
                 disabled={statusMutation.isPending}
               >
                 <Send className="h-4 w-4 mr-1" />
@@ -307,7 +261,7 @@ export const InvoiceDetails = () => {
               <Button
                 size="sm"
                 className="bg-green-600 hover:bg-green-700"
-                onClick={() => statusMutation.mutate("PAID")}
+                onClick={() => statusMutation.mutate({ id, status: "PAID" })}
                 disabled={statusMutation.isPending}
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
@@ -319,7 +273,7 @@ export const InvoiceDetails = () => {
                 variant="outline"
                 size="sm"
                 className="text-red-600"
-                onClick={() => statusMutation.mutate("CANCELLED")}
+                onClick={() => statusMutation.mutate({ id, status: "CANCELLED" })}
                 disabled={statusMutation.isPending}
               >
                 <XCircle className="h-4 w-4 mr-1" />
@@ -681,7 +635,14 @@ export const InvoiceDetails = () => {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deleteMutation.mutate()}
+              onClick={() =>
+                deleteMutation.mutate(id, {
+                  onSuccess: () => {
+                    setShowDeleteConfirm(false);
+                    navigate("/invoices");
+                  },
+                })
+              }
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}

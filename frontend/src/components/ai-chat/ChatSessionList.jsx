@@ -1,33 +1,30 @@
-import { useEffect } from 'react';
 import { Plus, Trash2, MessageSquare, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useChatStore } from '@/store/chatStore';
-import { getSessions, deleteSession, getSession } from '@/api/aiChat';
+import { useChatSessions, useDeleteChatSession } from '@/api/queries/aiChatQueries';
+import { queryKeys } from '@/api/queries/queryKeys';
+import { getSession } from '@/api/aiChat';
 import { formatDistanceToNow } from 'date-fns';
 
 export function ChatSessionList() {
+  const queryClient = useQueryClient();
   const {
-    sessions, sessionsLoading, activeSessionId,
-    setSessions, setSessionsLoading, removeSession, loadSession, hideSessionsList, startNewChat,
+    activeSessionId,
+    loadSession,
+    hideSessionsList,
+    startNewChat,
   } = useChatStore();
 
-  useEffect(() => {
-    const load = async () => {
-      setSessionsLoading(true);
-      try {
-        const data = await getSessions(1, 30);
-        setSessions(data.sessions || []);
-      } catch (err) {
-        console.error('Failed to load sessions', err);
-      } finally {
-        setSessionsLoading(false);
-      }
-    };
-    load();
-  }, []);
+  const { data, isLoading: sessionsLoading } = useChatSessions(1, 30);
+  const deleteSessionMutation = useDeleteChatSession();
+  const sessions = data?.sessions || [];
 
   const handleSelectSession = async (sessionId) => {
     try {
-      const session = await getSession(sessionId);
+      const session = await queryClient.fetchQuery({
+        queryKey: queryKeys.aiChat.session(sessionId),
+        queryFn: () => getSession(sessionId),
+      });
       if (session) loadSession(session);
     } catch (err) {
       console.error('Failed to load session', err);
@@ -37,8 +34,10 @@ export function ChatSessionList() {
   const handleDelete = async (e, sessionId) => {
     e.stopPropagation();
     try {
-      await deleteSession(sessionId);
-      removeSession(sessionId);
+      await deleteSessionMutation.mutateAsync(sessionId);
+      if (activeSessionId === sessionId) {
+        startNewChat();
+      }
     } catch (err) {
       console.error('Failed to delete session', err);
     }
@@ -51,7 +50,6 @@ export function ChatSessionList() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* New chat button */}
       <div className="px-4 py-3 border-b border-border/40">
         <button
           onClick={handleNewChat}
@@ -62,7 +60,6 @@ export function ChatSessionList() {
         </button>
       </div>
 
-      {/* Sessions list */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {sessionsLoading ? (
           <div className="flex items-center justify-center py-16">

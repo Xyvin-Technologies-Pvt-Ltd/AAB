@@ -1,6 +1,7 @@
 import { successResponse, errorResponse } from '../../helpers/response.js';
 import * as aiChatService from './ai-chat.service.js';
 import logger from '../../helpers/logger.js';
+import { parsePage, parseLimit } from '../../helpers/pagination.js';
 
 /**
  * POST /api/ai-chat/stream
@@ -55,8 +56,8 @@ export const streamChat = async (req, res, next) => {
  */
 export const getSessions = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const page = parsePage(req.query.page);
+    const limit = parseLimit(req.query.limit, 20);
 
     const data = await aiChatService.getUserSessions(req.user._id, page, limit);
     return successResponse(res, 200, 'Sessions retrieved successfully', data);

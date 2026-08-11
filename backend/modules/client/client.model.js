@@ -309,6 +309,9 @@ clientSchema.index({ 'businessInfo.ctrn': 1 });
 clientSchema.index({ 'businessInfo.licenseExpiryDate': 1 });
 clientSchema.index({ 'documents.category': 1 });
 clientSchema.index({ 'documents.uploadStatus': 1 });
+clientSchema.index({ status: 1 });
+clientSchema.index({ createdAt: -1 });
+clientSchema.index({ 'documents.key': 1 });
 
 // Helper method to get document by category
 clientSchema.methods.getDocumentByCategory = function (category) {
